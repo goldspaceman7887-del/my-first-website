@@ -1,5 +1,5 @@
 import { store } from "../core/storage.js";
-import { el } from "../core/ui.js";
+import { el, blurActive } from "../core/ui.js";
 import { audioEngine } from "../core/audio.js";
 import { gradeItem, masteryLevel, QUALITY, newItems, dueItems } from "../core/srs.js";
 import { addXP, updateSkillScore } from "../core/gamification.js";
@@ -7,6 +7,63 @@ import { VOCABULARY } from "../data/vocabulary.js";
 
 function srsId(v) {
   return `vocab_${v.id}`;
+}
+
+// Normalize for lenient "did you actually use the word" checking — strips
+// accents/punctuation so conjugated/plural forms of the same stem still count.
+function normalizeLoose(s) {
+  return (s || "")
+    .toString()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[¿?¡!.,;:"“”']/g, "")
+    .trim();
+}
+
+function wordStem(word) {
+  // Drop a leading article (el/la/los/las/un/una) since VOCABULARY.es often includes it.
+  const cleaned = normalizeLoose(word).replace(/^(el|la|los|las|un|una)\s+/, "");
+  const firstWord = cleaned.split(/\s+/)[0] || cleaned;
+  return firstWord.slice(0, Math.max(4, firstWord.length - 2)); // tolerate conjugation/plural endings
+}
+
+function sentenceUsesWord(sentence, targetWord) {
+  const stem = wordStem(targetWord);
+  if (!stem) return false;
+  return normalizeLoose(sentence).includes(stem);
+}
+
+// Plain-language, bilingual micro-instructions per immersion level — this is
+// what makes the flashcard step-by-step and unintimidating for a total
+// beginner, while gradually stepping back as the learner picks immersion 2-4.
+function immersionCopy(level) {
+  if (level <= 1) {
+    return {
+      badge: "Beginner-friendly / Nivel principiante",
+      instructions: "Step 1: Look at the Spanish word and its English meaning below. Step 2: Tap 🔊 to hear it. Step 3: Try saying it out loud.",
+      hint: "Tap the card for an example sentence"
+    };
+  }
+  if (level === 2) {
+    return {
+      badge: "Un poco más de español",
+      instructions: "Look at the Spanish word. Try to guess the meaning, then tap the card to check.",
+      hint: "Toca la tarjeta / Tap the card"
+    };
+  }
+  if (level === 3) {
+    return {
+      badge: "Mostly Spanish",
+      instructions: "¿Qué significa esta palabra? Piénsalo un momento antes de tocar.",
+      hint: "Toca para comprobar"
+    };
+  }
+  return {
+    badge: "Español",
+    instructions: "Lee la palabra y la frase de ejemplo. Intenta entenderla en español antes de comprobar.",
+    hint: "Toca para comprobar"
+  };
 }
 
 function parseQuery() {
@@ -33,14 +90,15 @@ export function renderVocabulary(container) {
 
   container.appendChild(
     el("div", { class: "page-header" }, [
-      el("h1", {}, "🗂️ Entrenador de vocabulario"),
-      el("p", {}, "Vocabulario de mayor frecuencia del español de España, con repetición espaciada (SRS) y audio nativo.")
+      el("h1", {}, "🗂️ Vocabulary · Vocabulario"),
+      el("p", {}, "Learn the most useful Spain-Spanish words, one at a time. The app quietly reminds you of each word right before you'd forget it."),
+      el("p", { class: "text-faint" }, "Vocabulario de mayor frecuencia del español de España, con repetición espaciada y audio nativo.")
     ])
   );
 
   const tabs = el("div", { class: "tabs" }, [
-    tabBtn("flashcards", "Tarjetas (SRS)"),
-    tabBtn("explore", "Explorar y buscar")
+    tabBtn("flashcards", "Flashcards"),
+    tabBtn("explore", "Browse / Explorar")
   ]);
   container.appendChild(tabs);
 
@@ -87,59 +145,128 @@ export function renderVocabulary(container) {
       wrap.appendChild(
         el("div", { class: "card empty-state" }, [
           el("div", { class: "empty-icon" }, "🎉"),
-          el("h3", {}, "¡Todo repasado por ahora!"),
-          el("p", {}, "No tienes tarjetas pendientes. Vuelve más tarde o explora nuevo vocabulario en la pestaña Explorar.")
+          el("h3", {}, "All caught up! · ¡Todo repasado!"),
+          el("p", {}, "You have no cards due right now — nice work. Come back later, or explore new words in the \"Browse\" tab.")
         ])
       );
       return wrap;
     }
 
+    const immersionLevel = store.state.settings.immersionLevel || 1;
+    const copy = immersionCopy(immersionLevel);
+
+    wrap.appendChild(
+      el("div", { class: "card", style: "margin-bottom:1rem;border-left:3px solid var(--accent)" }, [
+        el("span", { class: "badge badge-gold" }, copy.badge),
+        el("p", { style: "margin:.5rem 0 0" }, copy.instructions)
+      ])
+    );
+
     let idx = 0;
     const stage = el("div", { class: "flashcard-stage" });
-    const counter = el("p", { class: "text-muted" }, `Tarjeta 1 de ${items.length}`);
+    const counter = el("p", { class: "text-muted" }, `Card 1 of ${items.length} · Tarjeta 1 de ${items.length}`);
     wrap.appendChild(counter);
     wrap.appendChild(stage);
 
     function showCard() {
       stage.innerHTML = "";
       const v = items[idx];
+      const showTranslationUpfront = immersionLevel <= 1;
+
+      const frontChildren = [
+        el("div", { class: "badge badge-level" }, v.level),
+        el("div", { class: "flashcard-word" }, v.es)
+      ];
+      if (showTranslationUpfront) {
+        frontChildren.push(el("div", { class: "flashcard-sub", style: "font-size:1.15rem;font-weight:700" }, v.en));
+      } else if (immersionLevel === 2) {
+        frontChildren.push(el("div", { class: "flashcard-sub text-faint" }, `(${v.en})`));
+      }
+      frontChildren.push(
+        el(
+          "button",
+          {
+            class: "play-btn",
+            "aria-label": "Listen / Escuchar",
+            onclick: (e) => {
+              e.stopPropagation();
+              audioEngine.speak(v.es);
+            }
+          },
+          "🔊"
+        ),
+        el("div", { class: "flashcard-hint" }, copy.hint)
+      );
+
+      const backChildren = [
+        immersionLevel <= 2 || !showTranslationUpfront
+          ? el("div", { class: "flashcard-word", style: "font-size:1.3rem" }, v.en)
+          : null,
+        el("div", { class: "flashcard-sub" }, v.exampleEs),
+        immersionLevel <= 2 ? el("div", { class: "flashcard-sub text-faint" }, v.exampleEn) : null,
+        v.spainNote ? el("div", { class: "badge badge-gold", style: "margin-top:.4rem" }, v.spainNote) : null
+      ].filter(Boolean);
+
       const card = el("div", { class: "flashcard" });
       const inner = el("div", { class: "flashcard-inner" }, [
-        el("div", { class: "flashcard-face front" }, [
-          el("div", { class: "badge badge-level" }, v.level),
-          el("div", { class: "flashcard-word" }, v.es),
-          el(
-            "button",
-            {
-              class: "play-btn",
-              onclick: (e) => {
-                e.stopPropagation();
-                audioEngine.speak(v.es);
-              }
-            },
-            "🔊"
-          ),
-          el("div", { class: "flashcard-hint" }, "Toca para ver la traducción")
-        ]),
-        el("div", { class: "flashcard-face back" }, [
-          el("div", { class: "flashcard-word", style: "font-size:1.3rem" }, v.en),
-          el("div", { class: "flashcard-sub" }, v.exampleEs),
-          el("div", { class: "flashcard-sub text-faint" }, v.exampleEn),
-          v.spainNote ? el("div", { class: "badge badge-gold", style: "margin-top:.4rem" }, v.spainNote) : null
-        ].filter(Boolean))
+        el("div", { class: "flashcard-face front" }, frontChildren),
+        el("div", { class: "flashcard-face back" }, backChildren)
       ]);
       card.appendChild(inner);
       card.addEventListener("click", () => card.classList.toggle("flipped"));
       stage.appendChild(card);
 
+      // Optional, ungraded free-production step: prove you understand the
+      // word by using it, not just recognizing it. Collapsed by default so
+      // it never slows down the core review loop — it's there if you want it.
+      const practiceWrap = el("div", { style: "width:min(560px, 100%);margin-top:.75rem" });
+      const practiceToggle = el(
+        "button",
+        { class: "btn btn-ghost btn-block", onclick: () => { practiceBox.classList.toggle("hidden"); } },
+        "✍️ Try writing a sentence with this word (optional)"
+      );
+      const practiceInput = el("input", { type: "text", class: "exercise-input", placeholder: `Write a sentence using "${v.es}"...` });
+      practiceInput.style.cssText = "width:100%;padding:.7rem .9rem;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-family:var(--font-es);font-size:1rem;";
+      const practiceFeedback = el("div", { class: "feedback-block hidden" });
+      const practiceCheck = el(
+        "button",
+        {
+          class: "btn btn-primary btn-sm",
+          style: "margin-top:.5rem",
+          onclick: () => {
+            const text = practiceInput.value.trim();
+            const usesWord = sentenceUsesWord(text, v.es);
+            const longEnough = text.split(/\s+/).filter(Boolean).length >= 3;
+            const good = usesWord && longEnough;
+            blurActive();
+            practiceFeedback.classList.remove("hidden", "correct", "incorrect");
+            practiceFeedback.classList.add(good ? "correct" : "incorrect");
+            practiceFeedback.textContent = good
+              ? "¡Muy bien! Nice work using it in a real sentence. (+3 XP)"
+              : !text
+              ? "Write a full sentence, not just the word by itself."
+              : !usesWord
+              ? `Try to actually include "${v.es}" in your sentence.`
+              : "Try a slightly longer sentence — subject + verb + something else.";
+            if (good) addXP(3, `Frase propia: ${v.es}`);
+          }
+        },
+        "Check / Comprobar"
+      );
+      practiceInput.addEventListener("keydown", (e) => { if (e.key === "Enter") practiceCheck.click(); });
+      const practiceBox = el("div", { class: "card hidden", style: "margin-top:.5rem" }, [practiceInput, practiceCheck, practiceFeedback]);
+      practiceWrap.appendChild(practiceToggle);
+      practiceWrap.appendChild(practiceBox);
+      stage.appendChild(practiceWrap);
+
       const ratingRow = el("div", { class: "srs-rating-row" }, [
-        ratingBtn("Otra vez", QUALITY.AGAIN, "btn-danger"),
-        ratingBtn("Difícil", QUALITY.HARD, "btn"),
-        ratingBtn("Bien", QUALITY.GOOD, "btn"),
-        ratingBtn("Fácil", QUALITY.EASY, "btn-success")
+        ratingBtn("Again / Otra vez", QUALITY.AGAIN, "btn-danger"),
+        ratingBtn("Hard / Difícil", QUALITY.HARD, "btn"),
+        ratingBtn("Good / Bien", QUALITY.GOOD, "btn"),
+        ratingBtn("Easy / Fácil", QUALITY.EASY, "btn-success")
       ]);
       stage.appendChild(ratingRow);
-      counter.textContent = `Tarjeta ${idx + 1} de ${items.length}`;
+      counter.textContent = `Card ${idx + 1} of ${items.length} · Tarjeta ${idx + 1} de ${items.length}`;
 
       if (store.state.settings.autoplayAudio) audioEngine.speak(v.es);
 
@@ -149,6 +276,7 @@ export function renderVocabulary(container) {
           {
             class: `btn ${cls}`,
             onclick: () => {
+              blurActive();
               gradeItem(srsId(v), "vocab", quality);
               store.state.progress.vocabExposure[v.id] = (store.state.progress.vocabExposure[v.id] || 0) + 1;
               const xp = quality >= 3 ? 3 : 1;
@@ -162,8 +290,8 @@ export function renderVocabulary(container) {
                 stage.appendChild(
                   el("div", { class: "card empty-state pop-in" }, [
                     el("div", { class: "empty-icon" }, "✅"),
-                    el("h3", {}, "¡Sesión completada!"),
-                    el("button", { class: "btn btn-primary", onclick: renderBody }, "Repasar más")
+                    el("h3", {}, "Session complete! · ¡Sesión completada!"),
+                    el("button", { class: "btn btn-primary", onclick: renderBody }, "Keep going / Repasar más")
                   ])
                 );
               } else {

@@ -1,10 +1,19 @@
 import { store } from "../core/storage.js";
 import { el, toast } from "../core/ui.js";
 import { audioEngine } from "../core/audio.js";
+import { showOnboarding } from "../core/onboarding.js";
 
 export function renderSettings(container) {
   container.appendChild(
     el("div", { class: "page-header" }, [el("h1", {}, "⚙️ Ajustes"), el("p", {}, "Personaliza tu experiencia de aprendizaje. Todo se guarda localmente en tu navegador.")])
+  );
+
+  container.appendChild(
+    el("div", { class: "card" }, [
+      el("div", { class: "card-title" }, "¿Necesitas ayuda para empezar?"),
+      el("p", { class: "text-muted" }, "Vuelve a ver la guía de bienvenida paso a paso (en inglés sencillo)."),
+      el("button", { class: "btn btn-lg", onclick: () => showOnboarding() }, "🚀 Ver la guía de nuevo / Show welcome guide again")
+    ])
   );
 
   // Profile

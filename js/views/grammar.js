@@ -1,9 +1,32 @@
 import { store } from "../core/storage.js";
-import { el } from "../core/ui.js";
-import { renderExercise } from "../core/exercises.js";
+import { el, blurActive } from "../core/ui.js";
+import { renderExercise, normalize } from "../core/exercises.js";
 import { gradeItem, masteryLevel, QUALITY } from "../core/srs.js";
 import { addXP, updateSkillScore } from "../core/gamification.js";
 import { GRAMMAR } from "../data/grammar.js";
+
+const SPANISH_STOPWORDS = new Set([
+  "de", "la", "el", "en", "y", "a", "que", "los", "las", "un", "una", "unos", "unas", "es", "se", "no", "por", "con",
+  "para", "su", "sus", "lo", "le", "les", "mi", "mis", "tu", "tus", "te", "mas", "muy", "pero", "como", "del", "al",
+  "si", "ya", "o", "u", "e", "este", "esta", "esto", "esos", "esas", "son", "fue", "era", "han", "ha", "he", "has",
+  "yo", "tu", "el", "ella", "nosotros", "vosotros", "ellos", "ellas", "usted", "ustedes", "eso", "ese", "esa"
+]);
+
+// Pulls the most repeated content words out of a concept's example sentences
+// so the free-writing check has something concrete (if imperfect) to look
+// for — without needing per-concept authored keyword lists.
+function extractKeyForms(g) {
+  const text = [...(g.exampleSentences || []).map((s) => s.es), ...(g.spainExamples || [])].join(" ");
+  const words = normalize(text).split(/\s+/).filter(Boolean);
+  const freq = {};
+  words.forEach((w) => {
+    if (!SPANISH_STOPWORDS.has(w) && w.length > 2) freq[w] = (freq[w] || 0) + 1;
+  });
+  return Object.entries(freq)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
+    .map(([w]) => w);
+}
 
 function parseQuery() {
   return new URLSearchParams((window.location.hash.split("?")[1]) || "");
@@ -37,8 +60,9 @@ export function renderGrammar(container, params) {
 
   container.appendChild(
     el("div", { class: "page-header" }, [
-      el("h1", {}, "🧠 Laboratorio de gramática"),
-      el("p", {}, "La gramática del español de España explicada con claridad: vosotros, leísmo, subjuntivo y todo lo que necesitas para hablar con precisión.")
+      el("h1", {}, "🧠 Grammar Lab · Gramática"),
+      el("p", {}, "Pick any topic below. Each one has a plain-English explanation first, then short practice questions — no pressure, go at your own pace."),
+      el("p", { class: "text-faint" }, "La gramática del español de España explicada con claridad: vosotros, leísmo, subjuntivo y más.")
     ])
   );
 
@@ -108,8 +132,8 @@ function renderConceptDetail(container, id) {
   );
 
   const tabs = el("div", { class: "tabs" }, [
-    tabBtn("learn", "Aprender", true),
-    tabBtn("practice", "Practicar", false)
+    tabBtn("learn", "1. Learn / Aprender", true),
+    tabBtn("practice", "2. Practice / Practicar", false)
   ]);
   const body = el("div", {});
   container.appendChild(tabs);
@@ -199,8 +223,58 @@ function renderConceptDetail(container, id) {
       );
       wrap.appendChild(card);
     });
+    wrap.appendChild(freeWriteCard(g));
     return wrap;
   }
 
   setTab("learn");
+}
+
+function freeWriteCard(g) {
+  const keyForms = extractKeyForms(g);
+  const card = el("div", { class: "card" }, [
+    el("div", { class: "card-title" }, "✍️ Free practice: write your own sentence"),
+    el(
+      "p",
+      { class: "text-muted" },
+      `This one isn't strict — it's your chance to prove you really understand "${g.title}", not just recognize it. Write an original sentence using it. Look back at the example sentences above if you need a nudge.`
+    )
+  ]);
+  const input = el("textarea", { placeholder: "Escribe tu propia frase en español...", style: "width:100%;min-height:80px;margin-top:.5rem" });
+  const feedback = el("div", { class: "feedback-block hidden" });
+  const checkBtn = el(
+    "button",
+    {
+      class: "btn btn-primary",
+      style: "margin-top:.5rem",
+      onclick: () => {
+        const text = input.value.trim();
+        blurActive();
+        const norm = normalize(text);
+        const matched = keyForms.find((k) => norm.includes(k));
+        const longEnough = text.split(/\s+/).filter(Boolean).length >= 4;
+        feedback.classList.remove("hidden", "correct", "incorrect");
+        if (!text) {
+          feedback.classList.add("incorrect");
+          feedback.textContent = "Write a full sentence first — a few words is fine!";
+        } else if (!longEnough) {
+          feedback.classList.add("incorrect");
+          feedback.textContent = "Try a slightly longer sentence — subject + verb + a bit more.";
+        } else if (matched || !keyForms.length) {
+          feedback.classList.add("correct");
+          feedback.textContent = "¡Muy bien! Nice work applying it in your own words. (+5 XP)";
+          addXP(5, `Frase propia: ${g.title}`);
+          gradeItem(`gram_${g.id}`, "grammar", QUALITY.GOOD);
+        } else {
+          feedback.classList.add("incorrect");
+          feedback.textContent = `Good try — just double check you're actually using "${g.title}" in there. Take a look at the examples above for inspiration.`;
+        }
+      }
+    },
+    "Check / Comprobar"
+  );
+  card.appendChild(input);
+  card.appendChild(el("div", { class: "btn-row" }, [checkBtn]));
+  card.appendChild(feedback);
+  return card;
 }

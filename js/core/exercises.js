@@ -1,7 +1,7 @@
 // Generic renderer + grader for the exercise types used across Grammar Lab,
 // Dialogue Academy comprehension checks, and Listening dictation.
 
-import { el, esc } from "./ui.js";
+import { el, esc, blurActive } from "./ui.js";
 
 export function normalize(s) {
   return (s || "")
@@ -48,6 +48,7 @@ export function renderExercise(ex, { onResult } = {}) {
     feedback.innerHTML = `<strong>${correct ? "¡Correcto! ✅" : "No exactamente. ❌"}</strong> ${
       !correct ? `Respuesta esperada: <em>${esc(firstAnswerVariant(correctAnswer))}</em>. ` : ""
     }${esc(explanation || "")}`;
+    blurActive();
     onResult && onResult(correct);
   }
 

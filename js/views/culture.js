@@ -1,5 +1,5 @@
 import { store } from "../core/storage.js";
-import { el, toast } from "../core/ui.js";
+import { el, toast, blurActive } from "../core/ui.js";
 import { addXP, updateSkillScore } from "../core/gamification.js";
 import { CULTURE } from "../data/culture.js";
 
@@ -110,6 +110,7 @@ function renderCultureDetail(container, id) {
               const isCorrect = opt === q.answer;
               e.target.classList.add(isCorrect ? "correct" : "incorrect");
               if (!isCorrect) Array.from(list.children).find((b) => b.textContent === q.answer)?.classList.add("correct");
+              blurActive();
               if (isCorrect) {
                 correct++;
                 finishIfDone();
