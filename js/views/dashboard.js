@@ -59,8 +59,9 @@ export function renderDashboard(container) {
 
   container.appendChild(
     el("div", { class: "page-header" }, [
-      el("h1", {}, `¡Hola${p.name ? ", " + p.name : ""}! 👋`),
-      el("p", {}, "Tu camino del español de España, de A0 a Advanced Low (ACTFL). Vamos a ello.")
+      el("h1", {}, `¡Hola${p.name ? ", " + p.name : ""}! 👋 Welcome back`),
+      el("p", {}, "This is your home base. Not sure what to do? Just tap the big button below — it always points you to what's next."),
+      el("p", { class: "text-faint" }, "Tu camino del español de España, de A0 a Advanced Low. Vamos a ello.")
     ])
   );
 
@@ -91,13 +92,13 @@ export function renderDashboard(container) {
   const mid = el("div", { class: "grid grid-2" });
 
   // Next lesson card
-  const nextCard = el("div", { class: "card" }, [el("div", { class: "card-title" }, "Siguiente lección")]);
+  const nextCard = el("div", { class: "card" }, [el("div", { class: "card-title" }, "👉 Do this next / Siguiente paso")]);
   if (next) {
     nextCard.appendChild(el("p", { class: "text-muted" }, `${next.unit.level} · ${next.unit.title}`));
     nextCard.appendChild(el("h3", {}, next.lesson.title));
     nextCard.appendChild(el("p", {}, next.lesson.description || ""));
     nextCard.appendChild(
-      el("a", { class: "btn btn-primary", href: next.lesson.href || "#/vocabulary" }, "Continuar →")
+      el("a", { class: "btn btn-primary btn-lg", href: next.lesson.href || "#/vocabulary" }, "Continue / Continuar →")
     );
   } else {
     nextCard.appendChild(el("p", {}, "¡Has completado todas las lecciones del currículo base! Explora Repaso y Cultura para seguir avanzando."));
@@ -106,14 +107,14 @@ export function renderDashboard(container) {
 
   // Review due card
   const reviewCard = el("div", { class: "card" }, [
-    el("div", { class: "card-title" }, "Repaso de hoy (repetición espaciada)"),
-    el("p", { class: "text-muted" }, `${counts.dueToday} elementos listos, ${counts.overdue} atrasados, ${counts.total} en total.`),
+    el("div", { class: "card-title" }, "🔁 Today's review / Repaso de hoy"),
+    el("p", { class: "text-muted" }, `You have ${counts.dueToday} word${counts.dueToday === 1 ? "" : "s"} ready to review right now (a few minutes, tops).`),
     el(
       "div",
       { class: "btn-row" },
       [
-        el("a", { class: "btn btn-primary", href: "#/review" }, "Empezar repaso"),
-        el("span", { class: "badge badge-default" }, `Retención global: ${retentionRate()}%`)
+        el("a", { class: "btn btn-primary btn-lg", href: "#/review" }, "Start review / Empezar"),
+        el("span", { class: "badge badge-default" }, `Retention: ${retentionRate()}%`)
       ]
     )
   ]);

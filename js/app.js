@@ -3,6 +3,7 @@ import { registerRoute, setNotFound, initRouter, navigate } from "./core/router.
 import { audioEngine } from "./core/audio.js";
 import { reviewCounts } from "./core/srs.js";
 import { el } from "./core/ui.js";
+import { maybeShowOnboarding } from "./core/onboarding.js";
 
 import { renderDashboard } from "./views/dashboard.js";
 import { renderVocabulary } from "./views/vocabulary.js";
@@ -135,6 +136,7 @@ function boot() {
   store.subscribe(refreshTopbarStats);
   audioEngine.onReady(() => {});
   initRouter();
+  maybeShowOnboarding();
 }
 
 if (document.readyState === "loading") {

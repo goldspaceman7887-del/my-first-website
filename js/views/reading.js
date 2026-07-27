@@ -1,5 +1,5 @@
 import { store } from "../core/storage.js";
-import { el } from "../core/ui.js";
+import { el, blurActive } from "../core/ui.js";
 import { audioEngine } from "../core/audio.js";
 import { gradeItem, QUALITY } from "../core/srs.js";
 import { addXP, updateSkillScore } from "../core/gamification.js";
@@ -122,6 +122,7 @@ function renderReadingDetail(container, id) {
               const isCorrect = opt === q.answer;
               e.target.classList.add(isCorrect ? "correct" : "incorrect");
               if (!isCorrect) Array.from(list.children).find((b) => b.textContent === q.answer)?.classList.add("correct");
+              blurActive();
               if (isCorrect) {
                 correct++;
                 onDone();

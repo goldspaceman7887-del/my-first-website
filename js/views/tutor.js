@@ -1,4 +1,4 @@
-import { el } from "../core/ui.js";
+import { el, blurActive } from "../core/ui.js";
 import { audioEngine } from "../core/audio.js";
 import { gradeItem, QUALITY } from "../core/srs.js";
 import { addXP, updateSkillScore } from "../core/gamification.js";
@@ -134,6 +134,7 @@ export function renderTutor(container) {
           class: "btn btn-primary",
           style: "margin-top:.6rem",
           onclick: () => {
+            blurActive();
             const hits = checkText(textarea.value);
             resultsWrap.innerHTML = "";
             if (!hits.length) {

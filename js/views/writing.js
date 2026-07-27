@@ -1,5 +1,5 @@
 import { store } from "../core/storage.js";
-import { el, toast } from "../core/ui.js";
+import { el, toast, blurActive } from "../core/ui.js";
 import { addXP, updateSkillScore } from "../core/gamification.js";
 import { WRITING_PROMPTS } from "../data/writing.js";
 
@@ -87,6 +87,7 @@ export function renderWriting(container) {
                 toast("Escribe algo primero.", { icon: "✏️" });
                 return;
               }
+              blurActive();
               const fb = heuristicFeedback(text, p);
               feedbackWrap.innerHTML = "";
               feedbackWrap.appendChild(el("div", { class: "card-title", style: "font-size:.9rem" }, "Retroalimentación"));

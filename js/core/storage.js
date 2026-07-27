@@ -16,7 +16,8 @@ function defaultState() {
       preferredVoiceGender: "any", // "male" | "female" | "any"
       dailyGoalXP: 50,
       autoplayAudio: true,
-      showFurigana: true // reused generically as "show hints"
+      showFurigana: true, // reused generically as "show hints"
+      onboardingSeen: false
     },
     profile: {
       name: "",
@@ -83,6 +84,19 @@ class Store {
     this.state = this._load();
     this._listeners = new Set();
     this._saveTimer = null;
+    // Keep this tab's in-memory state from going stale (and later clobbering
+    // newer data via the beforeunload autosave) if another tab/window for
+    // this same site changes localStorage.
+    if (typeof window !== "undefined") {
+      window.addEventListener("storage", (e) => {
+        if (e.key === STORAGE_KEY && e.newValue) {
+          try {
+            this.state = deepMerge(defaultState(), JSON.parse(e.newValue));
+            this._notify();
+          } catch (err) {}
+        }
+      });
+    }
   }
 
   _load() {

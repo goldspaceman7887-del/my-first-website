@@ -66,7 +66,8 @@ export async function handleRoute() {
     container.innerHTML = `<div class="card"><h2>Se ha producido un error</h2><p>${err.message}</p></div>`;
   }
   setTimeout(() => container.classList.remove("view-fade-in"), 300);
-  window.scrollTo({ top: 0, behavior: "instant" in window ? "instant" : "auto" });
+  if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+  window.scrollTo(0, 0);
 }
 
 function updateActiveNav(hash) {

@@ -15,6 +15,13 @@ export function el(tag, attrs = {}, children = []) {
   return node;
 }
 
+// Blurs the current focus target (e.g. after grading an answer). Prevents
+// mobile browsers from "helpfully" re-scrolling to keep a now-disabled or
+// about-to-move input/button in view, which reads as a random page jump.
+export function blurActive() {
+  if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+}
+
 export function esc(str) {
   const d = document.createElement("div");
   d.textContent = String(str ?? "");

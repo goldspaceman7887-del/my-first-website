@@ -1,5 +1,5 @@
 import { store } from "../core/storage.js";
-import { el, esc, toast } from "../core/ui.js";
+import { el, esc, toast, blurActive } from "../core/ui.js";
 import { audioEngine, textSimilarity, speechRecognitionSupported, listenOnce } from "../core/audio.js";
 import { gradeItem, QUALITY } from "../core/srs.js";
 import { addXP, updateSkillScore } from "../core/gamification.js";
@@ -26,8 +26,9 @@ export function renderDialogueList(container) {
 
   container.appendChild(
     el("div", { class: "page-header" }, [
-      el("h1", {}, "💬 Academia de diálogos"),
-      el("p", {}, "Diálogos realistas de España, con audio, cultura y tareas para llevarte hasta ACTFL Advanced Low.")
+      el("h1", {}, "💬 Conversations · Diálogos"),
+      el("p", {}, "Real-life conversations you'd actually have in Spain. Pick one below, listen to it, then work through it step by step."),
+      el("p", { class: "text-faint" }, "Diálogos realistas de España, con audio, cultura y tareas para llevarte hasta ACTFL Advanced Low.")
     ])
   );
 
@@ -250,6 +251,7 @@ export function renderDialogueDetail(container, params) {
                 const correct = opt === q.answer;
                 e.target.classList.add(correct ? "correct" : "incorrect");
                 if (!correct) Array.from(list.children).find((b) => b.textContent === q.answer)?.classList.add("correct");
+                blurActive();
                 if (correct) { compCorrect++; onCompProgress(); }
               }
             },
@@ -270,6 +272,7 @@ export function renderDialogueDetail(container, params) {
             fb.classList.remove("hidden", "correct", "incorrect");
             fb.classList.add(correct ? "correct" : "incorrect");
             fb.textContent = correct ? "¡Bien!" : `Respuesta orientativa: ${q.answer}`;
+            blurActive();
             if (correct) { compCorrect++; onCompProgress(); }
           }
         },
@@ -335,6 +338,7 @@ export function renderDialogueDetail(container, params) {
           dictFeedback.classList.remove("hidden", "correct", "incorrect");
           dictFeedback.classList.add(score >= 70 ? "correct" : "incorrect");
           dictFeedback.innerHTML = `Precisión: <strong>${score}%</strong><br>Texto correcto: <em>${esc(d.dictationText)}</em>`;
+          blurActive();
           gradeItem(`dialogue_dict_${d.id}`, "listening", score >= 70 ? QUALITY.GOOD : QUALITY.AGAIN);
           addXP(score >= 70 ? 5 : 1, "Dictado");
           updateSkillScore("listening", score >= 70 ? 1.5 : -0.5);
@@ -386,6 +390,7 @@ export function renderDialogueDetail(container, params) {
         class: "btn",
         style: "margin-top:.5rem",
         onclick: () => {
+          blurActive();
           if (extArea.value.trim().split(/\s+/).length >= 15) {
             toast("¡Buen trabajo desarrollando la idea!", { icon: "🚀" });
             addXP(8, "Reto Advanced Low");
