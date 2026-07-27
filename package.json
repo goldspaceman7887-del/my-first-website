@@ -1,0 +1,21 @@
+{
+  "name": "pixel-farm-life",
+  "version": "1.0.0",
+  "description": "Pixel Farm Life - a multiplayer pixel-art farming adventure game.",
+  "type": "module",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5"
+  },
+  "optionalDependencies": {
+    "mongodb": "^6.7.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

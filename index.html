@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Pixel Farm Life</title>
+<link rel="icon" href="data:image/x-icon;base64,AA">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="boot-screen">
+  <div class="boot-title">PIXEL FARM LIFE</div>
+  <div class="boot-sub">loading world...</div>
+  <div class="boot-bar"><div class="boot-bar-fill" id="boot-bar-fill"></div></div>
+</div>
+
+<div id="game-root" class="hidden">
+
+  <canvas id="game-canvas"></canvas>
+
+  <!-- ============ TOP HUD ============ -->
+  <div id="hud-top" class="hud">
+    <div id="hud-clock" class="hud-panel">
+      <span id="hud-season-icon">🌱</span>
+      <span id="hud-day">Day 1</span>
+      <span id="hud-time">6:00 AM</span>
+      <span id="hud-weather">☀️</span>
+    </div>
+    <div id="hud-gold" class="hud-panel">💰 <span id="hud-gold-amount">50</span>g</div>
+    <div id="hud-region-name" class="hud-panel">Farm</div>
+  </div>
+
+  <!-- ============ SKILLS BAR ============ -->
+  <div id="hud-skills" class="hud">
+    <div class="skill-chip" data-skill="farming">🌾<span class="skill-lvl">1</span></div>
+    <div class="skill-chip" data-skill="mining">⛏️<span class="skill-lvl">1</span></div>
+    <div class="skill-chip" data-skill="fishing">🎣<span class="skill-lvl">1</span></div>
+    <div class="skill-chip" data-skill="foraging">🌿<span class="skill-lvl">1</span></div>
+    <div class="skill-chip" data-skill="crafting">🔨<span class="skill-lvl">1</span></div>
+  </div>
+
+  <!-- ============ HOTBAR ============ -->
+  <div id="hotbar"></div>
+
+  <!-- ============ HEALTH ============ -->
+  <div id="hud-health-wrap" class="hud">
+    <div id="hud-health-bar"><div id="hud-health-fill"></div></div>
+  </div>
+
+  <!-- ============ ICON MENU (desktop + mobile) ============ -->
+  <div id="menu-bar">
+    <button class="menu-btn" data-panel="inventory">🎒</button>
+    <button class="menu-btn" data-panel="crafting">🔨</button>
+    <button class="menu-btn" data-panel="map">🗺️</button>
+    <button class="menu-btn" data-panel="quests">📜</button>
+    <button class="menu-btn" data-panel="museum">🏛️</button>
+    <button class="menu-btn" data-panel="social">💬</button>
+    <button class="menu-btn" data-panel="character">🧑</button>
+  </div>
+
+  <!-- ============ MOBILE TOUCH CONTROLS ============ -->
+  <div id="touch-controls">
+    <div id="joystick-zone">
+      <div id="joystick-base">
+        <div id="joystick-knob"></div>
+      </div>
+    </div>
+    <div id="action-buttons">
+      <button id="btn-interact" class="action-btn">✋</button>
+      <button id="btn-use" class="action-btn big">⚡</button>
+      <button id="btn-jump" class="action-btn">🅰️</button>
+    </div>
+  </div>
+
+  <!-- ============ DIALOGUE BOX ============ -->
+  <div id="dialogue-box" class="panel hidden">
+    <div id="dialogue-name"></div>
+    <div id="dialogue-text"></div>
+    <div id="dialogue-options"></div>
+  </div>
+
+  <!-- ============ TOAST NOTIFICATIONS ============ -->
+  <div id="toast-container"></div>
+
+  <!-- ============ GENERIC MODAL PANELS ============ -->
+  <div id="panel-overlay" class="hidden">
+
+    <div id="panel-inventory" class="panel game-panel hidden">
+      <div class="panel-header">Inventory <button class="close-btn" data-close>✕</button></div>
+      <div id="inventory-tools" class="inv-tools"></div>
+      <div id="inventory-grid" class="inv-grid"></div>
+    </div>
+
+    <div id="panel-crafting" class="panel game-panel hidden">
+      <div class="panel-header">Crafting <button class="close-btn" data-close>✕</button></div>
+      <div id="crafting-list" class="craft-list"></div>
+    </div>
+
+    <div id="panel-map" class="panel game-panel hidden">
+      <div class="panel-header">World Map <button class="close-btn" data-close>✕</button></div>
+      <div id="map-regions" class="map-grid"></div>
+    </div>
+
+    <div id="panel-quests" class="panel game-panel hidden">
+      <div class="panel-header">Quest Log <button class="close-btn" data-close>✕</button></div>
+      <div id="quests-list" class="quest-list"></div>
+    </div>
+
+    <div id="panel-museum" class="panel game-panel hidden">
+      <div class="panel-header">Museum Collection <button class="close-btn" data-close>✕</button></div>
+      <div id="museum-grid" class="museum-grid"></div>
+    </div>
+
+    <div id="panel-social" class="panel game-panel hidden">
+      <div class="panel-header">Social <button class="close-btn" data-close>✕</button></div>
+      <div class="social-tabs">
+        <button class="social-tab active" data-tab="chat">Chat</button>
+        <button class="social-tab" data-tab="players">Players</button>
+        <button class="social-tab" data-tab="friends">Friends</button>
+        <button class="social-tab" data-tab="guild">Guild</button>
+        <button class="social-tab" data-tab="market">Market</button>
+        <button class="social-tab" data-tab="leaderboard">Ranks</button>
+      </div>
+      <div id="social-chat" class="social-panel">
+        <div id="chat-log"></div>
+        <div class="chat-input-row">
+          <input id="chat-input" maxlength="140" placeholder="Say something...">
+          <button id="chat-send">Send</button>
+        </div>
+      </div>
+      <div id="social-players" class="social-panel hidden"></div>
+      <div id="social-friends" class="social-panel hidden"></div>
+      <div id="social-guild" class="social-panel hidden"></div>
+      <div id="social-market" class="social-panel hidden"></div>
+      <div id="social-leaderboard" class="social-panel hidden"></div>
+    </div>
+
+    <div id="panel-character" class="panel game-panel hidden">
+      <div class="panel-header">Character <button class="close-btn" data-close>✕</button></div>
+      <canvas id="char-preview" width="128" height="128"></canvas>
+      <div id="char-options"></div>
+    </div>
+
+    <div id="panel-shop" class="panel game-panel hidden">
+      <div class="panel-header"><span id="shop-title">Shop</span> <button class="close-btn" data-close>✕</button></div>
+      <div id="shop-grid" class="shop-grid"></div>
+    </div>
+
+    <div id="panel-boss" class="panel game-panel hidden">
+      <div class="panel-header" id="boss-name">Boss</div>
+      <div id="boss-health-bar"><div id="boss-health-fill"></div></div>
+      <div id="boss-log"></div>
+      <button id="boss-attack-btn" class="menu-btn">⚔️ Attack</button>
+      <button id="boss-flee-btn" class="menu-btn">🏃 Flee</button>
+    </div>
+
+    <div id="panel-fishing" class="panel game-panel hidden">
+      <div class="panel-header">Fishing</div>
+      <div id="fishing-bar"><div id="fishing-target"></div><div id="fishing-cursor"></div></div>
+      <div id="fishing-instructions">Tap / press SPACE to keep the cursor in the zone!</div>
+    </div>
+
+  </div>
+
+</div>
+
+<script type="module" src="js/game.js"></script>
+</body>
+</html>
