@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Vamos — Español de España, de cero a fluidez</title>
+<meta name="description" content="Aprende español de España (castellano) desde cero hasta un nivel avanzado: diálogos, gramática, vocabulario, cultura y repetición espaciada." />
+<meta name="color-scheme" content="light dark" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🇪🇸</text></svg>" />
+<link rel="stylesheet" href="css/themes.css" />
+<link rel="stylesheet" href="css/main.css" />
+<link rel="stylesheet" href="css/components.css" />
+<link rel="stylesheet" href="css/animations.css" />
+</head>
+<body>
+<a class="skip-link" href="#view-root">Saltar al contenido</a>
+
+<div class="app-shell">
+  <header class="topbar">
+    <button class="icon-btn nav-toggle" id="nav-toggle" aria-label="Abrir menú" aria-expanded="false">
+      <span class="hamburger"></span>
+    </button>
+    <a href="#/dashboard" class="brand" data-nav-link>
+      <span class="brand-flag" aria-hidden="true">🇪🇸</span>
+      <span class="brand-name">Vamos</span>
+    </a>
+
+    <div class="topbar-stats" id="topbar-stats" aria-label="Tu progreso">
+      <div class="stat-chip stat-streak" title="Racha de días">
+        <span aria-hidden="true">🔥</span><span id="stat-streak">0</span>
+      </div>
+      <div class="stat-chip stat-xp" title="Experiencia (XP)">
+        <span aria-hidden="true">⚡</span><span id="stat-xp">0</span>
+      </div>
+      <div class="stat-chip stat-level" title="Nivel actual (MCER)">
+        <span id="stat-level">A0</span>
+      </div>
+      <div class="stat-chip stat-due" title="Repasos pendientes" id="stat-due-chip">
+        <span aria-hidden="true">🔁</span><span id="stat-due">0</span>
+      </div>
+    </div>
+
+    <div class="topbar-actions">
+      <select id="immersion-select" class="immersion-select" title="Nivel de inmersión">
+        <option value="1">Inmersión 1 · Apoyo en inglés</option>
+        <option value="2">Inmersión 2 · Mixto</option>
+        <option value="3">Inmersión 3 · Mayormente español</option>
+        <option value="4">Inmersión 4 · Solo español</option>
+      </select>
+      <button class="icon-btn" id="theme-toggle" aria-label="Cambiar tema claro/oscuro">
+        <span id="theme-icon" aria-hidden="true">🌙</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="app-body">
+    <nav class="sidebar" id="sidebar" aria-label="Navegación principal">
+      <ul class="nav-list">
+        <li><a href="#/dashboard" data-nav-link><span class="nav-icon">🏠</span>Panel</a></li>
+        <li><a href="#/vocabulary" data-nav-link><span class="nav-icon">🗂️</span>Vocabulario</a></li>
+        <li><a href="#/grammar" data-nav-link><span class="nav-icon">🧠</span>Gramática</a></li>
+        <li><a href="#/dialogues" data-nav-link><span class="nav-icon">💬</span>Academia de Diálogos</a></li>
+        <li><a href="#/listening" data-nav-link><span class="nav-icon">🎧</span>Escucha</a></li>
+        <li><a href="#/speaking" data-nav-link><span class="nav-icon">🎤</span>Habla</a></li>
+        <li><a href="#/reading" data-nav-link><span class="nav-icon">📖</span>Lectura</a></li>
+        <li><a href="#/writing" data-nav-link><span class="nav-icon">✍️</span>Escritura</a></li>
+        <li><a href="#/culture" data-nav-link><span class="nav-icon">🇪🇸</span>Cultura</a></li>
+        <li><a href="#/review" data-nav-link><span class="nav-icon">🔁</span>Repaso (SRS)</a></li>
+        <li><a href="#/tutor" data-nav-link><span class="nav-icon">🤖</span>Tutor IA</a></li>
+        <li><a href="#/achievements" data-nav-link><span class="nav-icon">🏆</span>Logros</a></li>
+        <li><a href="#/settings" data-nav-link><span class="nav-icon">⚙️</span>Ajustes</a></li>
+      </ul>
+      <div class="sidebar-footer">
+        <div class="goal-widget">
+          <div class="goal-label">Meta diaria</div>
+          <div class="progress-bar"><div class="progress-bar-fill" id="daily-goal-fill" style="width:0%"></div></div>
+          <div class="goal-text" id="daily-goal-text">0 / 50 XP</div>
+        </div>
+      </div>
+    </nav>
+    <div class="sidebar-scrim" id="sidebar-scrim"></div>
+
+    <main id="view-root" class="view-root" tabindex="-1"></main>
+  </div>
+</div>
+
+<div id="toast-container" class="toast-container"></div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
