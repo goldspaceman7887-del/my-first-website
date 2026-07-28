@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { GrowthStageBadge } from "@/components/growth-stage";
@@ -12,7 +12,7 @@ export default function HomePage() {
       <section className="mx-auto max-w-7xl px-4 pb-16 pt-16 sm:px-6 sm:pt-24">
         <div className="grid gap-10 md:grid-cols-2 md:items-center">
           <div>
-            <Badge variant="leaf">For Tokyo, ages 18–30</Badge>
+            <Badge variant="leaf">For Tokyo, ages 18–30 · 東京の英会話コミュニティ</Badge>
             <h1 className="mt-4 font-display text-4xl font-bold leading-tight text-forest-900 sm:text-5xl">
               Free English practice for Tokyo.
               <br />
@@ -26,9 +26,9 @@ export default function HomePage() {
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Button size="lg">Join free</Button>
-              <Button size="lg" variant="secondary">
+              <Link href="/seeds/plant" className={buttonVariants({ size: "lg", variant: "secondary" })}>
                 Plant a seed 🌱
-              </Button>
+              </Link>
             </div>
             <div className="mt-8 flex flex-wrap gap-6 text-sm text-forest-900/70">
               <Stat label="learners active" value={cityImpactSummary.totalLearners.toLocaleString()} />
@@ -64,6 +64,7 @@ export default function HomePage() {
           <h2 className="text-center font-display text-3xl font-bold text-forest-900">
             Seeds → Sprouts → Trees → Forests
           </h2>
+          <p className="mt-1 text-center text-sm text-forest-900/50">種 → 芽 → 木 → 森</p>
           <p className="mx-auto mt-2 max-w-xl text-center text-forest-900/70">
             Every seed is trackable. Every supporter sees exactly what their seed grew
             into — visits, signups, real people who found real English practice.
@@ -113,25 +114,31 @@ export default function HomePage() {
           <h2 className="text-center font-display text-3xl font-bold text-forest-900">
             Plant a seed
           </h2>
+          <p className="mt-1 text-center text-sm text-forest-900/50">種を植える</p>
           <p className="mx-auto mt-2 max-w-xl text-center text-forest-900/70">
             Every contribution is tracked. Every supporter gets a certificate and a
-            live impact dashboard.
+            live impact dashboard. Buy one seed or a thousand — quantity is up to you.
           </p>
           <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {seedTiers.map((tier) => (
               <Card key={tier.key} className="flex flex-col p-6">
                 <div className="text-4xl">{tier.emoji}</div>
                 <h3 className="mt-3 font-display font-semibold text-forest-900">{tier.name}</h3>
-                <p className="mt-1 font-display text-2xl font-bold text-forest-700">
+                <p className="text-[11px] text-forest-900/50">{tier.nameJa}</p>
+                <p className="mt-1 font-display text-2xl font-bold text-forest-700 num">
                   ¥{tier.priceYen.toLocaleString()}
                 </p>
+                <p className="mt-1 text-xs text-forest-900/60 num">~{tier.impressionsPerUnit} impressions</p>
                 <p className="mt-2 flex-1 text-sm text-forest-900/70">{tier.description}</p>
-                <Button className="mt-4" size="sm">
+                <Link href={`/seeds/plant?tier=${tier.key}`} className={buttonVariants({ size: "sm", className: "mt-4" })}>
                   Plant this seed
-                </Button>
+                </Link>
               </Card>
             ))}
           </div>
+          <p className="mt-6 text-center text-xs text-forest-900/50">
+            Want more than one? <Link href="/seeds/plant" className="font-semibold text-forest-700 underline">Buy in bulk</Link> — 1 to 10 individually, or jump straight to 25, 100, 1,000 and beyond.
+          </p>
         </div>
       </section>
     </div>

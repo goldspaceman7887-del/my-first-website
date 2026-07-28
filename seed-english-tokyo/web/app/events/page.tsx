@@ -12,6 +12,7 @@ export default function EventsPage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-display text-3xl font-bold text-forest-900">Events</h1>
+          <p className="text-xs text-forest-900/50">イベント一覧</p>
           <p className="mt-1 text-forest-900/70">
             English cafes, conversation nights, exchange events, business workshops,
             university meetups, and language picnics across Tokyo.

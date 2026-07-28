@@ -11,6 +11,7 @@ export default function QuestionsPage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-display text-3xl font-bold text-forest-900">Ask English</h1>
+          <p className="text-xs text-forest-900/50">英語の質問箱</p>
           <p className="mt-1 text-forest-900/70">
             Grammar, pronunciation, vocabulary, business, travel, conversation — ask
             anything, get answers from native speakers, mentors, and advanced learners.

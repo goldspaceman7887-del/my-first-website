@@ -1,5 +1,6 @@
+import Link from "next/link";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { SeedCard } from "@/components/seed-card";
 import { mySeeds } from "@/lib/mock-data";
 
@@ -21,7 +22,7 @@ export default function MySeedsPage() {
             Every seed you&apos;ve planted, and exactly what it has grown into.
           </p>
         </div>
-        <Button>Plant another seed 🌱</Button>
+        <Link href="/seeds/plant" className={buttonVariants()}>Plant another seed 🌱</Link>
       </div>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-3">

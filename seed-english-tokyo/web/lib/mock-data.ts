@@ -13,6 +13,11 @@ export interface Station {
   growthScore: number;
   forestHealthScore: number;
   growthStage: GrowthStage;
+  /** 0-100: how many people want to practice English here right now — drives heat-map intensity independent of how built-out the field already is. */
+  demandScore: number;
+  /** Relative position (0-100, 0-100) on the stylized Tokyo map — approximate layout, not a real projection. */
+  mapX: number;
+  mapY: number;
 }
 
 export const stations: Station[] = [
@@ -29,6 +34,9 @@ export const stations: Station[] = [
     growthScore: 82,
     forestHealthScore: 76,
     growthStage: "forest",
+    demandScore: 91,
+    mapX: 35,
+    mapY: 58,
   },
   {
     slug: "shinjuku",
@@ -43,6 +51,9 @@ export const stations: Station[] = [
     growthScore: 61,
     forestHealthScore: 58,
     growthStage: "tree",
+    demandScore: 78,
+    mapX: 30,
+    mapY: 43,
   },
   {
     slug: "ikebukuro",
@@ -57,6 +68,9 @@ export const stations: Station[] = [
     growthScore: 47,
     forestHealthScore: 51,
     growthStage: "tree",
+    demandScore: 62,
+    mapX: 30,
+    mapY: 22,
   },
   {
     slug: "tokyo-station",
@@ -71,6 +85,9 @@ export const stations: Station[] = [
     growthScore: 33,
     forestHealthScore: 40,
     growthStage: "seedling",
+    demandScore: 58,
+    mapX: 63,
+    mapY: 48,
   },
   {
     slug: "ueno",
@@ -85,6 +102,9 @@ export const stations: Station[] = [
     growthScore: 24,
     forestHealthScore: 33,
     growthStage: "seedling",
+    demandScore: 41,
+    mapX: 59,
+    mapY: 27,
   },
   {
     slug: "akihabara",
@@ -99,6 +119,9 @@ export const stations: Station[] = [
     growthScore: 19,
     forestHealthScore: 28,
     growthStage: "seedling",
+    demandScore: 47,
+    mapX: 61,
+    mapY: 38,
   },
   {
     slug: "shinagawa",
@@ -113,6 +136,9 @@ export const stations: Station[] = [
     growthScore: 6,
     forestHealthScore: 12,
     growthStage: "bare_soil",
+    demandScore: 53,
+    mapX: 56,
+    mapY: 71,
   },
   {
     slug: "kichijoji",
@@ -127,6 +153,9 @@ export const stations: Station[] = [
     growthScore: 4,
     forestHealthScore: 9,
     growthStage: "bare_soil",
+    demandScore: 33,
+    mapX: 9,
+    mapY: 45,
   },
   {
     slug: "nakano",
@@ -141,6 +170,9 @@ export const stations: Station[] = [
     growthScore: 2,
     forestHealthScore: 6,
     growthStage: "bare_soil",
+    demandScore: 28,
+    mapX: 20,
+    mapY: 48,
   },
   {
     slug: "yokohama",
@@ -155,23 +187,67 @@ export const stations: Station[] = [
     growthScore: 0,
     forestHealthScore: 0,
     growthStage: "bare_soil",
+    demandScore: 39,
+    mapX: 48,
+    mapY: 94,
   },
 ];
 
 export interface SeedTier {
   key: string;
   name: string;
+  nameJa: string;
   emoji: string;
   priceYen: number;
   description: string;
+  /** Estimated impressions (website visits + reach) one unit of this tier generates. See docs/04-seed-tracking-system.md attribution model — this is the marketing-facing estimate shown before purchase. */
+  impressionsPerUnit: number;
 }
 
 export const seedTiers: SeedTier[] = [
-  { key: "seed", name: "Seed", emoji: "🌱", priceYen: 500, description: "Plants the first seed of someone's confidence." },
-  { key: "growth_seed", name: "Growth Seed", emoji: "🌿", priceYen: 1000, description: "Funds a week of practice sessions for a learner." },
-  { key: "community_seed", name: "Community Seed", emoji: "🌳", priceYen: 5000, description: "Funds a full conversation-night event." },
-  { key: "forest_seed", name: "Forest Seed", emoji: "🌲", priceYen: 10000, description: "Funds outreach that brings a new station to life." },
+  {
+    key: "seed",
+    name: "Seed",
+    nameJa: "シード",
+    emoji: "🌱",
+    priceYen: 500,
+    description: "Plants the first seed of someone's confidence.",
+    impressionsPerUnit: 12,
+  },
+  {
+    key: "growth_seed",
+    name: "Growth Seed",
+    nameJa: "グロースシード",
+    emoji: "🌿",
+    priceYen: 1000,
+    description: "Funds a week of practice sessions for a learner.",
+    impressionsPerUnit: 25,
+  },
+  {
+    key: "community_seed",
+    name: "Community Seed",
+    nameJa: "コミュニティシード",
+    emoji: "🌳",
+    priceYen: 5000,
+    description: "Funds a full conversation-night event.",
+    impressionsPerUnit: 130,
+  },
+  {
+    key: "forest_seed",
+    name: "Forest Seed",
+    nameJa: "フォレストシード",
+    emoji: "🌲",
+    priceYen: 10000,
+    description: "Funds outreach that brings a new station to life.",
+    impressionsPerUnit: 270,
+  },
 ];
+
+/** Individual stepper range for small quantities. */
+export const seedQuantityStepperRange = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+/** Quick-pick bulk quantities — beyond 10, jumps to round bulk sizes up to 1000+. */
+export const seedQuantityBulkPresets = [10, 25, 50, 100, 250, 500, 1000];
 
 export interface Seed {
   id: string;

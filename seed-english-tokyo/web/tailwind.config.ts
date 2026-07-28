@@ -29,6 +29,11 @@ const config: Config = {
         sunset: {
           400: "#E8A24B",
         },
+        // Torii red — used sparingly, only for the Japanese decorative motifs
+        // (wave pattern, torii icon), never as a UI/brand action color.
+        torii: {
+          500: "#B54A3C",
+        },
       },
       fontFamily: {
         display: ["'Plus Jakarta Sans'", "system-ui", "sans-serif"],

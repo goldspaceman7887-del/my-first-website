@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { SeigaihaStrip } from "@/components/motifs/seigaiha";
 
 const LINKS = [
   { href: "/", label: "Home" },
@@ -12,11 +13,12 @@ const LINKS = [
 
 export function Nav() {
   return (
-    <header className="sticky top-0 z-40 border-b border-forest-900/10 bg-cream-50/90 backdrop-blur">
+    <header className="sticky top-0 z-40 bg-cream-50/90 backdrop-blur">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
         <Link href="/" className="flex items-center gap-2 font-display text-lg font-bold text-forest-900">
           <span aria-hidden="true">🌱</span>
           Seed English Tokyo
+          <span className="hidden text-xs font-normal text-forest-900/40 sm:inline">東京</span>
         </Link>
         <nav className="hidden items-center gap-6 md:flex" aria-label="Primary">
           {LINKS.slice(1).map((l) => (
@@ -36,6 +38,7 @@ export function Nav() {
           <Button size="sm">Join free</Button>
         </div>
       </div>
+      <SeigaihaStrip className="text-forest-700/70" height={6} />
     </header>
   );
 }
