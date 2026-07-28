@@ -4,16 +4,20 @@ import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { mySeeds, seedTiers } from "@/lib/mock-data";
+import { mySeeds, seedTiers, stations } from "@/lib/mock-data";
 
 export function generateStaticParams() {
   return mySeeds.map((s) => ({ id: s.id }));
 }
 
 export default function SeedDetailPage({ params }: { params: { id: string } }) {
-  const seed = mySeeds.find((s) => s.id === params.id);
-  if (!seed) notFound();
+  const index = mySeeds.findIndex((s) => s.id === params.id);
+  if (index === -1) notFound();
+  const seed = mySeeds[index];
   const tier = seedTiers.find((t) => t.key === seed.tierKey)!;
+  const station = stations.find((s) => s.name === seed.station);
+  const prevSeed = index > 0 ? mySeeds[index - 1] : undefined;
+  const nextSeed = index < mySeeds.length - 1 ? mySeeds[index + 1] : undefined;
 
   const timeline = [
     { label: "Seed planted", detail: `${seed.station} station`, date: seed.datePlanted },
@@ -25,9 +29,16 @@ export default function SeedDetailPage({ params }: { params: { id: string } }) {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6">
-      <Link href="/seeds" className="font-display text-sm font-semibold text-forest-700 hover:underline">
-        ← Back to My Forest
-      </Link>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Link href="/seeds" className="font-display text-sm font-semibold text-forest-700 hover:underline">
+          ← Back to My Forest
+        </Link>
+        {station && (
+          <Link href={`/map/${station.slug}`} className="text-xs font-semibold text-forest-900/60 hover:text-forest-700 hover:underline">
+            View {station.name} forest →
+          </Link>
+        )}
+      </div>
 
       <div className="mt-4 flex items-center gap-4">
         <div className="flex h-16 w-16 items-center justify-center rounded-full bg-leaf-100 text-3xl" aria-hidden="true">
@@ -101,6 +112,25 @@ export default function SeedDetailPage({ params }: { params: { id: string } }) {
           Share my seed&apos;s certificate
         </Button>
       </div>
+
+      {(prevSeed || nextSeed) && (
+        <div className="mt-8 flex items-center justify-between border-t border-forest-900/10 pt-6 text-sm">
+          {prevSeed ? (
+            <Link href={`/seeds/${prevSeed.id}`} className="font-display font-semibold text-forest-700 hover:underline">
+              ← Seed #{prevSeed.seedNumber}
+            </Link>
+          ) : (
+            <span />
+          )}
+          {nextSeed ? (
+            <Link href={`/seeds/${nextSeed.id}`} className="font-display font-semibold text-forest-700 hover:underline">
+              Seed #{nextSeed.seedNumber} →
+            </Link>
+          ) : (
+            <span />
+          )}
+        </div>
+      )}
     </div>
   );
 }

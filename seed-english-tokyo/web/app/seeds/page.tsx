@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
-import { SeedCard } from "@/components/seed-card";
+import { MyGrove } from "@/components/my-grove";
+import { ForestBrowser } from "@/components/forest-browser";
 import { mySeeds, myForestStats } from "@/lib/mock-data";
 
 export const metadata = { title: "My Forest — Seed English Tokyo" };
@@ -29,27 +30,28 @@ export default function MyForestPage() {
         <Stat label="Learners supported" value={myForestStats.learnersSupported.toLocaleString()} />
       </div>
 
-      <div className="mt-10">
-        <h2 className="font-display text-xl font-bold text-forest-900">Your seeds helped</h2>
-        <p className="text-xs text-forest-900/60">real outcomes, not just numbers</p>
-        <div className="mt-4 grid gap-4 sm:grid-cols-3">
-          {mySeeds.map((seed) => (
-            <Card key={seed.id} className="p-5">
-              <p className="text-sm text-forest-900/80">{seed.emotionalImpact}</p>
-              <Link href={`/seeds/${seed.id}`} className="mt-3 inline-block text-xs font-semibold text-forest-700 hover:underline">
-                Funded by Seed #{seed.seedNumber} →
-              </Link>
-            </Card>
-          ))}
+      {mySeeds.length > 0 && (
+        <div className="mt-10">
+          <h2 className="font-display text-xl font-bold text-forest-900">Your grove</h2>
+          <p className="text-xs text-forest-900/60">Every tree here is a real seed you own — bigger trees are further grown. Tap one to see it.</p>
+          <div className="mt-4">
+            <MyGrove seeds={mySeeds} />
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="mt-10">
         <h2 className="font-display text-xl font-bold text-forest-900">Every seed you&apos;ve planted</h2>
-        <div className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {mySeeds.map((seed) => (
-            <SeedCard key={seed.id} seed={seed} />
-          ))}
+        <p className="text-xs text-forest-900/60">Grouped by station, with the real outcome each one is attributed to</p>
+        <div className="mt-4">
+          {mySeeds.length > 0 ? (
+            <ForestBrowser seeds={mySeeds} />
+          ) : (
+            <Card className="p-8 text-center">
+              <p className="text-forest-900/70">You haven&apos;t planted a seed yet — your forest starts with one.</p>
+              <Link href="/seeds/plant" className={`${buttonVariants()} mt-4 inline-flex`}>Plant your first seed 🌱</Link>
+            </Card>
+          )}
         </div>
       </div>
     </div>

@@ -35,6 +35,11 @@ export function SeedCard({ seed }: { seed: Seed }) {
           <span>{seed.impact.meetupsAttended} meetups attended</span>
           <span>{seed.impact.activeLearners} active learner{seed.impact.activeLearners === 1 ? "" : "s"}</span>
         </div>
+        {seed.emotionalImpact && (
+          <p className="mt-3 border-t border-forest-900/10 pt-3 text-xs italic text-forest-900/70">
+            &ldquo;{seed.emotionalImpact}&rdquo;
+          </p>
+        )}
       </Card>
     </Link>
   );
