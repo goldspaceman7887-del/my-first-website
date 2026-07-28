@@ -16,7 +16,9 @@ import {
   estimateSeedImpact,
   highestNeedStation,
   type GrowthStage,
+  type Seed,
 } from "@/lib/mock-data";
+import { saveLocalSeed, seedHref } from "@/lib/local-seeds";
 
 type LocationOption = {
   id: string;
@@ -38,6 +40,7 @@ export default function PlantSeedsPage() {
   const [locationId, setLocationId] = useState("auto");
   const [planted, setPlanted] = useState(false);
   const [plantedCount, setPlantedCount] = useState(0);
+  const [newSeedId, setNewSeedId] = useState<string | null>(null);
 
   const locations: LocationOption[] = useMemo(() => {
     const auto: LocationOption = {
@@ -97,6 +100,23 @@ export default function PlantSeedsPage() {
   }
 
   function plant() {
+    const id = `local-${Date.now()}`;
+    const newSeed: Seed = {
+      id,
+      seedNumber: Math.floor(10000 + Math.random() * 89999),
+      tierKey,
+      station: location.kind === "auto" ? highestNeedStation().name : location.name,
+      owner: "You",
+      contributionYen: totalYen,
+      datePlanted: new Date().toISOString().slice(0, 10),
+      status: "growing",
+      treeProgressPct: 2,
+      forestContributionPct: 0,
+      impact: { impressions: 0, visits: 0, registrations: 0, meetupsAttended: 0, activeLearners: 0 },
+      emotionalImpact: "Just planted — check back soon to see the real difference it makes.",
+    };
+    saveLocalSeed(newSeed);
+    setNewSeedId(id);
     setPlantedCount(location.activeSeedCount + quantity);
     setPlanted(true);
     setStep(4);
@@ -347,14 +367,21 @@ export default function PlantSeedsPage() {
                 {location.name}&apos;s field now has {plantedCount.toLocaleString()} seeds — you can watch it grow.
               </p>
               <div className="mt-6 flex flex-wrap justify-center gap-3">
-                <Link href="/seeds" className="inline-flex h-11 items-center justify-center rounded-full bg-forest-700 px-6 font-display font-semibold text-cream-50 hover:bg-forest-900">
+                {newSeedId && (
+                  <Link href={seedHref({ id: newSeedId })} className="inline-flex h-11 items-center justify-center rounded-full bg-forest-700 px-6 font-display font-semibold text-cream-50 hover:bg-forest-900">
+                    View my seed
+                  </Link>
+                )}
+                <Link href="/seeds" className="inline-flex h-11 items-center justify-center rounded-full bg-leaf-100 px-6 font-display font-semibold text-forest-700 hover:bg-leaf-300">
                   View in My Forest
                 </Link>
                 <Link href={location.kind === "university" ? "/universities" : "/map"} className="inline-flex h-11 items-center justify-center rounded-full bg-leaf-100 px-6 font-display font-semibold text-forest-700 hover:bg-leaf-300">
                   Watch this field grow
                 </Link>
               </div>
-              <p className="mt-4 text-[11px] text-forest-900/40">This is a demo — no real payment was processed.</p>
+              <p className="mt-4 text-[11px] text-forest-900/40">
+                Saved to this browser (no backend yet) — it&apos;ll show up in My Forest and on the map here, but not on other devices.
+              </p>
             </div>
           </Card>
         </div>

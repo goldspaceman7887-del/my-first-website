@@ -41,7 +41,7 @@ export default function HomePage() {
           </div>
           <Card className="p-6">
             <p className="font-display text-sm font-semibold uppercase tracking-wide text-forest-700">
-              Live from Shibuya
+              Live across Tokyo
             </p>
             <div className="mt-4 space-y-3">
               {stations.slice(0, 4).map((s) => (

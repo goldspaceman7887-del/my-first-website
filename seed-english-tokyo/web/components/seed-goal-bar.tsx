@@ -1,7 +1,18 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { cityImpactSummary } from "@/lib/mock-data";
+import { loadLocalSeeds } from "@/lib/local-seeds";
 
 export function SeedGoalBar({ className }: { className?: string }) {
-  const { totalSeeds, seedGoal, totalSupporters } = cityImpactSummary;
+  const [localCount, setLocalCount] = useState(0);
+  useEffect(() => {
+    setLocalCount(loadLocalSeeds().length);
+  }, []);
+
+  const { seedGoal } = cityImpactSummary;
+  const totalSeeds = cityImpactSummary.totalSeeds + localCount;
+  const totalSupporters = cityImpactSummary.totalSupporters + (localCount > 0 ? 1 : 0);
   const pct = Math.min(100, Math.round((totalSeeds / seedGoal) * 100));
 
   return (

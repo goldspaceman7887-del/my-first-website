@@ -3,11 +3,13 @@ import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { seedTiers, type Seed } from "@/lib/mock-data";
+import { seedHref } from "@/lib/local-seeds";
 
 export function SeedCard({ seed }: { seed: Seed }) {
   const tier = seedTiers.find((t) => t.key === seed.tierKey)!;
+  const justPlanted = seed.status === "growing" && seed.treeProgressPct < 5;
   return (
-    <Link href={`/seeds/${seed.id}`}>
+    <Link href={seedHref(seed)}>
       <Card className="h-full p-5 transition-transform hover:-translate-y-0.5 hover:shadow-md">
         <div className="flex items-start justify-between">
           <div>
@@ -15,8 +17,8 @@ export function SeedCard({ seed }: { seed: Seed }) {
             <p className="mt-2 font-display font-semibold text-forest-900">Seed #{seed.seedNumber}</p>
             <p className="text-sm text-forest-900/60">{seed.station} · {seed.datePlanted}</p>
           </div>
-          <Badge variant={seed.status === "thriving" ? "forest" : "leaf"}>
-            {seed.status === "thriving" ? "Thriving" : "Growing"}
+          <Badge variant={seed.status === "thriving" ? "forest" : justPlanted ? "sky" : "leaf"}>
+            {seed.status === "thriving" ? "Thriving" : justPlanted ? "Just planted" : "Growing"}
           </Badge>
         </div>
         <p className="mt-3 font-display text-lg font-bold text-forest-700">

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Seed } from "@/lib/mock-data";
+import { seedHref } from "@/lib/local-seeds";
 
 // Deterministic PRNG (mulberry32), same approach as harvest-field.tsx — keyed
 // off each seed's own id so a given seed always lands in the same spot.
@@ -50,7 +51,7 @@ export function MyGrove({ seeds }: { seeds: Seed[] }) {
       {items.map(({ seed, x, y, size, rotate }) => (
         <Link
           key={seed.id}
-          href={`/seeds/${seed.id}`}
+          href={seedHref(seed)}
           className="group absolute select-none animate-sway leading-none"
           style={{ left: `${x}%`, top: `${y}%`, fontSize: `${size}px`, transform: `rotate(${rotate}deg)` }}
         >
