@@ -17,6 +17,7 @@ export default function SeedDetailPage({ params }: { params: { id: string } }) {
 
   const timeline = [
     { label: "Seed planted", detail: `${seed.station} station`, date: seed.datePlanted },
+    { label: `${seed.impact.impressions.toLocaleString()} impressions`, detail: "Reach attributed via station funding share", date: "ongoing" },
     { label: `${seed.impact.visits} people visited the website`, detail: "Attributed via station funding share", date: "ongoing" },
     { label: `${seed.impact.registrations} people registered`, detail: "New learners at this station", date: "ongoing" },
     { label: `${seed.impact.meetupsAttended} meetups attended`, detail: "Real in-person practice happened", date: "ongoing" },
@@ -25,7 +26,7 @@ export default function SeedDetailPage({ params }: { params: { id: string } }) {
   return (
     <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6">
       <Link href="/seeds" className="font-display text-sm font-semibold text-forest-700 hover:underline">
-        ← Back to My Seeds
+        ← Back to My Forest
       </Link>
 
       <div className="mt-4 flex items-center gap-4">
@@ -44,23 +45,30 @@ export default function SeedDetailPage({ params }: { params: { id: string } }) {
         <Card className="p-6">
           <h2 className="font-display font-semibold text-forest-900">Details</h2>
           <dl className="mt-3 space-y-2 text-sm">
-            <Row label="Date planted" value={seed.datePlanted} />
             <Row label="Location" value={seed.station} />
+            <Row label="Owner" value={seed.owner} />
+            <Row label="Date planted" value={seed.datePlanted} />
             <Row label="Contribution" value={`¥${seed.contributionYen.toLocaleString()} (${tier.name})`} />
             <Row label="Status" value={seed.status === "thriving" ? "Thriving" : "Growing"} />
           </dl>
         </Card>
 
         <Card className="p-6">
-          <h2 className="font-display font-semibold text-forest-900">Impact created</h2>
+          <h2 className="font-display font-semibold text-forest-900">Impact</h2>
           <ul className="mt-3 space-y-2 text-sm text-forest-900/80">
-            <li>• {seed.impact.visits} people visited the website</li>
-            <li>• {seed.impact.registrations} people registered</li>
-            <li>• {seed.impact.meetupsAttended} people attended a meetup</li>
-            <li>• {seed.impact.activeLearners} active learner{seed.impact.activeLearners === 1 ? "" : "s"} remains</li>
+            <li>• {seed.impact.impressions.toLocaleString()} impressions</li>
+            <li>• {seed.impact.visits} visits</li>
+            <li>• {seed.impact.registrations} registrations</li>
+            <li>• {seed.impact.meetupsAttended} meetup attendees</li>
+            <li>• {seed.impact.activeLearners} active learner{seed.impact.activeLearners === 1 ? "" : "s"}</li>
           </ul>
         </Card>
       </div>
+
+      <Card className="mt-6 p-6">
+        <h2 className="font-display font-semibold text-forest-900">Your seed helped</h2>
+        <p className="mt-2 text-sm text-forest-900/80">{seed.emotionalImpact}</p>
+      </Card>
 
       <Card className="mt-6 p-6">
         <div className="flex justify-between text-sm text-forest-900/70">

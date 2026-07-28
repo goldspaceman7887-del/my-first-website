@@ -30,8 +30,10 @@ export function SeedCard({ seed }: { seed: Seed }) {
           <Progress value={seed.treeProgressPct} className="mt-1" />
         </div>
         <div className="mt-4 grid grid-cols-2 gap-2 text-xs text-forest-900/70">
+          <span>{seed.impact.impressions.toLocaleString()} impressions</span>
           <span>{seed.impact.registrations} registered</span>
           <span>{seed.impact.meetupsAttended} meetups attended</span>
+          <span>{seed.impact.activeLearners} active learner{seed.impact.activeLearners === 1 ? "" : "s"}</span>
         </div>
       </Card>
     </Link>

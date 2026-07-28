@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
-import { GrowthStageBadge } from "@/components/growth-stage";
+import { GrowthStageBadge, FieldStatusBadge } from "@/components/growth-stage";
 import { HarvestField } from "@/components/harvest-field";
 import { TokyoHeatMap } from "@/components/tokyo-heatmap";
+import { ActivityStream } from "@/components/activity-stream";
 import { cityImpactSummary, stations } from "@/lib/mock-data";
 
 export const metadata = { title: "Tokyo Impact Map — Seed English Tokyo" };
@@ -26,8 +27,11 @@ export default function MapPage() {
         <SummaryStat label="Meetups this month" value={String(cityImpactSummary.meetupsThisMonth)} />
       </div>
 
-      <div className="mt-8">
-        <TokyoHeatMap />
+      <div className="mt-8 grid gap-5 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <TokyoHeatMap />
+        </div>
+        <ActivityStream limit={7} />
       </div>
 
       {/*
@@ -55,13 +59,16 @@ export default function MapPage() {
                     <p className="font-display font-semibold text-forest-900">{s.name}</p>
                     <p className="text-xs text-forest-900/60">{s.nameJa}</p>
                   </div>
-                  <GrowthStageBadge stage={s.growthStage} score={s.growthScore} />
+                  <div className="flex flex-col items-end gap-1.5">
+                    <GrowthStageBadge stage={s.growthStage} score={s.growthScore} />
+                    <FieldStatusBadge status={s.fieldStatus} />
+                  </div>
                 </div>
 
                 <div className="mt-4 grid grid-cols-2 gap-y-2 text-xs text-forest-900/70">
                   <span>Funding: ¥{s.fundingRaisedYen.toLocaleString()}</span>
                   <span>Seeds planted: {s.activeSeedCount}</span>
-                  <span>Visits: {s.visits.toLocaleString()}</span>
+                  <span>Impressions: {s.impressions.toLocaleString()}</span>
                   <span>Registrations: {s.registrations.toLocaleString()}</span>
                   <span>Learners active: {s.activeLearners}</span>
                   <span>Upcoming events: {s.upcomingEvents}</span>

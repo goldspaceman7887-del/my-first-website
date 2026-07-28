@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
-import { GrowthStageBadge } from "@/components/growth-stage";
+import { GrowthStageBadge, FieldStatusBadge } from "@/components/growth-stage";
 import { HarvestField } from "@/components/harvest-field";
 import { stations } from "@/lib/mock-data";
 
@@ -26,7 +26,10 @@ export default function HarvestFieldDetailPage({ params }: { params: { slug: str
           <h1 className="font-display text-3xl font-bold text-forest-900">{station.name} harvest field</h1>
           <p className="mt-1 text-sm text-forest-900/60">{station.nameJa} の収穫フィールド — precisely how much has been planted here</p>
         </div>
-        <GrowthStageBadge stage={station.growthStage} score={station.growthScore} />
+        <div className="flex flex-col items-end gap-1.5">
+          <GrowthStageBadge stage={station.growthStage} score={station.growthScore} />
+          <FieldStatusBadge status={station.fieldStatus} />
+        </div>
       </div>
 
       <Card className="mt-6 overflow-hidden p-0">
@@ -46,6 +49,14 @@ export default function HarvestFieldDetailPage({ params }: { params: { slug: str
         <Card className="p-5">
           <p className="text-xs text-forest-900/60">Funding raised</p>
           <p className="mt-1 font-display text-xl font-bold text-forest-900 num">¥{station.fundingRaisedYen.toLocaleString()}</p>
+        </Card>
+        <Card className="p-5">
+          <p className="text-xs text-forest-900/60">Donors</p>
+          <p className="mt-1 font-display text-xl font-bold text-forest-900 num">{station.donorCount.toLocaleString()}</p>
+        </Card>
+        <Card className="p-5">
+          <p className="text-xs text-forest-900/60">Impressions</p>
+          <p className="mt-1 font-display text-xl font-bold text-forest-900 num">{station.impressions.toLocaleString()}</p>
         </Card>
         <Card className="p-5">
           <p className="text-xs text-forest-900/60">Website visits</p>

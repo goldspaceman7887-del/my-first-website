@@ -3,13 +3,15 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { GrowthStageBadge } from "@/components/growth-stage";
+import { ActivityStream } from "@/components/activity-stream";
+import { SeasonalWash } from "@/components/motifs/seasonal-badge";
 import { cityImpactSummary, questions, seedTiers, stations } from "@/lib/mock-data";
 
 export default function HomePage() {
   return (
     <div>
       {/* Hero */}
-      <section className="mx-auto max-w-7xl px-4 pb-16 pt-16 sm:px-6 sm:pt-24">
+      <SeasonalWash className="mx-auto max-w-7xl px-4 pb-16 pt-16 sm:px-6 sm:pt-24">
         <div className="grid gap-10 md:grid-cols-2 md:items-center">
           <div>
             <Badge variant="leaf">For Tokyo, ages 18–30 · 東京の英会話コミュニティ</Badge>
@@ -56,7 +58,11 @@ export default function HomePage() {
             </Link>
           </Card>
         </div>
-      </section>
+
+        <div className="mt-10">
+          <ActivityStream limit={5} />
+        </div>
+      </SeasonalWash>
 
       {/* How it works */}
       <section className="bg-cream-100 py-16">

@@ -22,8 +22,11 @@ function seededRandom(seed: string) {
 const STAGE_ICON: Record<GrowthStage, string> = {
   bare_soil: "🌱",
   seedling: "🌱",
-  tree: "🌿",
+  sprout: "🌿",
+  sapling: "🌿",
+  tree: "🌳",
   forest: "🌳",
+  ancient_forest: "🌲",
 };
 
 function densityFor(count: number, maxCount: number) {
@@ -73,10 +76,13 @@ export function HarvestField({
       role="img"
       aria-label={count > 0 ? `Harvest field with ${count} seeds planted` : "Bare field — no seeds planted yet"}
     >
-      {/* soil furrow lines for texture */}
+      {/* rice-paddy plot grid: embankment lines, inspired by Japanese tanada terraces + GitHub's contribution grid */}
       <svg className="absolute inset-0 h-full w-full opacity-20" aria-hidden="true">
         {Array.from({ length: 6 }, (_, i) => (
-          <line key={i} x1="0" y1={`${(i + 1) * 14}%`} x2="100%" y2={`${(i + 1) * 14}%`} stroke="var(--earth, #9C7B4F)" strokeWidth="1" />
+          <line key={`h${i}`} x1="0" y1={`${(i + 1) * 14}%`} x2="100%" y2={`${(i + 1) * 14}%`} stroke="var(--earth, #9C7B4F)" strokeWidth="1" />
+        ))}
+        {Array.from({ length: 5 }, (_, i) => (
+          <line key={`v${i}`} x1={`${(i + 1) * 16.6}%`} y1="0" x2={`${(i + 1) * 16.6}%`} y2="100%" stroke="var(--earth, #9C7B4F)" strokeWidth="1" />
         ))}
       </svg>
 

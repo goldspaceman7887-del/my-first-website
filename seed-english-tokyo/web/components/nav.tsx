@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { SeigaihaStrip } from "@/components/motifs/seigaiha";
+import { SeasonalBadge } from "@/components/motifs/seasonal-badge";
 
 const LINKS = [
   { href: "/", label: "Home" },
@@ -8,7 +9,8 @@ const LINKS = [
   { href: "/partners", label: "Find a Partner" },
   { href: "/events", label: "Events" },
   { href: "/map", label: "Tokyo Map" },
-  { href: "/seeds", label: "My Seeds" },
+  { href: "/seeds", label: "My Forest" },
+  { href: "/universities", label: "Universities" },
 ];
 
 export function Nav() {
@@ -31,7 +33,8 @@ export function Nav() {
             </Link>
           ))}
         </nav>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          <SeasonalBadge className="hidden text-xs font-semibold lg:inline" />
           <Button variant="ghost" size="sm" className="hidden sm:inline-flex">
             Sign in
           </Button>
