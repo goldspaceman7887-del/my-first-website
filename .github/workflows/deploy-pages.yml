@@ -1,0 +1,63 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+      - claude/seed-english-tokyo-platform-05f8r0
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: seed-english-tokyo/web/package-lock.json
+
+      - name: Install Seed English Tokyo dependencies
+        working-directory: seed-english-tokyo/web
+        run: npm ci
+
+      - name: Build Seed English Tokyo (static export)
+        working-directory: seed-english-tokyo/web
+        env:
+          GH_PAGES_BASE_PATH: /my-first-website/seed-english-tokyo
+        run: npm run build
+
+      - name: Assemble combined Pages site
+        run: |
+          set -e
+          mkdir -p _site
+          # Vamos (existing site) at the root: /my-first-website/
+          cp -r index.html css js _site/
+          # Seed English Tokyo at a subpath: /my-first-website/seed-english-tokyo/
+          mkdir -p _site/seed-english-tokyo
+          cp -r seed-english-tokyo/web/out/. _site/seed-english-tokyo/
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
