@@ -44,37 +44,43 @@ Every plant and every imported ad result is kept as an entry in a visible timeli
 number — so you can see exactly what you added and correct a mistyped ad result without
 starting over.
 
-## A clickable map, added afterward
+## A clickable map — tried, then reverted
 
-Feedback on the first version: it was one undifferentiated blob of numbers with no
-sense of *where* in Tokyo anything was happening. `components/simulator-map.tsx` adds a
-stylized, clickable Tokyo map — the same landmass outline and station coordinates as the
-real `TokyoHeatMap`, reused purely as neutral geography (`mapX`/`mapY` from
-`lib/mock-data.ts`'s real stations) — so every simulated seed and imported ad result now
-has a spot on the map, not just a citywide total.
+A prior version added a clickable Tokyo map so every situation could be tied to a
+neighborhood. Feedback: that made logging a situation two steps (pick a spot, then fill
+out the form) when the actual request was to make this *easier*, not spatial. The map and
+its `stationSlug` field have been removed entirely — `components/simulator-map.tsx` is
+deleted, and `SimEvent` no longer carries a location. Everything now lives in one place.
 
-- Every `SimEvent` now carries a `stationSlug` — which of the 10 real station spots on the
-  map it was plotted at. This is a purely spatial choice; it's never written to that
-  station's actual data.
-- Tapping a spot on the map selects it as "where you're planting or importing ad results
-  right now" — both forms below re-label themselves with the selected location's name, and
-  a small panel shows that specific spot's own simulated totals and growth stage,
-  separately from the citywide aggregate at the top of the page.
-- Dot size and an orange fill scale with that spot's own simulated equivalent-seed count
-  (0 = neutral green "bare soil," same as everywhere else on the site); the number printed
-  inside a dot is that count, not real station data.
-- The timeline now tags every entry with which spot it happened at (e.g. "🌱 10 Growth
-  Seeds planted — Shinjuku"), and switching locations on the map preserves each spot's own
-  history — planting in one neighborhood doesn't touch another's numbers.
-- Seed-planting's conversion-rate estimate now derives from the *selected location's own*
-  accumulated totals (falling back to the same default rates for a bare spot), matching
-  exactly how the real `/seeds/plant` flow estimates per-station, rather than from the
-  citywide aggregate.
+## Week-at-a-time simulation
+
+The current design runs the sandbox one week at a time instead of as a single undated
+pile of numbers:
+
+- **`Log a situation — Week N`** is one unified card with a two-way toggle — 🌱 *Estimated
+  seed batch* or 📣 *Real ad result* — instead of two separate side-by-side panels. Whichever
+  you pick, the same "Log to Week N" button adds it, tagged with the week you're currently
+  on. This is the direct fix for "I want a place where you bring real and estimated numbers
+  for different situations" — one form, one button, a type toggle instead of two forms to
+  choose between.
+- **`Advance to Week N+1 →`** moves the sandbox's clock forward. Nothing is auto-generated
+  when you advance — it's a pure bookmark that changes which week new situations get
+  tagged with, so "run it for a week" means logging whatever actually happened that week,
+  then moving on.
+- **Week by week** replaces the flat timeline: one card per week (newest first), each
+  showing that week's own situations (with an "estimated" or "real" badge per line) and
+  that week's own subtotals, *plus* the running cumulative growth score/stage through the
+  end of that week — so you can watch the stage badge advance from bare soil toward a
+  forest as you step through weeks, not just see one final number.
+- Seed-planting's conversion-rate estimate still derives from the sandbox's own
+  accumulated totals so far (visits/impressions, registrations/visits), same fallback
+  defaults as before — now just without a location filter.
+- "Start over from zero" now also resets the week counter back to 1, alongside clearing
+  every logged situation.
 
 Verified: `tsc --noEmit` clean, `next build` produces all 27 static routes, and a
-Playwright run confirmed: the sandbox starts at zero, planting and ad-import both update
-totals and the timeline correctly, ad-imported numbers are labeled "(as entered)" versus
-seeds' "(estimated)", reset actually clears storage, clicking a station on the map
-switches the active location and re-labels both forms, planting at two different stations
-keeps each one's history and totals fully separate, and the page hydrates with zero
-console errors in both `next dev` and the static export.
+Playwright run confirmed: the sandbox starts at Week 1 with no map section present,
+logging an estimated seed batch and a real ad result both tag correctly to the current
+week with the right badge, advancing to Week 2 creates a new week card while Week 1's own
+data and subtotals stay untouched, and reset clears storage and returns to Week 1 — all
+with zero console errors in both `next dev` and the static export.

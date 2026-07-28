@@ -5,14 +5,15 @@ import { seedTiers, growthStageForScore, type GrowthStage } from "@/lib/mock-dat
 // Resetting this never touches your real forest, the live map, or citywide
 // totals.
 const STORAGE_KEY = "seed-english-tokyo:simulation:v1";
+const WEEK_STORAGE_KEY = "seed-english-tokyo:simulation:week:v1";
 
 export interface SimEvent {
   id: string;
   type: "seed" | "ad_import";
   label: string;
   date: string;
-  /** Which real Tokyo station's spot on the map this was plotted at — a purely spatial choice, never written to that station's real data. */
-  stationSlug: string;
+  /** Which simulated week (1, 2, 3…) this was logged in — see advanceWeek(). */
+  week: number;
   /** For ad imports these are the real numbers you entered — never estimated. */
   contributionYen: number;
   impressions: number;
@@ -21,8 +22,6 @@ export interface SimEvent {
   activeLearners: number;
 }
 
-export const DEFAULT_STATION_SLUG = "shibuya";
-
 export function loadSimEvents(): SimEvent[] {
   if (typeof window === "undefined") return [];
   try {
@@ -30,9 +29,8 @@ export function loadSimEvents(): SimEvent[] {
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    // Events saved before the map was added have no stationSlug — place them
-    // on the map's default spot rather than dropping or crashing on them.
-    return (parsed as SimEvent[]).map((e) => ({ ...e, stationSlug: e.stationSlug ?? DEFAULT_STATION_SLUG }));
+    // Events saved before weeks existed have no week — treat them as week 1.
+    return (parsed as SimEvent[]).map((e) => ({ ...e, week: e.week ?? 1 }));
   } catch {
     return [];
   }
@@ -46,6 +44,19 @@ export function saveSimEvents(events: SimEvent[]) {
 export function clearSimEvents() {
   if (typeof window === "undefined") return;
   window.localStorage.removeItem(STORAGE_KEY);
+  window.localStorage.removeItem(WEEK_STORAGE_KEY);
+}
+
+export function loadCurrentWeek(): number {
+  if (typeof window === "undefined") return 1;
+  const raw = window.localStorage.getItem(WEEK_STORAGE_KEY);
+  const n = raw ? parseInt(raw, 10) : 1;
+  return Number.isFinite(n) && n >= 1 ? n : 1;
+}
+
+export function saveCurrentWeek(week: number) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(WEEK_STORAGE_KEY, String(week));
 }
 
 // Shibuya — the most mature real field — used as the "fully grown" reference
@@ -109,12 +120,27 @@ export function totalsFromEvents(events: SimEvent[]): SimTotals {
   };
 }
 
-/** Groups events by which station's spot on the map they were plotted at. */
-export function eventsByStation(events: SimEvent[]): Record<string, SimEvent[]> {
-  return events.reduce<Record<string, SimEvent[]>>((acc, e) => {
-    (acc[e.stationSlug] ??= []).push(e);
-    return acc;
-  }, {});
+export interface WeekSummary {
+  week: number;
+  events: SimEvent[];
+  weekTotals: SimTotals;
+  cumulativeTotals: SimTotals;
+}
+
+/** Breaks the simulation into one summary per week, 1..currentWeek, each with that week's own numbers and the running cumulative total through the end of that week. */
+export function weeklyBreakdown(events: SimEvent[], currentWeek: number): WeekSummary[] {
+  const summaries: WeekSummary[] = [];
+  for (let week = 1; week <= currentWeek; week++) {
+    const weekEvents = events.filter((e) => e.week === week);
+    const cumulativeEvents = events.filter((e) => e.week <= week);
+    summaries.push({
+      week,
+      events: weekEvents,
+      weekTotals: totalsFromEvents(weekEvents),
+      cumulativeTotals: totalsFromEvents(cumulativeEvents),
+    });
+  }
+  return summaries;
 }
 
 /**
