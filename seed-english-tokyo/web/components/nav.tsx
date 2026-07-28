@@ -13,6 +13,7 @@ const LINKS = [
   { href: "/seeds", label: "My Forest" },
   { href: "/universities", label: "Universities" },
   { href: "/advertise", label: "Advertise" },
+  { href: "/simulate", label: "Simulate" },
 ];
 
 export function Nav() {
