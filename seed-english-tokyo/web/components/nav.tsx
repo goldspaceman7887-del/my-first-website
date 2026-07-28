@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { SeigaihaStrip } from "@/components/motifs/seigaiha";
 import { SeasonalBadge } from "@/components/motifs/seasonal-badge";
+import { BackButton } from "@/components/back-button";
 
 const LINKS = [
   { href: "/", label: "Home" },
@@ -43,6 +44,7 @@ export function Nav() {
         </div>
       </div>
       <SeigaihaStrip className="text-forest-700/70" height={6} />
+      <BackButton />
     </header>
   );
 }

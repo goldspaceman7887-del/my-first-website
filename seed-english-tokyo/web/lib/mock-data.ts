@@ -845,9 +845,64 @@ export const adPlatforms: AdPlatform[] = [
 /** Quick-pick ad budget presets. */
 export const adBudgetPresets = [1000, 5000, 10000, 25000, 50000];
 
-export function estimateAdImpressions(platformKey: string, budgetYen: number) {
+export interface AdFormat {
+  key: string;
+  name: string;
+  nameJa: string;
+  emoji: string;
+  description: string;
+  /** Applied on top of the platform's impressionsPerThousandYen — illustrative, see docs/12. */
+  multiplier: number;
+}
+
+export const adFormats: AdFormat[] = [
+  {
+    key: "video",
+    name: "Video ad",
+    nameJa: "動画広告",
+    emoji: "🎬",
+    description: "15-30s video — highest reach, most production effort.",
+    multiplier: 1.25,
+  },
+  {
+    key: "image",
+    name: "Image ad",
+    nameJa: "画像広告",
+    emoji: "🖼️",
+    description: "A single photo or graphic — the baseline format.",
+    multiplier: 1.0,
+  },
+  {
+    key: "story",
+    name: "Story / Reel",
+    nameJa: "ストーリー/リール",
+    emoji: "📱",
+    description: "Full-screen, 24hr or short-form — cheap, but transient.",
+    multiplier: 0.85,
+  },
+  {
+    key: "carousel",
+    name: "Carousel",
+    nameJa: "カルーセル",
+    emoji: "🔁",
+    description: "Multiple swipeable cards — good for explaining the seed system.",
+    multiplier: 1.05,
+  },
+  {
+    key: "influencer",
+    name: "Creator / influencer post",
+    nameJa: "インフルエンサー投稿",
+    emoji: "🎤",
+    description: "Lower raw reach per yen, but higher trust and conversion than a paid ad.",
+    multiplier: 0.7,
+  },
+];
+
+export function estimateAdImpressions(platformKey: string, budgetYen: number, formatKey?: string) {
   const platform = adPlatforms.find((p) => p.key === platformKey) ?? adPlatforms[0];
-  return Math.round((budgetYen / 1000) * platform.impressionsPerThousandYen);
+  const format = formatKey ? adFormats.find((f) => f.key === formatKey) : undefined;
+  const multiplier = format?.multiplier ?? 1;
+  return Math.round((budgetYen / 1000) * platform.impressionsPerThousandYen * multiplier);
 }
 
 export interface AdPackage {
@@ -890,3 +945,64 @@ export function estimatePackageImpressions(pkg: AdPackage) {
   const perPlatformBudget = pkg.priceYen / pkg.platformKeys.length;
   return pkg.platformKeys.reduce((sum, key) => sum + estimateAdImpressions(key, perPlatformBudget), 0);
 }
+
+/** What's actually been put out — a log of ad seeds funded so far, real or in-flight. */
+export interface AdCampaignRecord {
+  id: string;
+  title: string;
+  platformKey: string;
+  formatKey: string;
+  budgetYen: number;
+  fundedBy: string;
+  dateFunded: string;
+  status: "running" | "completed";
+  /** Real (or real-feeling mock) delivered impressions — separate from the pre-purchase estimate, since actuals never match estimates exactly. */
+  impressionsDelivered: number;
+}
+
+export const adCampaignHistory: AdCampaignRecord[] = [
+  {
+    id: "ad1",
+    title: "Conversation Night Promo — Shibuya",
+    platformKey: "line",
+    formatKey: "story",
+    budgetYen: 8000,
+    fundedBy: "Alex",
+    dateFunded: "2027-05-10",
+    status: "completed",
+    impressionsDelivered: 2340,
+  },
+  {
+    id: "ad2",
+    title: "English Camp Launch — citywide",
+    platformKey: "tiktok",
+    formatKey: "video",
+    budgetYen: 15000,
+    fundedBy: "Community pool",
+    dateFunded: "2027-05-18",
+    status: "completed",
+    impressionsDelivered: 6480,
+  },
+  {
+    id: "ad3",
+    title: "Waseda Forest awareness push",
+    platformKey: "instagram",
+    formatKey: "carousel",
+    budgetYen: 6000,
+    fundedBy: "Community pool",
+    dateFunded: "2027-05-24",
+    status: "running",
+    impressionsDelivered: 1120,
+  },
+  {
+    id: "ad4",
+    title: "Interview Practice Circle — creator post",
+    platformKey: "youtube",
+    formatKey: "influencer",
+    budgetYen: 20000,
+    fundedBy: "Community pool",
+    dateFunded: "2027-06-02",
+    status: "running",
+    impressionsDelivered: 2870,
+  },
+];

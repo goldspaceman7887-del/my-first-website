@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { GrowthStageBadge, FieldStatusBadge } from "@/components/growth-stage";
 import { HarvestField } from "@/components/harvest-field";
+import { SeedCard } from "@/components/seed-card";
 import { stations, mySeeds } from "@/lib/mock-data";
 
 export function generateStaticParams() {
@@ -14,9 +15,8 @@ export default function HarvestFieldDetailPage({ params }: { params: { slug: str
   const station = stations.find((s) => s.slug === params.slug);
   if (!station) notFound();
   const maxCount = Math.max(...stations.map((s) => s.activeSeedCount));
-  const ownedSeeds = mySeeds
-    .filter((s) => s.station === station.name)
-    .map((s) => ({ id: s.id, seedNumber: s.seedNumber }));
+  const myOwnedSeeds = mySeeds.filter((s) => s.station === station.name);
+  const ownedSeeds = myOwnedSeeds.map((s) => ({ id: s.id, seedNumber: s.seedNumber }));
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6">
@@ -52,6 +52,22 @@ export default function HarvestFieldDetailPage({ params }: { params: { slug: str
         />
         <p className="mt-2 text-center text-xs text-forest-900/50">Tap any tree to see what&apos;s growing here — your own seeds are ringed in orange 🟠</p>
       </div>
+
+      {myOwnedSeeds.length > 0 && (
+        <div className="mt-6">
+          <h2 className="font-display font-semibold text-forest-900">
+            🌟 Your forest within this forest — {myOwnedSeeds.length} seed{myOwnedSeeds.length === 1 ? "" : "s"} here
+          </h2>
+          <p className="text-xs text-forest-900/60">
+            Every one of your seeds at {station.name}, not just the ones you can spot in the scatter above.
+          </p>
+          <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {myOwnedSeeds.map((seed) => (
+              <SeedCard key={seed.id} seed={seed} />
+            ))}
+          </div>
+        </div>
+      )}
 
       <Card className="mt-4 overflow-hidden p-0">
         <div className="flex items-center justify-between px-6 py-4">
