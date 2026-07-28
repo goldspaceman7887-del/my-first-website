@@ -22,8 +22,10 @@ function percentileRank(values: number[], value: number): number {
   const sorted = [...values].sort((a, b) => a - b);
   const below = sorted.filter((v) => v < value).length;
   const equal = sorted.filter((v) => v === value).length;
-  if (sorted.length <= 1) return 100;
-  return Math.round(((below + equal / 2) / (sorted.length - 1)) * 100);
+  if (sorted.length === 0) return 100;
+  // Divide by the full count (not count-1) so this can never exceed 100 —
+  // the previous version overshot to 106 for a unique max value.
+  return Math.min(100, Math.round(((below + equal / 2) / sorted.length) * 100));
 }
 
 /** Computes growth_score for every field from real underlying metrics via percentile-ranked weighting — never hand-set. */
@@ -600,11 +602,20 @@ export function estimateSeedImpact(tierKey: string, quantity: number, stationSlu
   return { reach, estimatedVisits, estimatedRegistrations, visitRate, regRate };
 }
 
+/** The citywide seed goal, shown as a progress bar on home + map. Raise as the map expands past Tokyo. */
+export const CITYWIDE_SEED_GOAL = 10000;
+
 export const cityImpactSummary = {
   totalRaisedYen: stations.reduce((sum, s) => sum + s.fundingRaisedYen, 0),
   totalLearners: stations.reduce((sum, s) => sum + s.activeLearners, 0),
   totalSeeds: stations.reduce((sum, s) => sum + s.activeSeedCount, 0),
   totalImpressions: stations.reduce((sum, s) => sum + s.impressions, 0),
+  // Sum of each station's donorCount double-counts anyone who supported more than
+  // one field. This is the deduplicated distinct-supporter estimate — see
+  // docs/12-engagement-and-advertising.md for how this is derived for real once
+  // there's a real users table to COUNT(DISTINCT user_id) against.
+  totalSupporters: 480,
+  seedGoal: CITYWIDE_SEED_GOAL,
   meetupsThisMonth: 84,
 };
 
@@ -771,3 +782,111 @@ export const seasonMeta: Record<Season, { label: string; labelJa: string; emoji:
   autumn: { label: "Autumn", labelJa: "秋", emoji: "🍁", accent: "#C1443A" },
   winter: { label: "Winter", labelJa: "冬", emoji: "❄️", accent: "#A9C6D8" },
 };
+
+// ==================== ADVERTISING SEEDS ====================
+// Fund promotion on the platforms Japanese 18-30s actually use, instead of
+// (or alongside) funding a physical field. See
+// docs/12-engagement-and-advertising.md for how this ties into the same
+// attribution model as station/university seeds.
+
+export interface AdPlatform {
+  key: string;
+  name: string;
+  nameJa: string;
+  emoji: string;
+  description: string;
+  /** Illustrative estimate, not a real rate card — see docs/12. */
+  impressionsPerThousandYen: number;
+}
+
+export const adPlatforms: AdPlatform[] = [
+  {
+    key: "tiktok",
+    name: "TikTok",
+    nameJa: "ティックトック",
+    emoji: "🎵",
+    description: "Short-form video — the strongest reach among Japanese 18-24s.",
+    impressionsPerThousandYen: 340,
+  },
+  {
+    key: "instagram",
+    name: "Instagram",
+    nameJa: "インスタグラム",
+    emoji: "📷",
+    description: "Reels and Stories — strong for event photos and campus reach.",
+    impressionsPerThousandYen: 260,
+  },
+  {
+    key: "line",
+    name: "LINE",
+    nameJa: "LINE",
+    emoji: "💬",
+    description: "Japan's dominant messaging app — LINE Ads and Timeline reach nearly everyone.",
+    impressionsPerThousandYen: 300,
+  },
+  {
+    key: "x",
+    name: "X (Twitter)",
+    nameJa: "X（旧Twitter）",
+    emoji: "🐦",
+    description: "Good for real-time event buzz and community conversation.",
+    impressionsPerThousandYen: 190,
+  },
+  {
+    key: "youtube",
+    name: "YouTube",
+    nameJa: "ユーチューブ",
+    emoji: "▶️",
+    description: "Pre-roll and Shorts — higher cost per view, higher intent.",
+    impressionsPerThousandYen: 150,
+  },
+];
+
+/** Quick-pick ad budget presets. */
+export const adBudgetPresets = [1000, 5000, 10000, 25000, 50000];
+
+export function estimateAdImpressions(platformKey: string, budgetYen: number) {
+  const platform = adPlatforms.find((p) => p.key === platformKey) ?? adPlatforms[0];
+  return Math.round((budgetYen / 1000) * platform.impressionsPerThousandYen);
+}
+
+export interface AdPackage {
+  key: string;
+  name: string;
+  nameJa: string;
+  platformKeys: string[];
+  priceYen: number;
+  description: string;
+}
+
+export const adPackages: AdPackage[] = [
+  {
+    key: "conversation_night_push",
+    name: "Conversation Night Promo",
+    nameJa: "カンバセーション・ナイト告知",
+    platformKeys: ["line", "instagram"],
+    priceYen: 8000,
+    description: "Push one upcoming event to LINE and Instagram in the week before it happens.",
+  },
+  {
+    key: "camp_launch_push",
+    name: "English Camp Launch Push",
+    nameJa: "イングリッシュキャンプ告知",
+    platformKeys: ["tiktok", "instagram", "line"],
+    priceYen: 15000,
+    description: "Announce a new English camp or workshop across the three highest-reach platforms.",
+  },
+  {
+    key: "citywide_awareness",
+    name: "Citywide Awareness Bundle",
+    nameJa: "都市全体の認知拡大",
+    platformKeys: ["tiktok", "instagram", "line", "x", "youtube"],
+    priceYen: 50000,
+    description: "General brand awareness for Seed English Tokyo across every platform we run ads on.",
+  },
+];
+
+export function estimatePackageImpressions(pkg: AdPackage) {
+  const perPlatformBudget = pkg.priceYen / pkg.platformKeys.length;
+  return pkg.platformKeys.reduce((sum, key) => sum + estimateAdImpressions(key, perPlatformBudget), 0);
+}

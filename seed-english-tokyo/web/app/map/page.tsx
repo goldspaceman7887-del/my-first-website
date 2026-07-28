@@ -4,6 +4,7 @@ import { GrowthStageBadge, FieldStatusBadge } from "@/components/growth-stage";
 import { HarvestField } from "@/components/harvest-field";
 import { TokyoHeatMap } from "@/components/tokyo-heatmap";
 import { ActivityStream } from "@/components/activity-stream";
+import { SeedGoalBar } from "@/components/seed-goal-bar";
 import { cityImpactSummary, stations } from "@/lib/mock-data";
 
 export const metadata = { title: "Tokyo Impact Map — Seed English Tokyo" };
@@ -26,6 +27,10 @@ export default function MapPage() {
         <SummaryStat label="Active seeds" value={cityImpactSummary.totalSeeds.toLocaleString()} />
         <SummaryStat label="Meetups this month" value={String(cityImpactSummary.meetupsThisMonth)} />
       </div>
+
+      <Card className="mt-6 p-5">
+        <SeedGoalBar />
+      </Card>
 
       <div className="mt-8 grid gap-5 lg:grid-cols-3">
         <div className="lg:col-span-2">

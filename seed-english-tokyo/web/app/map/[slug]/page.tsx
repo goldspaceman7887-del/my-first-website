@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { GrowthStageBadge, FieldStatusBadge } from "@/components/growth-stage";
 import { HarvestField } from "@/components/harvest-field";
-import { stations } from "@/lib/mock-data";
+import { stations, mySeeds } from "@/lib/mock-data";
 
 export function generateStaticParams() {
   return stations.map((s) => ({ slug: s.slug }));
@@ -14,6 +14,9 @@ export default function HarvestFieldDetailPage({ params }: { params: { slug: str
   const station = stations.find((s) => s.slug === params.slug);
   if (!station) notFound();
   const maxCount = Math.max(...stations.map((s) => s.activeSeedCount));
+  const ownedSeeds = mySeeds
+    .filter((s) => s.station === station.name)
+    .map((s) => ({ id: s.id, seedNumber: s.seedNumber }));
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6">
@@ -32,8 +35,25 @@ export default function HarvestFieldDetailPage({ params }: { params: { slug: str
         </div>
       </div>
 
-      <Card className="mt-6 overflow-hidden p-0">
-        <HarvestField slug={station.slug} count={station.activeSeedCount} maxCount={maxCount} stage={station.growthStage} height={280} className="rounded-none border-0" />
+      <div className="mt-6">
+        <HarvestField
+          slug={station.slug}
+          count={station.activeSeedCount}
+          maxCount={maxCount}
+          stage={station.growthStage}
+          height={280}
+          interactive
+          ownedSeeds={ownedSeeds}
+          fieldName={station.name}
+          fieldNameJa={station.nameJa}
+          fundingRaisedYen={station.fundingRaisedYen}
+          donorCount={station.donorCount}
+          fieldStatus={station.fieldStatus}
+        />
+        <p className="mt-2 text-center text-xs text-forest-900/50">Tap any tree to see what&apos;s growing here — your own seeds are ringed in orange 🟠</p>
+      </div>
+
+      <Card className="mt-4 overflow-hidden p-0">
         <div className="flex items-center justify-between px-6 py-4">
           <div>
             <p className="text-xs text-forest-900/60">Seeds planted here</p>

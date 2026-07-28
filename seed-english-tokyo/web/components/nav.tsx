@@ -11,6 +11,7 @@ const LINKS = [
   { href: "/map", label: "Tokyo Map" },
   { href: "/seeds", label: "My Forest" },
   { href: "/universities", label: "Universities" },
+  { href: "/advertise", label: "Advertise" },
 ];
 
 export function Nav() {

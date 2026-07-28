@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { GrowthStageBadge } from "@/components/growth-stage";
 import { ActivityStream } from "@/components/activity-stream";
 import { SeasonalWash } from "@/components/motifs/seasonal-badge";
+import { SeedGoalBar } from "@/components/seed-goal-bar";
 import { cityImpactSummary, questions, seedTiers, stations } from "@/lib/mock-data";
 
 export default function HomePage() {
@@ -59,7 +60,11 @@ export default function HomePage() {
           </Card>
         </div>
 
-        <div className="mt-10">
+        <Card className="mt-10 p-5">
+          <SeedGoalBar />
+        </Card>
+
+        <div className="mt-6">
           <ActivityStream limit={5} />
         </div>
       </SeasonalWash>
@@ -144,6 +149,7 @@ export default function HomePage() {
           </div>
           <p className="mt-6 text-center text-xs text-forest-900/50">
             Want more than one? <Link href="/seeds/plant" className="font-semibold text-forest-700 underline">Buy in bulk</Link> — 1 to 10 individually, or jump straight to 25, 100, 1,000 and beyond.
+            {" "}Or fund <Link href="/advertise" className="font-semibold text-forest-700 underline">a TikTok, Instagram, or LINE ad</Link> instead of a field.
           </p>
         </div>
       </section>
