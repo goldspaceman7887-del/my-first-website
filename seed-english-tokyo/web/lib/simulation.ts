@@ -11,6 +11,8 @@ export interface SimEvent {
   type: "seed" | "ad_import";
   label: string;
   date: string;
+  /** Which real Tokyo station's spot on the map this was plotted at — a purely spatial choice, never written to that station's real data. */
+  stationSlug: string;
   /** For ad imports these are the real numbers you entered — never estimated. */
   contributionYen: number;
   impressions: number;
@@ -19,13 +21,18 @@ export interface SimEvent {
   activeLearners: number;
 }
 
+export const DEFAULT_STATION_SLUG = "shibuya";
+
 export function loadSimEvents(): SimEvent[] {
   if (typeof window === "undefined") return [];
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as SimEvent[]) : [];
+    if (!Array.isArray(parsed)) return [];
+    // Events saved before the map was added have no stationSlug — place them
+    // on the map's default spot rather than dropping or crashing on them.
+    return (parsed as SimEvent[]).map((e) => ({ ...e, stationSlug: e.stationSlug ?? DEFAULT_STATION_SLUG }));
   } catch {
     return [];
   }
@@ -100,6 +107,14 @@ export function totalsFromEvents(events: SimEvent[]): SimTotals {
     growthScore,
     growthStage: growthStageForScore(growthScore),
   };
+}
+
+/** Groups events by which station's spot on the map they were plotted at. */
+export function eventsByStation(events: SimEvent[]): Record<string, SimEvent[]> {
+  return events.reduce<Record<string, SimEvent[]>>((acc, e) => {
+    (acc[e.stationSlug] ??= []).push(e);
+    return acc;
+  }, {});
 }
 
 /**

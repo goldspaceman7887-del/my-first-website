@@ -5,14 +5,17 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { GrowthStageBadge } from "@/components/growth-stage";
 import { HarvestField } from "@/components/harvest-field";
+import { SimulatorMap } from "@/components/simulator-map";
 import { cn } from "@/lib/utils";
-import { seedTiers, seedQuantityStepperRange, seedQuantityBulkPresets, adPlatforms } from "@/lib/mock-data";
+import { seedTiers, seedQuantityStepperRange, seedQuantityBulkPresets, adPlatforms, stations } from "@/lib/mock-data";
 import {
   loadSimEvents,
   saveSimEvents,
   clearSimEvents,
   totalsFromEvents,
   estimateSimSeedImpact,
+  eventsByStation,
+  DEFAULT_STATION_SLUG,
   SIM_EQUIVALENT_SEED_CEILING,
   type SimEvent,
 } from "@/lib/simulation";
@@ -55,10 +58,23 @@ export function SimulatorContent() {
   const totals = useMemo(() => totalsFromEvents(events), [events]);
   const maxCount = Math.max(SIM_EQUIVALENT_SEED_CEILING, totals.equivalentSeedCount, 1);
 
+  const eventsBySlug = useMemo(() => eventsByStation(events), [events]);
+  const totalsBySlug = useMemo(
+    () =>
+      Object.fromEntries(
+        stations.map((s) => [s.slug, totalsFromEvents(eventsBySlug[s.slug] ?? [])])
+      ),
+    [eventsBySlug]
+  );
+
+  const [locationSlug, setLocationSlug] = useState(DEFAULT_STATION_SLUG);
+  const location = stations.find((s) => s.slug === locationSlug)!;
+  const locationTotals = totalsBySlug[locationSlug];
+
   // Plant-a-simulated-seed form state
   const [tierKey, setTierKey] = useState(seedTiers[1].key);
   const [quantity, setQuantity] = useState(10);
-  const seedEstimate = estimateSimSeedImpact(tierKey, quantity, totals);
+  const seedEstimate = estimateSimSeedImpact(tierKey, quantity, locationTotals);
 
   function plantSimSeed() {
     const tier = seedTiers.find((t) => t.key === tierKey)!;
@@ -67,6 +83,7 @@ export function SimulatorContent() {
       type: "seed",
       label: `${quantity.toLocaleString()} ${tier.name}${quantity === 1 ? "" : "s"} planted`,
       date: new Date().toISOString().slice(0, 10),
+      stationSlug: locationSlug,
       contributionYen: tier.priceYen * quantity,
       impressions: seedEstimate.reach,
       visits: seedEstimate.estimatedVisits,
@@ -101,6 +118,7 @@ export function SimulatorContent() {
       type: "ad_import",
       label: campaignLabel.trim() || `${platform.name} campaign`,
       date: new Date().toISOString().slice(0, 10),
+      stationSlug: locationSlug,
       contributionYen: spentYen,
       impressions,
       visits,
@@ -155,13 +173,49 @@ export function SimulatorContent() {
         <Stat label="Active learners" value={totals.activeLearners.toLocaleString()} />
         <Stat label="Equivalent seeds" value={totals.equivalentSeedCount.toLocaleString()} />
       </div>
+      <p className="mt-2 text-[11px] text-forest-900/50">
+        Citywide across your whole simulation, added up from every spot below.
+      </p>
+
+      <div className="mt-10">
+        <h2 className="font-display text-xl font-bold text-forest-900">📍 Where in Tokyo</h2>
+        <p className="text-xs text-forest-900/60">
+          Tap a spot to choose where you&apos;re planting or importing ad results — everything
+          below applies to whichever spot is selected.
+        </p>
+        <div className="mt-4">
+          <SimulatorMap totalsBySlug={totalsBySlug} selectedSlug={locationSlug} onSelect={setLocationSlug} />
+        </div>
+
+        <Card className="mt-4 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <p className="font-display font-semibold text-forest-900">{location.name}</p>
+              <p className="text-xs text-forest-900/50">{location.nameJa}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <GrowthStageBadge stage={locationTotals.growthStage} score={locationTotals.growthScore} />
+              <span className="font-display text-sm font-semibold text-forest-900 num">{locationTotals.growthScore}/100</span>
+            </div>
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-3 text-xs text-forest-900/70 sm:grid-cols-4">
+            <span>¥{locationTotals.contributionYen.toLocaleString()} contributed</span>
+            <span>{locationTotals.impressions.toLocaleString()} impressions</span>
+            <span>{locationTotals.visits.toLocaleString()} visits</span>
+            <span>{locationTotals.registrations.toLocaleString()} registrations</span>
+          </div>
+          {locationTotals.equivalentSeedCount === 0 && (
+            <p className="mt-3 text-xs font-medium text-earth-600">Bare soil here — nothing simulated at this spot yet.</p>
+          )}
+        </Card>
+      </div>
 
       <div className="mt-10 grid gap-6 lg:grid-cols-2">
         <Card className="p-5">
-          <h2 className="font-display font-semibold text-forest-900">🌱 Plant a simulated seed</h2>
+          <h2 className="font-display font-semibold text-forest-900">🌱 Plant a simulated seed — {location.name}</h2>
           <p className="mt-1 text-xs text-forest-900/60">
             Same tiers as the real site. Impact is estimated the same way the real plant
-            flow does — from this sandbox&apos;s own accumulated conversion rate.
+            flow does — from this spot&apos;s own accumulated conversion rate.
           </p>
 
           <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -211,7 +265,7 @@ export function SimulatorContent() {
         </Card>
 
         <Card className="p-5">
-          <h2 className="font-display font-semibold text-forest-900">📣 Import real ad results</h2>
+          <h2 className="font-display font-semibold text-forest-900">📣 Import real ad results — {location.name}</h2>
           <p className="mt-1 text-xs text-forest-900/60">
             Ran a real English-camp ad on TikTok, Instagram, or LINE for the 18-30 Japan
             audience? Enter what it actually delivered — these numbers are used exactly
@@ -307,6 +361,9 @@ export function SimulatorContent() {
                 <div>
                   <p className="font-display text-sm font-semibold text-forest-900">
                     {e.type === "seed" ? "🌱" : "📣"} {e.label}
+                    <span className="ml-1.5 font-normal text-forest-900/50">
+                      — {stations.find((s) => s.slug === e.stationSlug)?.name ?? e.stationSlug}
+                    </span>
                   </p>
                   <p className="text-xs text-forest-900/60">
                     {e.date} · ¥{e.contributionYen.toLocaleString()} · {e.impressions.toLocaleString()} impressions ·{" "}

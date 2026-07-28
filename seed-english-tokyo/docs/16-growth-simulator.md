@@ -44,8 +44,37 @@ Every plant and every imported ad result is kept as an entry in a visible timeli
 number — so you can see exactly what you added and correct a mistyped ad result without
 starting over.
 
+## A clickable map, added afterward
+
+Feedback on the first version: it was one undifferentiated blob of numbers with no
+sense of *where* in Tokyo anything was happening. `components/simulator-map.tsx` adds a
+stylized, clickable Tokyo map — the same landmass outline and station coordinates as the
+real `TokyoHeatMap`, reused purely as neutral geography (`mapX`/`mapY` from
+`lib/mock-data.ts`'s real stations) — so every simulated seed and imported ad result now
+has a spot on the map, not just a citywide total.
+
+- Every `SimEvent` now carries a `stationSlug` — which of the 10 real station spots on the
+  map it was plotted at. This is a purely spatial choice; it's never written to that
+  station's actual data.
+- Tapping a spot on the map selects it as "where you're planting or importing ad results
+  right now" — both forms below re-label themselves with the selected location's name, and
+  a small panel shows that specific spot's own simulated totals and growth stage,
+  separately from the citywide aggregate at the top of the page.
+- Dot size and an orange fill scale with that spot's own simulated equivalent-seed count
+  (0 = neutral green "bare soil," same as everywhere else on the site); the number printed
+  inside a dot is that count, not real station data.
+- The timeline now tags every entry with which spot it happened at (e.g. "🌱 10 Growth
+  Seeds planted — Shinjuku"), and switching locations on the map preserves each spot's own
+  history — planting in one neighborhood doesn't touch another's numbers.
+- Seed-planting's conversion-rate estimate now derives from the *selected location's own*
+  accumulated totals (falling back to the same default rates for a bare spot), matching
+  exactly how the real `/seeds/plant` flow estimates per-station, rather than from the
+  citywide aggregate.
+
 Verified: `tsc --noEmit` clean, `next build` produces all 27 static routes, and a
-Playwright run confirmed the sandbox starts at zero, planting and ad-import both update
+Playwright run confirmed: the sandbox starts at zero, planting and ad-import both update
 totals and the timeline correctly, ad-imported numbers are labeled "(as entered)" versus
-seeds' "(estimated)", reset actually clears storage, and the page hydrates with zero
+seeds' "(estimated)", reset actually clears storage, clicking a station on the map
+switches the active location and re-labels both forms, planting at two different stations
+keeps each one's history and totals fully separate, and the page hydrates with zero
 console errors in both `next dev` and the static export.
