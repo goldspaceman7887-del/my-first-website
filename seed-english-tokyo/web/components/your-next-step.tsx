@@ -17,7 +17,6 @@ const ACTIONS: NextStepAction[] = [
   { emoji: "📖", label: "Read The Bible", labelJa: "聖書を読む", description: "Start with the Gospel of John, in Japanese or English.", href: "/explore" },
   { emoji: "🎓", label: "Join A Bible Study", labelJa: "聖書研究に参加", description: "Find a group meeting near you, in Tokyo or online.", href: "/events" },
   { emoji: "⛪", label: "Find A Gathering", labelJa: "集会を見つける", description: "See where people are gathering to explore faith across Tokyo.", href: "/map" },
-  { emoji: "🌱", label: "Plant A Gospel Seed", labelJa: "福音の種を植える", description: "Fund outreach that helps someone else take their own next step.", href: "/seeds/plant" },
 ];
 
 export function YourNextStep({ compact = false }: { compact?: boolean }) {
