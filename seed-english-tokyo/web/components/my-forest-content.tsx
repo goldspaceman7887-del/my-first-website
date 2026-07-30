@@ -12,7 +12,7 @@ export function MyForestContent() {
 
   const totalSeeds = seeds.length;
   const totalReachImpressions = seeds.reduce((sum, s) => sum + s.impact.impressions, 0);
-  const learnersSupported = seeds.reduce((sum, s) => sum + s.impact.activeLearners, 0);
+  const peopleSupported = seeds.reduce((sum, s) => sum + s.impact.activeLearners, 0);
 
   return (
     <>
@@ -22,7 +22,7 @@ export function MyForestContent() {
         <Stat label="Questions helped" value="7" />
         <Stat label="Conversations generated" value="34" />
         <Stat label="Events created" value="2" />
-        <Stat label="Learners supported" value={learnersSupported.toLocaleString()} />
+        <Stat label="People supported" value={peopleSupported.toLocaleString()} />
       </div>
 
       {totalSeeds > 0 && (

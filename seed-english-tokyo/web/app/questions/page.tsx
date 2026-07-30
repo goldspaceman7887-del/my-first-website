@@ -3,18 +3,18 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { questionCategories, questions } from "@/lib/mock-data";
 
-export const metadata = { title: "Ask English — Seed English Tokyo" };
+export const metadata = { title: "Ask a Question — Seed Tokyo" };
 
 export default function QuestionsPage() {
   return (
     <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl font-bold text-forest-900">Ask English</h1>
-          <p className="text-xs text-forest-900/50">英語の質問箱</p>
+          <h1 className="font-display text-3xl font-bold text-forest-900">Ask a Question</h1>
+          <p className="text-xs text-forest-900/50">質問箱</p>
           <p className="mt-1 text-forest-900/70">
-            Grammar, pronunciation, vocabulary, business, travel, conversation — ask
-            anything, get answers from native speakers, mentors, and advanced learners.
+            Faith basics, the Bible, prayer, doubts, church — ask anything, no question
+            is too basic or too hard. Get honest answers from real Christians.
           </p>
         </div>
         <Button>Ask a question</Button>

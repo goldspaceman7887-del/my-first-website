@@ -161,7 +161,7 @@ export function TokyoHeatMap() {
           height={size}
           viewBox="0 0 100 100"
           role="img"
-          aria-label={layer === "demand" ? "Heat map of Tokyo showing demand to practice English at each station" : "Map of Tokyo showing how built-out each station's field is"}
+          aria-label={layer === "demand" ? "Heat map of Tokyo showing interest in the gospel at each station" : "Map of Tokyo showing how built-out each station's field is"}
           className="block"
         >
           <defs>
@@ -260,7 +260,7 @@ export function TokyoHeatMap() {
             <span>{selected.activeSeedCount.toLocaleString()} seeds planted</span>
             <span>Demand {selected.demandScore}/100</span>
             <span>Growth {selected.growthScore}/100</span>
-            <span>{selected.activeLearners} active learners</span>
+            <span>{selected.activeLearners} people reached</span>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
             <Link href={`/seeds/plant?station=${selected.slug}`} className="inline-flex h-9 items-center rounded-full bg-forest-700 px-4 text-xs font-semibold text-cream-50 hover:bg-forest-900">

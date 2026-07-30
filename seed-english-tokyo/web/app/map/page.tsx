@@ -7,7 +7,7 @@ import { ActivityStream } from "@/components/activity-stream";
 import { SeedGoalBar } from "@/components/seed-goal-bar";
 import { cityImpactSummary, stations } from "@/lib/mock-data";
 
-export const metadata = { title: "Tokyo Impact Map — Seed English Tokyo" };
+export const metadata = { title: "Tokyo Impact Map — Seed Tokyo" };
 
 export default function MapPage() {
   const maxCount = Math.max(...stations.map((s) => s.activeSeedCount));
@@ -23,7 +23,7 @@ export default function MapPage() {
 
       <div className="mt-6 grid grid-cols-2 gap-4 rounded-card bg-forest-700 p-6 text-cream-50 sm:grid-cols-4">
         <SummaryStat label="Total raised" value={`¥${cityImpactSummary.totalRaisedYen.toLocaleString()}`} />
-        <SummaryStat label="Active learners" value={cityImpactSummary.totalLearners.toLocaleString()} />
+        <SummaryStat label="People reached" value={cityImpactSummary.totalLearners.toLocaleString()} />
         <SummaryStat label="Active seeds" value={cityImpactSummary.totalSeeds.toLocaleString()} />
         <SummaryStat label="Meetups this month" value={String(cityImpactSummary.meetupsThisMonth)} />
       </div>
@@ -75,7 +75,7 @@ export default function MapPage() {
                   <span>Seeds planted: {s.activeSeedCount}</span>
                   <span>Impressions: {s.impressions.toLocaleString()}</span>
                   <span>Registrations: {s.registrations.toLocaleString()}</span>
-                  <span>Learners active: {s.activeLearners}</span>
+                  <span>People reached: {s.activeLearners}</span>
                   <span>Upcoming events: {s.upcomingEvents}</span>
                 </div>
 
@@ -93,7 +93,7 @@ export default function MapPage() {
                   </p>
                 ) : (
                   <p className="mt-3 text-xs font-medium text-forest-700">
-                    Demand to practice: {s.demandScore}/100
+                    Interest level: {s.demandScore}/100
                   </p>
                 )}
               </div>

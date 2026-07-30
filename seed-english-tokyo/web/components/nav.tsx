@@ -6,13 +6,15 @@ import { BackButton } from "@/components/back-button";
 
 const LINKS = [
   { href: "/", label: "Home" },
-  { href: "/questions", label: "Ask English" },
-  { href: "/partners", label: "Find a Partner" },
-  { href: "/events", label: "Events" },
+  { href: "/explore", label: "Explore Faith" },
+  { href: "/prayer", label: "Prayer" },
+  { href: "/questions", label: "Ask a Question" },
+  { href: "/partners", label: "Connect With Someone" },
+  { href: "/events", label: "Bible Studies" },
   { href: "/map", label: "Tokyo Map" },
-  { href: "/seeds", label: "My Forest" },
-  { href: "/universities", label: "Universities" },
-  { href: "/advertise", label: "Advertise" },
+  { href: "/seeds", label: "My Seeds" },
+  { href: "/universities", label: "Campus Ministries" },
+  { href: "/advertise", label: "Outreach Ads" },
   { href: "/simulate", label: "Simulate" },
 ];
 
@@ -22,10 +24,10 @@ export function Nav() {
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
         <Link href="/" className="flex items-center gap-2 font-display text-lg font-bold text-forest-900">
           <span aria-hidden="true">🌱</span>
-          Seed English Tokyo
-          <span className="hidden text-xs font-normal text-forest-900/40 sm:inline">東京</span>
+          Seed Tokyo
+          <span className="hidden text-xs font-normal text-forest-900/40 sm:inline">東京に福音の種を</span>
         </Link>
-        <nav className="hidden items-center gap-6 md:flex" aria-label="Primary">
+        <nav className="hidden items-center gap-5 md:flex" aria-label="Primary">
           {LINKS.slice(1).map((l) => (
             <Link
               key={l.href}

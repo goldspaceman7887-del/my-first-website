@@ -35,7 +35,7 @@ export function SeedCard({ seed }: { seed: Seed }) {
           <span>{seed.impact.impressions.toLocaleString()} impressions</span>
           <span>{seed.impact.registrations} registered</span>
           <span>{seed.impact.meetupsAttended} meetups attended</span>
-          <span>{seed.impact.activeLearners} active learner{seed.impact.activeLearners === 1 ? "" : "s"}</span>
+          <span>{seed.impact.activeLearners} {seed.impact.activeLearners === 1 ? "person" : "people"} reached</span>
         </div>
         {seed.emotionalImpact && (
           <p className="mt-3 border-t border-forest-900/10 pt-3 text-xs italic text-forest-900/70">

@@ -292,7 +292,7 @@ export const seedTiers: SeedTier[] = [
     nameJa: "シード",
     emoji: "🌱",
     priceYen: 500,
-    description: "Plants the first seed of someone's confidence.",
+    description: "Plants the first seed of someone hearing the gospel.",
     impressionsPerUnit: 12,
   },
   {
@@ -301,7 +301,7 @@ export const seedTiers: SeedTier[] = [
     nameJa: "グロースシード",
     emoji: "🌿",
     priceYen: 1000,
-    description: "Funds a week of practice sessions for a learner.",
+    description: "Funds a week of prayer and outreach follow-up for a seeker.",
     impressionsPerUnit: 25,
   },
   {
@@ -310,7 +310,7 @@ export const seedTiers: SeedTier[] = [
     nameJa: "コミュニティシード",
     emoji: "🌳",
     priceYen: 5000,
-    description: "Funds a full conversation-night event.",
+    description: "Funds a full Bible study gathering.",
     impressionsPerUnit: 130,
   },
   {
@@ -365,7 +365,7 @@ export const mySeeds: Seed[] = [
     treeProgressPct: 42,
     forestContributionPct: 0.4,
     impact: { impressions: 2420, visits: 184, registrations: 19, meetupsAttended: 5, activeLearners: 1 },
-    emotionalImpact: "A university student attended their first-ever English meetup in Shibuya.",
+    emotionalImpact: "A university student attended their first-ever Bible study in Shibuya.",
   },
   {
     id: "78931",
@@ -379,7 +379,7 @@ export const mySeeds: Seed[] = [
     treeProgressPct: 18,
     forestContributionPct: 0.1,
     impact: { impressions: 640, visits: 52, registrations: 4, meetupsAttended: 0, activeLearners: 1 },
-    emotionalImpact: "A job seeker in Shinjuku registered to start practicing for upcoming interviews.",
+    emotionalImpact: "Someone in Shinjuku asked their first honest question about Jesus.",
   },
   {
     id: "65210",
@@ -393,7 +393,7 @@ export const mySeeds: Seed[] = [
     treeProgressPct: 100,
     forestContributionPct: 2.1,
     impact: { impressions: 9800, visits: 780, registrations: 61, meetupsAttended: 22, activeLearners: 6 },
-    emotionalImpact: "A beginner learner asked their first English question and got a best answer within an hour.",
+    emotionalImpact: "Someone new to faith asked their first question and got a caring answer within an hour.",
   },
 ];
 
@@ -424,9 +424,9 @@ export interface Question {
 export const questions: Question[] = [
   {
     id: "q1",
-    category: "Grammar",
-    title: "What's the difference between \"will\" and \"going to\"?",
-    body: "I hear both used for the future but I don't understand when to use each one.",
+    category: "Faith Basics",
+    title: "Is it okay to have doubts and still call myself a Christian?",
+    body: "I believe in Jesus but I still have so many questions. Does that mean my faith isn't real?",
     author: "haruto_k",
     upvotes: 42,
     answerCount: 6,
@@ -435,9 +435,9 @@ export const questions: Question[] = [
   },
   {
     id: "q2",
-    category: "Pronunciation",
-    title: "Why do native speakers say \"gonna\" instead of \"going to\"?",
-    body: "Is it okay for me to say this in a business meeting or is it too casual?",
+    category: "The Bible",
+    title: "Where should a total beginner start reading the Bible?",
+    body: "I bought a Bible but 1,200 pages is overwhelming. What order should I actually read it in?",
     author: "mei.suzuki",
     upvotes: 31,
     answerCount: 9,
@@ -446,9 +446,9 @@ export const questions: Question[] = [
   },
   {
     id: "q3",
-    category: "Business English",
-    title: "How do I politely disagree with my manager in English?",
-    body: "In Japanese I'd use very indirect language. What's the English equivalent?",
+    category: "Struggles & Doubts",
+    title: "How do I tell my family I'm interested in Christianity?",
+    body: "My family isn't religious and I'm nervous about how they'll react. Any advice from people who've been through this?",
     author: "kenji_t",
     upvotes: 58,
     answerCount: 11,
@@ -457,9 +457,9 @@ export const questions: Question[] = [
   },
   {
     id: "q4",
-    category: "Travel English",
-    title: "What should I say if I miss my connecting flight?",
-    body: "Practicing for a trip to Australia next month, want to sound natural at the airport.",
+    category: "Prayer",
+    title: "Is there a wrong way to pray?",
+    body: "I've never prayed before and I don't want to sound silly. What do I actually say?",
     author: "yuki.a",
     upvotes: 19,
     answerCount: 4,
@@ -468,9 +468,9 @@ export const questions: Question[] = [
   },
   {
     id: "q5",
-    category: "Vocabulary",
-    title: "\"Big\" vs \"large\" vs \"huge\" — when do I use each?",
-    body: "My textbook says they're synonyms but native speakers seem to pick one on purpose.",
+    category: "Faith Basics",
+    title: "What's the actual difference between religion and having a relationship with God?",
+    body: "People keep saying \"it's not about religion, it's a relationship\" but I don't understand what that means practically.",
     author: "sora_n",
     upvotes: 27,
     answerCount: 7,
@@ -479,9 +479,9 @@ export const questions: Question[] = [
   },
   {
     id: "q6",
-    category: "Conversation Practice",
-    title: "How do I keep a conversation going instead of one-word answers?",
-    body: "I always answer 'yes' or 'no' and then there's silence. What do people actually say?",
+    category: "Church & Community",
+    title: "How do I find a church where I won't feel like an outsider?",
+    body: "I've never been to a church service and I don't know anyone who goes. Where do I even start?",
     author: "aoi_m",
     upvotes: 65,
     answerCount: 14,
@@ -491,12 +491,12 @@ export const questions: Question[] = [
 ];
 
 export const questionCategories = [
-  "Grammar",
-  "Pronunciation",
-  "Vocabulary",
-  "Business English",
-  "Travel English",
-  "Conversation Practice",
+  "Faith Basics",
+  "The Bible",
+  "Prayer",
+  "Struggles & Doubts",
+  "Church & Community",
+  "Following Jesus",
 ];
 
 export interface EventItem {
@@ -514,8 +514,8 @@ export interface EventItem {
 export const events: EventItem[] = [
   {
     id: "e1",
-    type: "English Cafe",
-    title: "Shibuya Sunday English Cafe",
+    type: "Bible Study",
+    title: "Shibuya Sunday Bible Study — Gospel of John",
     station: "Shibuya",
     date: "Aug 2, 2026",
     time: "2:00 PM",
@@ -525,8 +525,8 @@ export const events: EventItem[] = [
   },
   {
     id: "e2",
-    type: "Conversation Night",
-    title: "Shinjuku Conversation Night — Travel Stories",
+    type: "Prayer Night",
+    title: "Shinjuku Prayer Night — Sharing & Support",
     station: "Shinjuku",
     date: "Aug 5, 2026",
     time: "7:00 PM",
@@ -536,8 +536,8 @@ export const events: EventItem[] = [
   },
   {
     id: "e3",
-    type: "Business English Workshop",
-    title: "Negotiation English for Business Professionals",
+    type: "Testimony Night",
+    title: "Real Stories: How Faith Changed My Life",
     station: "Tokyo Station",
     date: "Aug 8, 2026",
     time: "6:30 PM",
@@ -547,8 +547,8 @@ export const events: EventItem[] = [
   },
   {
     id: "e4",
-    type: "University Meetup",
-    title: "Waseda x Seed English Language Exchange",
+    type: "Campus Gathering",
+    title: "Waseda x Seed Tokyo Faith & Questions Night",
     station: "Ikebukuro",
     date: "Aug 10, 2026",
     time: "5:00 PM",
@@ -558,8 +558,8 @@ export const events: EventItem[] = [
   },
   {
     id: "e5",
-    type: "English Walk",
-    title: "Ueno Park English Walk & Talk",
+    type: "Prayer Walk",
+    title: "Ueno Park Prayer Walk & Talk",
     station: "Ueno",
     date: "Aug 12, 2026",
     time: "10:00 AM",
@@ -569,8 +569,8 @@ export const events: EventItem[] = [
   },
   {
     id: "e6",
-    type: "Interview Practice",
-    title: "Mock Job Interview Practice Circle",
+    type: "Explore Faith Circle",
+    title: "Honest Questions About Christianity — Open Circle",
     station: "Shibuya",
     date: "Aug 15, 2026",
     time: "6:00 PM",
@@ -755,10 +755,10 @@ export const activityStream: ActivityEvent[] = [
   { id: "a2", icon: "🌱", text: "10 seeds planted in Waseda", timeAgo: "2 min ago" },
   { id: "a3", icon: "🌳", text: "Shibuya reached Tree Level", timeAgo: "8 min ago" },
   { id: "a4", icon: "🌲", text: "Ikebukuro became a Forest", timeAgo: "24 min ago" },
-  { id: "a5", icon: "🎉", text: "22 people joined a meetup in Shibuya", timeAgo: "41 min ago" },
-  { id: "a6", icon: "💬", text: "New English question posted: \"How do I keep a conversation going?\"", timeAgo: "1 hr ago" },
+  { id: "a5", icon: "🎉", text: "22 people joined a gathering in Shibuya", timeAgo: "41 min ago" },
+  { id: "a6", icon: "💬", text: "New question posted: \"How do I find a church where I won't feel like an outsider?\"", timeAgo: "1 hr ago" },
   { id: "a7", icon: "🌱", text: "3 seeds planted at Sophia University", timeAgo: "1 hr ago" },
-  { id: "a8", icon: "✅", text: "A question in Business English got a best answer", timeAgo: "2 hr ago" },
+  { id: "a8", icon: "✅", text: "A question in Faith Basics got a caring answer", timeAgo: "2 hr ago" },
   { id: "a9", icon: "🌿", text: "Tokyo Station's field sprouted", timeAgo: "3 hr ago" },
   { id: "a10", icon: "🎉", text: "A language exchange match was made near Nakano", timeAgo: "5 hr ago" },
 ];
@@ -916,20 +916,20 @@ export interface AdPackage {
 
 export const adPackages: AdPackage[] = [
   {
-    key: "conversation_night_push",
-    name: "Conversation Night Promo",
-    nameJa: "カンバセーション・ナイト告知",
+    key: "gathering_push",
+    name: "Gathering Promo",
+    nameJa: "集会告知",
     platformKeys: ["line", "instagram"],
     priceYen: 8000,
-    description: "Push one upcoming event to LINE and Instagram in the week before it happens.",
+    description: "Push one upcoming Bible study or prayer night to LINE and Instagram in the week before it happens.",
   },
   {
-    key: "camp_launch_push",
-    name: "English Camp Launch Push",
-    nameJa: "イングリッシュキャンプ告知",
+    key: "outreach_launch_push",
+    name: "Gospel Outreach Launch Push",
+    nameJa: "福音アウトリーチ告知",
     platformKeys: ["tiktok", "instagram", "line"],
     priceYen: 15000,
-    description: "Announce a new English camp or workshop across the three highest-reach platforms.",
+    description: "Announce a new outreach event or testimony night across the three highest-reach platforms.",
   },
   {
     key: "citywide_awareness",
@@ -937,7 +937,7 @@ export const adPackages: AdPackage[] = [
     nameJa: "都市全体の認知拡大",
     platformKeys: ["tiktok", "instagram", "line", "x", "youtube"],
     priceYen: 50000,
-    description: "General brand awareness for Seed English Tokyo across every platform we run ads on.",
+    description: "General brand awareness for Seed Tokyo across every platform we run ads on.",
   },
 ];
 
@@ -963,7 +963,7 @@ export interface AdCampaignRecord {
 export const adCampaignHistory: AdCampaignRecord[] = [
   {
     id: "ad1",
-    title: "Conversation Night Promo — Shibuya",
+    title: "Prayer Night Promo — Shibuya",
     platformKey: "line",
     formatKey: "story",
     budgetYen: 8000,
@@ -974,7 +974,7 @@ export const adCampaignHistory: AdCampaignRecord[] = [
   },
   {
     id: "ad2",
-    title: "English Camp Launch — citywide",
+    title: "Gospel Outreach Launch — citywide",
     platformKey: "tiktok",
     formatKey: "video",
     budgetYen: 15000,
@@ -996,7 +996,7 @@ export const adCampaignHistory: AdCampaignRecord[] = [
   },
   {
     id: "ad4",
-    title: "Interview Practice Circle — creator post",
+    title: "Explore Faith Circle — creator post",
     platformKey: "youtube",
     formatKey: "influencer",
     budgetYen: 20000,

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { MyForestContent } from "@/components/my-forest-content";
 
-export const metadata = { title: "My Forest — Seed English Tokyo" };
+export const metadata = { title: "My Forest — Seed Tokyo" };
 
 export default function MyForestPage() {
   return (

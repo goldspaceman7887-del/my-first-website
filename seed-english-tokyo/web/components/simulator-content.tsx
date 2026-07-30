@@ -178,7 +178,7 @@ export function SimulatorContent() {
         <Stat label="Impressions" value={totals.impressions.toLocaleString()} />
         <Stat label="Visits" value={totals.visits.toLocaleString()} />
         <Stat label="Registrations" value={totals.registrations.toLocaleString()} />
-        <Stat label="Active learners" value={totals.activeLearners.toLocaleString()} />
+        <Stat label="People reached" value={totals.activeLearners.toLocaleString()} />
         <Stat label="Equivalent seeds" value={totals.equivalentSeedCount.toLocaleString()} />
       </div>
 

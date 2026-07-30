@@ -39,12 +39,12 @@ export default function AdvertisePage() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6">
-      <h1 className="font-display text-3xl font-bold text-forest-900">Advertise the community</h1>
+      <h1 className="font-display text-3xl font-bold text-forest-900">Outreach Ads</h1>
       <p className="text-xs text-forest-900/50">広告で応援する</p>
       <p className="mt-1 max-w-2xl text-forest-900/70">
         Fund a real ad on the platforms Japanese 18–30s actually use — TikTok, Instagram,
-        LINE, X, and YouTube — to bring more people to a free event or to Seed English
-        Tokyo itself. This is a different kind of seed: instead of growing a field, it
+        LINE, X, and YouTube — to bring more people to a gathering or to Seed Tokyo
+        itself. This is a different kind of seed: instead of growing a field, it
         grows awareness.
       </p>
       <p className="mt-2 text-xs text-forest-900/50">

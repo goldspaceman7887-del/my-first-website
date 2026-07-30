@@ -103,7 +103,7 @@ export default function HarvestFieldDetailPage({ params }: { params: { slug: str
           <p className="mt-1 font-display text-xl font-bold text-forest-900 num">{station.registrations.toLocaleString()}</p>
         </Card>
         <Card className="p-5">
-          <p className="text-xs text-forest-900/60">Active learners</p>
+          <p className="text-xs text-forest-900/60">People reached</p>
           <p className="mt-1 font-display text-xl font-bold text-forest-900 num">{station.activeLearners.toLocaleString()}</p>
         </Card>
         <Card className="p-5">
@@ -111,7 +111,7 @@ export default function HarvestFieldDetailPage({ params }: { params: { slug: str
           <p className="mt-1 font-display text-xl font-bold text-forest-900 num">{station.upcomingEvents}</p>
         </Card>
         <Card className="p-5">
-          <p className="text-xs text-forest-900/60">Demand to practice</p>
+          <p className="text-xs text-forest-900/60">Interest level</p>
           <p className="mt-1 font-display text-xl font-bold text-forest-900 num">{station.demandScore}/100</p>
         </Card>
       </div>

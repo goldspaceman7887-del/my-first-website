@@ -26,8 +26,8 @@ export function SeedDetail({
       : [
           { label: `${seed.impact.impressions.toLocaleString()} impressions`, detail: "Reach attributed via station funding share", date: "ongoing" },
           { label: `${seed.impact.visits} people visited the website`, detail: "Attributed via station funding share", date: "ongoing" },
-          { label: `${seed.impact.registrations} people registered`, detail: "New learners at this station", date: "ongoing" },
-          { label: `${seed.impact.meetupsAttended} meetups attended`, detail: "Real in-person practice happened", date: "ongoing" },
+          { label: `${seed.impact.registrations} people registered`, detail: "New people reached at this station", date: "ongoing" },
+          { label: `${seed.impact.meetupsAttended} meetups attended`, detail: "Real in-person gathering happened", date: "ongoing" },
         ]),
   ];
 
@@ -81,7 +81,7 @@ export function SeedDetail({
             <li>• {seed.impact.visits} visits</li>
             <li>• {seed.impact.registrations} registrations</li>
             <li>• {seed.impact.meetupsAttended} meetup attendees</li>
-            <li>• {seed.impact.activeLearners} active learner{seed.impact.activeLearners === 1 ? "" : "s"}</li>
+            <li>• {seed.impact.activeLearners} {seed.impact.activeLearners === 1 ? "person" : "people"} reached</li>
           </ul>
         </Card>
       </div>

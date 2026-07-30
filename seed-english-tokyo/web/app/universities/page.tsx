@@ -4,7 +4,7 @@ import { GrowthStageBadge, FieldStatusBadge } from "@/components/growth-stage";
 import { HarvestField } from "@/components/harvest-field";
 import { universities } from "@/lib/mock-data";
 
-export const metadata = { title: "University Forests — Seed English Tokyo" };
+export const metadata = { title: "Campus Ministries — Seed Tokyo" };
 
 export default function UniversitiesPage() {
   const maxCount = Math.max(...universities.map((u) => u.activeSeedCount));
@@ -12,11 +12,11 @@ export default function UniversitiesPage() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
-      <h1 className="font-display text-3xl font-bold text-forest-900">University Forests</h1>
+      <h1 className="font-display text-3xl font-bold text-forest-900">Campus Ministries</h1>
       <p className="text-xs text-forest-900/50">大学フォレスト</p>
       <p className="mt-1 max-w-2xl text-forest-900/70">
-        Every university has its own forest. Ambassadors and students compete, campus to
-        campus, to grow theirs — Waseda, Sophia, Keio, Meiji, Rikkyo, Hosei, and Aoyama
+        Every campus has its own forest. Ambassadors and students grow gospel outreach
+        campus to campus — Waseda, Sophia, Keio, Meiji, Rikkyo, Hosei, and Aoyama
         Gakuin, all in Tokyo.
       </p>
 
@@ -40,7 +40,7 @@ export default function UniversitiesPage() {
                   <span>Funding: ¥{u.fundingRaisedYen.toLocaleString()}</span>
                   <span>Seeds planted: {u.activeSeedCount}</span>
                   <span>Registrations: {u.registrations.toLocaleString()}</span>
-                  <span>Learners active: {u.activeLearners}</span>
+                  <span>People reached: {u.activeLearners}</span>
                   <span>Ambassadors: {u.ambassadorCount}</span>
                   <span>Upcoming events: {u.upcomingEvents}</span>
                 </div>

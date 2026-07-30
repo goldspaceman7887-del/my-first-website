@@ -1,6 +1,6 @@
 import { SimulatorContent } from "@/components/simulator-content";
 
-export const metadata = { title: "Growth Simulator — Seed English Tokyo" };
+export const metadata = { title: "Growth Simulator — Seed Tokyo" };
 
 export default function SimulatePage() {
   return (
