@@ -40,13 +40,14 @@ every page's metadata title were updated. The repo directory, deployment base pa
 not an infrastructure change.
 
 **`components/your-next-step.tsx` — "Your Next Step."** The single most emphasized
-requirement in the spec ("the MOST IMPORTANT REQUIREMENT"). Eight actions (Request
-Prayer, Talk To Someone, Ask a Question, Explore Faith, Read The Bible, Join A Bible
-Study, Find A Gathering, Plant A Gospel Seed), each a card linking to a real page. It
+requirement in the spec ("the MOST IMPORTANT REQUIREMENT"). Originally shipped with
+seed-buying mixed into the same grid as prayer/connect actions; per direct feedback
+("the seeds should be a total separate page, not together"), buying/funding a seed was
+removed from this grid entirely — it's a different kind of action from prayer/connect
+and stays on its own dedicated `/seeds/plant` page and homepage pricing section. It
 renders in two places site-wide: prominently (full, non-compact) on the homepage right
 after the hero, and compact in `app/layout.tsx` so it appears above the footer on every
-single page in the app — closest practical equivalent to the spec's "nearly every page
-type" requirement without duplicating the full section on every route.
+single page in the app. See docs/18 for the full current action list.
 
 **`/prayer` — Prayer Request Center (lite).** Share a prayer request, optionally
 anonymous, saved to `lib/prayer-requests.ts` (localStorage). Always shows the crisis
@@ -75,31 +76,18 @@ were reworded to "people reached" across the homepage, map, university, and simu
 views without renaming the underlying data fields (renaming those would ripple through
 the growth-score formula and several components for no user-visible benefit).
 
-## Roadmap — not built this round
+## Roadmap
 
-Everything below is real, named work from the original spec that this round didn't
-reach. None of it is implied to exist by the current UI.
+Everything named in the original spec that this round didn't reach — Bible Access
+Center, Local Church Connection Center, University Connection Platform depth, Stories &
+Testimony Engine, Volunteer Platform, Donor Engagement Expansion, Mission Achievements,
+Mission Briefing Center, and Live Counters — was built in the following round. See
+**docs/18-mission-and-community-expansion.md** for what each of those actually is and
+where its honest limits are.
 
-- **Human Connection Center, full** — actual matching to a real volunteer/pastor/
-  mentor, scheduling, video call integration, safety/moderation tooling.
-- **Prayer Request Center, full** — visitor/volunteer/leader/admin dashboards, urgent-
-  need routing to a real on-call team, follow-up tracking.
-- **Bible Access Center** — reading plans, in-app Bible text, streaks, daily verse
-  push. `/explore` links out to bible.com rather than hosting reading in-app.
-- **Local Church Connection Center** — a real directory of Tokyo churches with
-  denomination/language/service-time filtering.
-- **University Connection Platform, deepened** — campus ministry-specific tools beyond
-  the existing `/universities` leaderboard (small group finder, campus ambassador
-  workflows).
-- **Stories & Testimony Engine** — a dedicated testimony submission and browsing flow
-  (distinct from the one-line "testimony night" events already in `/events`).
-- **Volunteer Platform** — recruiting, training, and assigning volunteers to prayer/
-  connection requests.
-- **Donor Engagement Expansion** — activity feeds, alerts, milestone reports beyond the
-  existing `ActivityStream` and seed-goal bar.
-- **Mission Achievements / gamified badges**, **Mission Briefing Center**, **Real-Time
-  Mission Activity + Live Counters** — none of these exist yet; the closest analog is
-  the existing growth-stage badges and activity stream.
-
-As with every prior demo feature on this platform, nothing above should be assumed to
-exist until it's actually built and documented here.
+What's permanently out of scope for this platform as a static, backend-less site — not
+"not built yet," but structurally impossible to build honestly here — is also detailed
+in docs/18: real-time video calling to an actual human, real multi-user auth/roles, and
+real routing of urgent requests to a real on-call team. Building convincing UI for any
+of those without the real infrastructure behind them would repeat the exact risk this
+doc's safety section describes — implying real-time human response where none exists.

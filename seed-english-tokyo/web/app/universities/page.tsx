@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { GrowthStageBadge, FieldStatusBadge } from "@/components/growth-stage";
 import { HarvestField } from "@/components/harvest-field";
+import { SmallGroupFinder, AmbassadorApplicationForm } from "@/components/campus-ambassador";
 import { universities } from "@/lib/mock-data";
 
 export const metadata = { title: "Campus Ministries — Seed Tokyo" };
@@ -83,6 +84,9 @@ export default function UniversitiesPage() {
           </div>
         </Card>
       </div>
+
+      <SmallGroupFinder universities={universities} />
+      <AmbassadorApplicationForm universities={universities} />
     </div>
   );
 }

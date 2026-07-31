@@ -7,13 +7,18 @@ import { BackButton } from "@/components/back-button";
 const LINKS = [
   { href: "/", label: "Home" },
   { href: "/explore", label: "Explore Faith" },
+  { href: "/bible", label: "Bible" },
   { href: "/prayer", label: "Prayer" },
   { href: "/questions", label: "Ask a Question" },
   { href: "/partners", label: "Connect With Someone" },
+  { href: "/churches", label: "Find A Church" },
+  { href: "/stories", label: "Stories" },
   { href: "/events", label: "Bible Studies" },
   { href: "/map", label: "Tokyo Map" },
   { href: "/seeds", label: "My Seeds" },
   { href: "/universities", label: "Campus Ministries" },
+  { href: "/volunteer", label: "Volunteer" },
+  { href: "/mission", label: "Mission" },
   { href: "/advertise", label: "Outreach Ads" },
   { href: "/simulate", label: "Simulate" },
 ];

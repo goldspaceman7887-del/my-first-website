@@ -14,9 +14,10 @@ const ACTIONS: NextStepAction[] = [
   { emoji: "💬", label: "Talk To Someone", labelJa: "誰かと話す", description: "Get matched with a real person to talk with, whenever you're ready.", href: "/partners" },
   { emoji: "❓", label: "Ask a Question", labelJa: "質問する", description: "No question about Christianity or the Bible is too basic or too hard.", href: "/questions" },
   { emoji: "✝️", label: "Explore Faith", labelJa: "信仰を探る", description: "Who is Jesus, why did he die, what happens after death — start here.", href: "/explore" },
-  { emoji: "📖", label: "Read The Bible", labelJa: "聖書を読む", description: "Start with the Gospel of John, in Japanese or English.", href: "/explore" },
+  { emoji: "📖", label: "Read The Bible", labelJa: "聖書を読む", description: "A day-by-day reading plan through the Gospel of John, with a streak to track.", href: "/bible" },
   { emoji: "🎓", label: "Join A Bible Study", labelJa: "聖書研究に参加", description: "Find a group meeting near you, in Tokyo or online.", href: "/events" },
-  { emoji: "⛪", label: "Find A Gathering", labelJa: "集会を見つける", description: "See where people are gathering to explore faith across Tokyo.", href: "/map" },
+  { emoji: "⛪", label: "Find A Church", labelJa: "教会を見つける", description: "Browse churches near stations you already know.", href: "/churches" },
+  { emoji: "📣", label: "Share Your Story", labelJa: "あなたの物語を共有", description: "Read what others found, or share your own.", href: "/stories" },
 ];
 
 export function YourNextStep({ compact = false }: { compact?: boolean }) {
