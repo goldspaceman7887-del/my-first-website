@@ -18,6 +18,7 @@ const LINKS = [
   { href: "/seeds", label: "My Seeds" },
   { href: "/universities", label: "Campus Ministries" },
   { href: "/volunteer", label: "Volunteer" },
+  { href: "/team", label: "Team View" },
   { href: "/mission", label: "Mission" },
   { href: "/advertise", label: "Outreach Ads" },
   { href: "/simulate", label: "Simulate" },
