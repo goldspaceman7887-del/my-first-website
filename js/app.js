@@ -4,6 +4,7 @@ import { audioEngine } from "./core/audio.js";
 import { reviewCounts } from "./core/srs.js";
 import { el } from "./core/ui.js";
 import { maybeShowOnboarding } from "./core/onboarding.js";
+import { getHearts, MAX_HEARTS } from "./core/hearts.js";
 
 import { renderDashboard } from "./views/dashboard.js";
 import { renderVocabulary } from "./views/vocabulary.js";
@@ -77,6 +78,11 @@ function refreshTopbarStats() {
   document.getElementById("stat-streak").textContent = store.state.profile.streak || 0;
   document.getElementById("stat-xp").textContent = store.state.profile.xp || 0;
   document.getElementById("stat-level").textContent = store.state.profile.level || "A0";
+
+  const hearts = getHearts();
+  document.getElementById("stat-hearts").textContent = `${hearts.current}/${MAX_HEARTS}`;
+  document.getElementById("stat-hearts-chip").classList.toggle("low-hearts", hearts.current <= 1);
+
   const counts = reviewCounts();
   const dueEl = document.getElementById("stat-due");
   const chip = document.getElementById("stat-due-chip");

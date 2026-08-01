@@ -28,7 +28,8 @@ function defaultState() {
       lastStudyDate: null, // "YYYY-MM-DD"
       studyDates: [], // history of days studied, for heatmap
       totalStudyMinutes: 0,
-      createdAt: Date.now()
+      createdAt: Date.now(),
+      hearts: { current: 5, max: 5, lastRegenAt: Date.now() }
     },
     srs: {
       // itemId -> { type, repetition, easeFactor, interval, stepIndex, nextReview, lastReview, correct, incorrect, history: [] }

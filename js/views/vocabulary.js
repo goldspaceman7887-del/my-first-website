@@ -3,6 +3,8 @@ import { el, blurActive } from "../core/ui.js";
 import { audioEngine } from "../core/audio.js";
 import { gradeItem, masteryLevel, QUALITY, newItems, dueItems } from "../core/srs.js";
 import { addXP, updateSkillScore } from "../core/gamification.js";
+import { runLesson } from "../core/lessonPlayer.js";
+import { getHearts, hasHearts, minutesUntilNextHeart } from "../core/hearts.js";
 import { VOCABULARY } from "../data/vocabulary.js";
 
 function srsId(v) {
@@ -91,6 +93,157 @@ function parseQuery() {
   return new URLSearchParams(q);
 }
 
+// ---------- Duolingo-style lesson question generators ----------
+
+function shuffle(arr) {
+  return [...arr].sort(() => Math.random() - 0.5);
+}
+
+function pickDistractors(v, count) {
+  const sameCategory = VOCABULARY.filter((x) => x.id !== v.id && x.category === v.category && x.en !== v.en);
+  const pool = sameCategory.length >= count ? sameCategory : VOCABULARY.filter((x) => x.id !== v.id && x.en !== v.en);
+  return shuffle(pool).slice(0, count);
+}
+
+function normalizeEn(s) {
+  return normalizeLoose(s).replace(/^(the|a|an)\s+/, "");
+}
+
+function recordVocabResult(v, correct) {
+  gradeItem(srsId(v), "vocab", correct ? QUALITY.GOOD : QUALITY.AGAIN);
+  store.state.progress.vocabExposure[v.id] = (store.state.progress.vocabExposure[v.id] || 0) + 1;
+  updateSkillScore("vocabulary", correct ? 1 : -0.5);
+  store.save();
+}
+
+function mcqOptionList(options, correctOption, onPick) {
+  const list = el("div", { class: "option-list" });
+  options.forEach((opt) => {
+    list.appendChild(
+      el(
+        "button",
+        {
+          class: "option-btn",
+          style: "font-family:var(--font-es)",
+          onclick: (e) => {
+            list.querySelectorAll(".option-btn").forEach((b) => b.classList.add("disabled"));
+            const correct = opt === correctOption;
+            e.currentTarget.classList.add(correct ? "correct" : "incorrect");
+            if (!correct) Array.from(list.children).find((b) => b.textContent === correctOption)?.classList.add("correct");
+            onPick(correct);
+          }
+        },
+        opt
+      )
+    );
+  });
+  return list;
+}
+
+function meaningMcqQuestion(v) {
+  return {
+    render(host, onResult) {
+      const options = shuffle([v.en, ...pickDistractors(v, 3).map((d) => d.en)]);
+      const hasExample = !!(v.exampleEs && v.exampleEn);
+      host.appendChild(el("h3", { style: "margin:0 0 .75rem" }, "What does this mean? · ¿Qué significa?"));
+      host.appendChild(
+        hasExample
+          ? el("div", { class: "flashcard-sentence", style: "text-align:left" }, [highlightWordInSentence(v.exampleEs, v.es)])
+          : el("div", { class: "flashcard-word", style: "text-align:left" }, v.es)
+      );
+      host.appendChild(
+        el(
+          "button",
+          { class: "play-btn", style: "margin:.6rem 0 1rem", onclick: () => audioEngine.speak(hasExample ? v.exampleEs : v.es) },
+          "🔊"
+        )
+      );
+      host.appendChild(
+        mcqOptionList(options, v.en, (correct) => {
+          recordVocabResult(v, correct);
+          onResult(correct, { correctText: v.en });
+        })
+      );
+    }
+  };
+}
+
+function listenMcqQuestion(v) {
+  return {
+    render(host, onResult) {
+      const options = shuffle([v.es, ...pickDistractors(v, 3).map((d) => d.es)]);
+      host.appendChild(el("h3", { style: "margin:0 0 1rem" }, "Listen and choose · Escucha y elige"));
+      host.appendChild(
+        el(
+          "button",
+          { class: "btn btn-primary btn-lg", style: "margin-bottom:1rem", onclick: () => audioEngine.speak(v.es) },
+          "🔊 Play again · Repetir"
+        )
+      );
+      host.appendChild(
+        mcqOptionList(options, v.es, (correct) => {
+          recordVocabResult(v, correct);
+          onResult(correct, { correctText: v.es });
+        })
+      );
+      audioEngine.speak(v.es);
+    }
+  };
+}
+
+function typeTranslationQuestion(v) {
+  return {
+    render(host, onResult) {
+      host.appendChild(el("h3", { style: "margin:0 0 .75rem" }, "Type the English translation"));
+      host.appendChild(el("div", { class: "flashcard-word", style: "text-align:left;margin-bottom:.5rem" }, v.es));
+      host.appendChild(
+        el("button", { class: "play-btn", style: "margin-bottom:.85rem", onclick: () => audioEngine.speak(v.es) }, "🔊")
+      );
+      const input = el("input", { type: "text", class: "exercise-input", placeholder: "Type in English...", autocomplete: "off" });
+      input.style.cssText =
+        "width:100%;padding:.7rem .9rem;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:1rem;";
+      const checkBtn = el(
+        "button",
+        {
+          class: "btn btn-primary",
+          style: "margin-top:.6rem",
+          onclick: () => {
+            const correct = normalizeEn(input.value) === normalizeEn(v.en);
+            input.disabled = true;
+            checkBtn.disabled = true;
+            recordVocabResult(v, correct);
+            onResult(correct, { correctText: v.en });
+          }
+        },
+        "Check"
+      );
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") checkBtn.click();
+      });
+      host.appendChild(input);
+      host.appendChild(el("div", { class: "btn-row", style: "margin-top:.5rem" }, [checkBtn]));
+    }
+  };
+}
+
+function buildReviewQueue(limit = 20) {
+  const due = dueItems("vocab").filter((i) => i.id.startsWith("vocab_"));
+  const newIds = newItems(VOCABULARY.map(srsId), "vocab");
+  let queue = [...due.map((d) => d.id.replace("vocab_", "")), ...newIds.map((id) => id.replace("vocab_", ""))];
+  queue = [...new Set(queue)].slice(0, limit);
+  return queue.map((id) => VOCABULARY.find((v) => v.id === id)).filter(Boolean);
+}
+
+function buildVocabLessonQuestions(items) {
+  return items.map((v) => {
+    const hasExample = !!(v.exampleEs && v.exampleEn);
+    const r = Math.random();
+    if (r < 0.5 || !hasExample) return meaningMcqQuestion(v);
+    if (r < 0.75) return listenMcqQuestion(v);
+    return typeTranslationQuestion(v);
+  });
+}
+
 function levelsPresent() {
   return ["A0", "A1", "A2", "B1", "B2", "C1"].filter((l) => VOCABULARY.some((v) => v.level === l));
 }
@@ -102,11 +255,12 @@ function categoriesPresent() {
 export function renderVocabulary(container) {
   const query = parseQuery();
   const state = {
-    tab: "flashcards",
+    tab: "lesson",
     level: query.get("level") || "all",
     category: "all",
     search: ""
   };
+  let activeLessonDestroy = null;
 
   container.appendChild(
     el("div", { class: "page-header" }, [
@@ -117,6 +271,7 @@ export function renderVocabulary(container) {
   );
 
   const tabs = el("div", { class: "tabs" }, [
+    tabBtn("lesson", "🎯 Lesson"),
     tabBtn("flashcards", "Flashcards"),
     tabBtn("explore", "Browse / Explorar")
   ]);
@@ -136,6 +291,10 @@ export function renderVocabulary(container) {
   }
 
   function setTab(id) {
+    if (activeLessonDestroy) {
+      activeLessonDestroy();
+      activeLessonDestroy = null;
+    }
     state.tab = id;
     tabs.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("active", b.dataset.tabId === id));
     renderBody();
@@ -143,23 +302,73 @@ export function renderVocabulary(container) {
 
   function renderBody() {
     body.innerHTML = "";
-    if (state.tab === "flashcards") body.appendChild(renderFlashcards());
+    if (state.tab === "lesson") body.appendChild(renderLessonIntro());
+    else if (state.tab === "flashcards") body.appendChild(renderFlashcards());
     else body.appendChild(renderExplore());
+  }
+
+  function renderLessonIntro() {
+    const wrap = el("div", {});
+    const items = buildReviewQueue(10);
+    const hearts = getHearts();
+
+    if (items.length === 0) {
+      wrap.appendChild(
+        el("div", { class: "card empty-state" }, [
+          el("div", { class: "empty-icon" }, "🎉"),
+          el("h3", {}, "All caught up! · ¡Todo repasado!"),
+          el("p", {}, "No words are due right now. Come back later, or explore new words in \"Browse.\"")
+        ])
+      );
+      return wrap;
+    }
+
+    if (!hasHearts()) {
+      const mins = minutesUntilNextHeart();
+      wrap.appendChild(
+        el("div", { class: "card empty-state" }, [
+          el("div", { class: "empty-icon" }, "💔"),
+          el("h3", {}, "Out of hearts for now"),
+          el("p", {}, `Your next heart comes back in about ${mins} minute${mins === 1 ? "" : "s"}. You can still browse or use plain Flashcards (no hearts needed) in the meantime.`)
+        ])
+      );
+      return wrap;
+    }
+
+    wrap.appendChild(
+      el("div", { class: "card", style: "text-align:center;padding:2rem 1.5rem" }, [
+        el("div", { style: "font-size:2.5rem;margin-bottom:.5rem" }, "🎯"),
+        el("h2", { style: "margin:0 0 .5rem" }, "Ready for a lesson?"),
+        el("p", { class: "text-muted" }, `${items.length} word${items.length === 1 ? "" : "s"} to practice · ${hearts.current} ❤️ available`),
+        el(
+          "button",
+          {
+            class: "btn btn-primary btn-lg btn-duo-cta",
+            style: "margin-top:1rem",
+            onclick: () => {
+              body.innerHTML = "";
+              const questions = buildVocabLessonQuestions(items);
+              activeLessonDestroy = runLesson(body, {
+                title: "Vocabulary lesson",
+                questions,
+                xpPerCorrect: 8,
+                onExit: () => {
+                  activeLessonDestroy = null;
+                  renderBody();
+                }
+              });
+            }
+          },
+          "Start Lesson"
+        )
+      ])
+    );
+    return wrap;
   }
 
   function renderFlashcards() {
     const wrap = el("div", {});
-    const due = dueItems("vocab").filter((i) => i.id.startsWith("vocab_"));
-    const newIds = newItems(
-      VOCABULARY.map(srsId),
-      "vocab"
-    );
-    let queue = [
-      ...due.map((d) => d.id.replace("vocab_", "")),
-      ...newIds.map((id) => id.replace("vocab_", ""))
-    ];
-    queue = [...new Set(queue)].slice(0, 20);
-    const items = queue.map((id) => VOCABULARY.find((v) => v.id === id)).filter(Boolean);
+    const items = buildReviewQueue(20);
 
     if (items.length === 0) {
       wrap.appendChild(
@@ -436,4 +645,8 @@ export function renderVocabulary(container) {
   }
 
   renderBody();
+
+  return () => {
+    if (activeLessonDestroy) activeLessonDestroy();
+  };
 }
