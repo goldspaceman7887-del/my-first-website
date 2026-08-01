@@ -46,7 +46,8 @@ function defaultState() {
       grammarAttempts: {}, // patternId -> { attempts, correct, lastReview }
       charExposure: {}, // charId -> count
       vocabExposure: {}, // wordId -> count
-      activeSentenceIds: [] // sentence ids currently "being studied"
+      activeSentenceIds: [], // sentence ids currently "being studied"
+      roadmapUnitsCompleted: [] // roadmap unit ids completed, in the Duolingo-style path
     },
     achievements: {
       unlocked: []
