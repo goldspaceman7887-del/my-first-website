@@ -34,34 +34,54 @@ function sentenceUsesWord(sentence, targetWord) {
   return normalizeLoose(sentence).includes(stem);
 }
 
+// Wraps whichever token in `sentence` matches the target word's stem in a
+// <strong>, so the learner immediately sees the word doing its job inside a
+// real sentence instead of hunting for it. Falls back to plain text if no
+// token matches (shouldn't normally happen given the data, but keep it safe).
+function highlightWordInSentence(sentence, targetWord) {
+  const stem = wordStem(targetWord);
+  const tokens = (sentence || "").split(/(\s+|[.,;:!?¿¡"“”'—-])/);
+  const nodes = tokens.map((tok) => {
+    if (!tok) return null;
+    const normTok = normalizeLoose(tok).replace(/[^a-zñü]/gi, "");
+    if (stem && normTok && normTok.startsWith(stem)) {
+      return el("strong", { class: "flashcard-highlight" }, tok);
+    }
+    return tok;
+  });
+  return el("span", {}, nodes.filter((n) => n !== null));
+}
+
 // Plain-language, bilingual micro-instructions per immersion level — this is
 // what makes the flashcard step-by-step and unintimidating for a total
 // beginner, while gradually stepping back as the learner picks immersion 2-4.
+// Every level teaches the word inside its example sentence, not in isolation
+// — only how much English scaffolding is shown up front changes.
 function immersionCopy(level) {
   if (level <= 1) {
     return {
       badge: "Beginner-friendly / Nivel principiante",
-      instructions: "Step 1: Look at the Spanish word and its English meaning below. Step 2: Tap 🔊 to hear it. Step 3: Try saying it out loud.",
-      hint: "Tap the card for an example sentence"
+      instructions: "Step 1: Read the Spanish sentence below, with its English translation. Step 2: Tap 🔊 to hear the whole sentence. Step 3: Try saying it out loud, word for word.",
+      hint: "Tap the card to see it again"
     };
   }
   if (level === 2) {
     return {
       badge: "Un poco más de español",
-      instructions: "Look at the Spanish word. Try to guess the meaning, then tap the card to check.",
+      instructions: "Read the Spanish sentence. Try to guess what it means from context before you check the English underneath.",
       hint: "Toca la tarjeta / Tap the card"
     };
   }
   if (level === 3) {
     return {
       badge: "Mostly Spanish",
-      instructions: "¿Qué significa esta palabra? Piénsalo un momento antes de tocar.",
+      instructions: "Lee la frase en español. ¿Qué significa? Piénsalo antes de tocar para comprobar.",
       hint: "Toca para comprobar"
     };
   }
   return {
     badge: "Español",
-    instructions: "Lee la palabra y la frase de ejemplo. Intenta entenderla en español antes de comprobar.",
+    instructions: "Lee y escucha la frase en español. Intenta entenderla completamente en español antes de comprobar.",
     hint: "Toca para comprobar"
   };
 }
@@ -172,38 +192,53 @@ export function renderVocabulary(container) {
       stage.innerHTML = "";
       const v = items[idx];
       const showTranslationUpfront = immersionLevel <= 1;
+      const hasExample = !!(v.exampleEs && v.exampleEn);
 
-      const frontChildren = [
-        el("div", { class: "badge badge-level" }, v.level),
-        el("div", { class: "flashcard-word" }, v.es)
-      ];
-      if (showTranslationUpfront) {
-        frontChildren.push(el("div", { class: "flashcard-sub", style: "font-size:1.15rem;font-weight:700" }, v.en));
-      } else if (immersionLevel === 2) {
-        frontChildren.push(el("div", { class: "flashcard-sub text-faint" }, `(${v.en})`));
-      }
-      frontChildren.push(
-        el(
+      function playBtn(text, size) {
+        return el(
           "button",
           {
             class: "play-btn",
+            style: size ? `width:${size}px;height:${size}px` : "",
             "aria-label": "Listen / Escuchar",
             onclick: (e) => {
               e.stopPropagation();
-              audioEngine.speak(v.es);
+              audioEngine.speak(text);
             }
           },
           "🔊"
-        ),
+        );
+      }
+
+      // Front: the word is taught inside its example sentence, not alone —
+      // "el coche" is a label for what you're learning, the sentence is the lesson.
+      const frontChildren = [
+        el("div", { class: "flex justify-between items-center", style: "width:100%" }, [
+          el("div", { class: "badge badge-level" }, v.level),
+          el("div", { class: "text-faint", style: "font-size:.8rem;font-weight:700" }, v.es)
+        ]),
+        hasExample
+          ? el("div", { class: "flashcard-sentence" }, [highlightWordInSentence(v.exampleEs, v.es)])
+          : el("div", { class: "flashcard-word" }, v.es)
+      ];
+      if (hasExample && showTranslationUpfront) {
+        frontChildren.push(el("div", { class: "flashcard-sub" }, v.exampleEn));
+      } else if (hasExample && immersionLevel === 2) {
+        frontChildren.push(el("div", { class: "flashcard-sub text-faint" }, `(${v.exampleEn})`));
+      }
+      frontChildren.push(
+        el("div", { class: "flex gap-1 items-center", style: "margin-top:.3rem" }, [
+          playBtn(hasExample ? v.exampleEs : v.es),
+          hasExample ? el("span", { class: "text-faint", style: "font-size:.78rem" }, "Listen to the sentence") : null
+        ].filter(Boolean)),
         el("div", { class: "flashcard-hint" }, copy.hint)
       );
 
       const backChildren = [
-        immersionLevel <= 2 || !showTranslationUpfront
-          ? el("div", { class: "flashcard-word", style: "font-size:1.3rem" }, v.en)
+        el("div", { class: "flashcard-word", style: "font-size:1.4rem" }, `${v.es} = ${v.en}`),
+        hasExample && (!showTranslationUpfront || immersionLevel > 1)
+          ? el("div", { class: "flashcard-sub", style: "margin-top:.5rem" }, v.exampleEn)
           : null,
-        el("div", { class: "flashcard-sub" }, v.exampleEs),
-        immersionLevel <= 2 ? el("div", { class: "flashcard-sub text-faint" }, v.exampleEn) : null,
         v.spainNote ? el("div", { class: "badge badge-gold", style: "margin-top:.4rem" }, v.spainNote) : null
       ].filter(Boolean);
 
@@ -268,7 +303,7 @@ export function renderVocabulary(container) {
       stage.appendChild(ratingRow);
       counter.textContent = `Card ${idx + 1} of ${items.length} · Tarjeta ${idx + 1} de ${items.length}`;
 
-      if (store.state.settings.autoplayAudio) audioEngine.speak(v.es);
+      if (store.state.settings.autoplayAudio) audioEngine.speak(hasExample ? v.exampleEs : v.es);
 
       function ratingBtn(label, quality, cls) {
         return el(

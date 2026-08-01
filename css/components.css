@@ -77,10 +77,10 @@
 /* ---------- Flashcards ---------- */
 .flashcard-stage { display: flex; flex-direction: column; align-items: center; gap: 1rem; padding: 1rem 0; }
 .flashcard {
-  width: min(560px, 100%); min-height: 260px; perspective: 1400px; cursor: pointer;
+  width: min(560px, 100%); min-height: 300px; perspective: 1400px; cursor: pointer;
 }
 .flashcard-inner {
-  position: relative; width: 100%; height: 100%; min-height: 260px; text-align: center;
+  position: relative; width: 100%; height: 100%; min-height: 300px; text-align: center;
   transition: transform .5s cubic-bezier(.4,.2,.2,1); transform-style: preserve-3d;
 }
 .flashcard.flipped .flashcard-inner { transform: rotateY(180deg); }
@@ -91,6 +91,8 @@
 }
 .flashcard-face.back { transform: rotateY(180deg); }
 .flashcard-word { font-family: var(--font-es); font-size: 2rem; font-weight: 700; }
+.flashcard-sentence { font-family: var(--font-es); font-size: 1.3rem; font-weight: 600; line-height: 1.5; padding: 0 .5rem; }
+.flashcard-highlight { color: var(--accent); text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; }
 .flashcard-sub { color: var(--text-muted); font-size: .95rem; }
 .flashcard-hint { position: absolute; bottom: .8rem; font-size: .72rem; color: var(--text-faint); }
 
