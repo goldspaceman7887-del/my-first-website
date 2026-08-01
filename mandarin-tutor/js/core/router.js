@@ -46,7 +46,7 @@ export async function handleRoute() {
     } catch (e) {}
     currentCleanup = null;
   }
-  const hash = window.location.hash || "#/dashboard";
+  const hash = window.location.hash || "#/roadmap";
   const match = matchRoute(hash);
   container.classList.add("view-fade-out");
   await new Promise((r) => setTimeout(r, 90));

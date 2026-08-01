@@ -1,5 +1,5 @@
 import { store } from "../core/storage.js";
-import { el, blurActive } from "../core/ui.js";
+import { el, blurActive, toast } from "../core/ui.js";
 import { audioEngine } from "../core/audio.js";
 import { gradeItem, masteryLevel, isMastered, QUALITY, newItems, dueItems } from "../core/srs.js";
 import { addXP } from "../core/gamification.js";
@@ -8,6 +8,47 @@ import { VOCABULARY } from "../data/vocabulary.js";
 
 function srsId(v) {
   return `word_${v.id}`;
+}
+
+function sentencePracticeBlock(v) {
+  const wrap = el("div", { style: "margin-top:1rem" });
+  wrap.appendChild(el("h4", {}, "✍️ Practice: write your own sentence"));
+  wrap.appendChild(el("p", { class: "text-muted" }, `Write a Chinese sentence that uses ${v.word} (${v.pinyin}).`));
+  const ta = el("textarea", { placeholder: `在这里写一个用 "${v.word}" 的句子... (write a sentence using "${v.word}")` });
+  ta.style.cssText = "width:100%;min-height:70px;padding:.65rem .9rem;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:1rem;font-family:inherit;";
+  const submit = el("button", { class: "btn btn-primary btn-sm", style: "margin-top:.5rem" }, "Check my sentence");
+  const feedback = el("div", { style: "margin-top:.6rem" });
+  wrap.appendChild(ta);
+  wrap.appendChild(submit);
+  wrap.appendChild(feedback);
+
+  let done = false;
+  submit.addEventListener("click", () => {
+    const text = ta.value.trim();
+    if (!text) { toast("Write a sentence first.", { type: "error" }); return; }
+    feedback.innerHTML = "";
+    const usesWord = text.includes(v.word);
+    const longEnough = text.length >= v.word.length + 2;
+    const success = usesWord && longEnough;
+    feedback.appendChild(
+      el("div", { class: `feedback-block ${success ? "correct" : "incorrect"}` }, [
+        el("p", {}, success
+          ? `Nice work — that's a real sentence using ${v.word}!`
+          : !usesWord
+            ? `Try again — your sentence should include ${v.word}.`
+            : `Try to write a full sentence, not just the word by itself.`)
+      ])
+    );
+    if (success && !done) {
+      done = true;
+      addXP(3, `Sentence practice: ${v.word}`);
+      toast(`+3 XP — great sentence with ${v.word}!`, { type: "xp", icon: "⚡" });
+      submit.disabled = true;
+      ta.disabled = true;
+    }
+  });
+
+  return wrap;
 }
 
 function categoriesPresent() {
@@ -46,6 +87,8 @@ function wordDetail(v) {
       )
     )
   );
+
+  wrap.appendChild(sentencePracticeBlock(v));
 
   wrap.appendChild(el("h4", { style: "margin-top:1rem" }, "Speaking practice"));
   wrap.appendChild(el("p", { class: "text-muted" }, v.speakingPrompt));
