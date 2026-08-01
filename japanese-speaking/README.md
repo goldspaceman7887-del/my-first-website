@@ -8,7 +8,8 @@ No build step, no backend, no API keys — vanilla HTML/CSS/JS (ES modules), pro
 
 | Page | What it does |
 |---|---|
-| **Guide** | Explains what actually changes between ACTFL sublevels, why the 3-month plan is intense by design, and how to use this app to close the gap. |
+| **Review Session** | An Anki-style spaced-repetition review: real SM-2 scheduling (Again/Hard/Good/Easy) across every connector, grammar structure, and vocabulary word, always shown inside a full sentence, with paragraph reading breaks every few cards. Mixes due reviews with a capped number of new cards per session, keyboard shortcuts (space to flip, 1-4 to grade), and a Bunpro-style due/new-count widget on the Dashboard as the primary entry point. |
+| **Guide** | Explains what actually changes between ACTFL sublevels, why the 3-month plan is intense by design, how the Review Session's spaced repetition works, and how to use this app to close the gap. |
 | **Connector Lab** | ~40 discourse connectors (接続表現) across 10 categories (sequence, cause, result, contrast, condition, example, summary, opinion, emphasis) with example two-sentence chains, audio playback, and a quiz mode. This is the core toolkit for linking sentences into paragraphs. |
 | **Grammar Ladder** | 44 sentence-internal grammar structures leveled IH (6, review) → AL (14) → AM (16) → AH (8), each with structure pattern, explanation, example sentences with audio, and common mistakes. Includes a quiz mode. |
 | **Vocabulary in Sentences** | 84 JLPT words carrying you from mid-N3 through N2, every word taught inside a full example sentence (never a bare word list), with reading, part of speech, meaning, audio, and a fill-in-the-blank quiz mode. Paced into the 12-week roadmap at ~7 new words/week. |

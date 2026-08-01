@@ -321,6 +321,50 @@ a:hover { text-decoration: underline; }
 .btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .btn:disabled:hover { background: var(--bg-elevated); }
 
+/* Bunpro-style review CTA on the dashboard */
+.review-cta-card { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; border-left: 4px solid var(--accent); }
+.review-cta-numbers { display: flex; gap: 28px; }
+.review-cta-num-wrap { text-align: center; }
+.review-cta-num { font-size: 2.4rem; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.review-cta-num.accent { color: var(--accent); }
+.review-cta-num.accent2 { color: var(--accent-2); }
+
+/* Review Session (Anki-style flip cards) */
+.review-hero { display: flex; gap: 32px; justify-content: center; margin: 10px 0 18px; }
+.review-hero-stat { text-align: center; }
+.review-hero-num { font-size: 3rem; font-weight: 800; line-height: 1; color: var(--accent); font-variant-numeric: tabular-nums; }
+.review-hero-num.accent2 { color: var(--accent-2); }
+
+.review-new-limit { display: flex; align-items: center; gap: 8px; margin: 12px 0; font-size: 0.9rem; }
+.review-new-limit input { width: 70px; }
+.review-start-btn { width: 100%; margin-top: 6px; font-size: 1.05rem; padding: 14px; }
+
+.review-progress { margin-bottom: 8px; text-align: center; }
+
+.review-card { max-width: 600px; margin: 0 auto; text-align: center; padding: 28px 24px; }
+.review-card.breather { text-align: left; }
+.review-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.review-front { font-size: 1.5rem; line-height: 1.8; margin: 10px 0 6px; }
+.review-card-clickable { cursor: pointer; }
+.review-tap-hint { margin-top: 14px; }
+
+.review-back { margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--border); text-align: left; }
+.review-back-title { font-size: 1.3rem; font-weight: 800; margin-bottom: 4px; }
+
+.review-grade-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 18px; }
+.review-grade-btn { border: none; border-radius: 12px; padding: 10px 4px; color: #fff; font-weight: 700; cursor: pointer; display: flex; flex-direction: column; gap: 2px; align-items: center; font-size: 0.92rem; }
+.review-grade-btn:hover { filter: brightness(1.08); }
+.review-grade-btn.danger { background: var(--danger); }
+.review-grade-btn.warn2 { background: var(--warn); }
+.review-grade-btn.good2 { background: var(--good); }
+.review-grade-btn.accent2b { background: var(--accent-2); }
+.review-grade-preview { font-size: 0.72rem; font-weight: 500; opacity: 0.85; }
+
+.review-continue-btn { margin-top: 14px; width: 100%; }
+
+.review-summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; margin: 16px 0; }
+.review-summary-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
 .week-card.current-week { border-left: 4px solid var(--accent-2); }
 .week-card-header { display: flex; align-items: center; gap: 10px; justify-content: space-between; }
 .week-card-header h2 { margin: 0; font-size: 1.1rem; }

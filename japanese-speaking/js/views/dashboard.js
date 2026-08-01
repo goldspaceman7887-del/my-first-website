@@ -5,6 +5,7 @@ import { GRAMMAR } from "../data/grammar.js";
 import { VOCABULARY, WORD_LEVELS } from "../data/vocabulary.js";
 import { ROADMAP, CHECKPOINTS } from "../data/roadmap.js";
 import { FUNCTIONS } from "../data/prompts.js";
+import { getDueCount, getNewAvailableCount } from "../data/reviewPool.js";
 
 function daysSince(dateStr) {
   const start = new Date(dateStr);
@@ -37,6 +38,17 @@ export function render(root) {
     ])
   );
 
+  const due = getDueCount(state);
+  const freshAvailable = getNewAvailableCount(state);
+  const reviewCta = el("section", { class: "card review-cta-card" }, [
+    el("div", { class: "review-cta-numbers" }, [
+      el("div", { class: "review-cta-num-wrap" }, [el("div", { class: "review-cta-num accent" }, String(due)), el("div", { class: "muted small" }, "due")]),
+      el("div", { class: "review-cta-num-wrap" }, [el("div", { class: "review-cta-num accent2" }, String(Math.min(freshAvailable, state.reviewStats.newCardsPerSession))), el("div", { class: "muted small" }, "new ready")]),
+    ]),
+    el("a", { class: "btn primary review-start-btn", href: "#/review", style: "max-width:240px;" }, due + freshAvailable > 0 ? "⚡ Start Review" : "⚡ Review (all caught up)"),
+  ]);
+  container.appendChild(reviewCta);
+
   const statGrid = el("div", { class: "stat-grid" }, [
     statCard("🔥", state.streak, "day streak"),
     statCard("⚡", state.xp, "XP"),
@@ -68,6 +80,7 @@ export function render(root) {
   container.appendChild(thisWeek);
 
   const quickGrid = el("div", { class: "quick-grid" }, [
+    quickCard("⚡", "Review Session", "Fast spaced-repetition flip cards, mixing due reviews with new material.", "#/review"),
     quickCard("🔗", "Connector Lab", "Learn + quiz the phrases that link sentences into paragraphs.", "#/connectors"),
     quickCard("📚", "Grammar Ladder", "44 structures leveled IH → AL → AM → AH, with example sentences.", "#/grammar"),
     quickCard("🈶", "Vocabulary (N3→N2)", "84 words, always learned through a full example sentence.", "#/vocabulary"),

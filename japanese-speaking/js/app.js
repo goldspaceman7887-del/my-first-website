@@ -1,6 +1,7 @@
 import { registerRoute, initRouter } from "./core/router.js";
 import { touchDaily, getState, subscribe } from "./core/storage.js";
 import { render as renderDashboard } from "./views/dashboard.js";
+import { render as renderReview } from "./views/review.js";
 import { render as renderConnectors } from "./views/connectors.js";
 import { render as renderGrammar } from "./views/grammar.js";
 import { render as renderVocabulary } from "./views/vocabulary.js";
@@ -15,6 +16,7 @@ import { render as renderSettings } from "./views/settings.js";
 touchDaily();
 
 registerRoute("/dashboard", renderDashboard);
+registerRoute("/review", renderReview);
 registerRoute("/connectors", renderConnectors);
 registerRoute("/grammar", renderGrammar);
 registerRoute("/vocabulary", renderVocabulary);

@@ -1,6 +1,6 @@
 import { GRAMMAR, LEVELS } from "../data/grammar.js";
 import { getState, recordQuizAnswer } from "../core/storage.js";
-import { el, toast } from "../core/ui.js";
+import { el, toast, renderHighlighted, stripHighlightMarkup } from "../core/ui.js";
 import { speak } from "../core/audio.js";
 
 let activeLevel = "all";
@@ -70,8 +70,8 @@ function renderLearn(root) {
     const exBox = el("div", { class: "connector-example" });
     g.examples.forEach((ex) => {
       const row = el("div", { class: "grammar-example-row" }, [
-        el("span", {}, ex.jp),
-        el("button", { class: "icon-btn small", title: "Listen", onclick: () => speak(ex.jp, { rate: getState().settings.rate }) }, "🔊"),
+        el("span", { lang: "ja" }, renderHighlighted(ex.jp)),
+        el("button", { class: "icon-btn small", title: "Listen", onclick: () => speak(stripHighlightMarkup(ex.jp), { rate: getState().settings.rate }) }, "🔊"),
       ]);
       exBox.appendChild(row);
       exBox.appendChild(el("div", { class: "muted small" }, ex.en));
@@ -113,7 +113,7 @@ function renderQuiz() {
 
   const card = el("div", { class: "card quiz-card" });
   card.appendChild(el("p", { class: "muted" }, "Which structure does this example sentence use?"));
-  card.appendChild(el("p", { class: "quiz-sentence" }, target.examples[0].jp));
+  card.appendChild(el("p", { class: "quiz-sentence" }, stripHighlightMarkup(target.examples[0].jp)));
   card.appendChild(el("p", { class: "muted small" }, target.examples[0].en));
 
   const optRow = el("div", { class: "quiz-options" });

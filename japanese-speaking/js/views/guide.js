@@ -39,7 +39,7 @@ export function render(root) {
       `<ol>
         <li><strong>Cohesion devices (接続表現).</strong> Varied connectors — not just そして/でも repeated. <a href="#/connectors">Connector Lab</a>, ~40 items.</li>
         <li><strong>Sentence-internal grammar precision.</strong> ~のに/わけだ/として mark AL; ~ものの/つつある/ばかりに/にほかならない mark AM; ~とはいえ/ざるを得ない/かねない/がたい and deliberate register-switching mark AH. <a href="#/grammar">Grammar Ladder</a> has all 44, leveled, with example sentences.</li>
-        <li><strong>Vocabulary depth.</strong> Speaking at Advanced Mid needs Advanced Mid words, not just Advanced Mid grammar. <a href="#/vocabulary">Vocabulary in Sentences</a> carries you from mid-N3 through N2 — 84 words, every one taught inside a full sentence, never as a bare flashcard.</li>
+        <li><strong>Vocabulary depth.</strong> Speaking at Advanced Mid needs Advanced Mid words, not just Advanced Mid grammar. <a href="#/vocabulary">Vocabulary in Sentences</a> carries you from mid-N3 through N2 — 84 words, every one taught inside a full sentence, never as a bare flashcard. JLPT levels here are only a convenient difficulty scale, not a study target — the real goal is words and structures you actually reach for in daily conversation.</li>
         <li><strong>Sustained turns.</strong> 60-120 seconds uninterrupted, not one-line answers. <a href="#/practice">Paragraph Practice</a>.</li>
         <li><strong>Handling complications and taking a stance.</strong> AM/AH-level tasks almost always include an unexpected twist or ask you to argue a position while acknowledging the other side.</li>
         <li><strong>Hearing the target.</strong> <a href="#/levels">Level Ladder</a> shows the exact same prompt answered at all 4 levels side by side, annotated — the fastest way to internalize what each level actually sounds like.</li>
@@ -60,6 +60,14 @@ export function render(root) {
         <li><strong>Week 12 — Advanced Mid mastery checkpoint:</strong> full 5-function mock session, 90%+ grammar overall, self-score 3.2+. Then straight into the Advanced High extension plan.</li>
       </ul>
       <p>Full week-by-week task list, including exact grammar assignments per week: <a href="#/roadmap">Roadmap page</a>.</p>`
+    )
+  );
+
+  container.appendChild(
+    section(
+      "Why there's a Review Session, and how it works",
+      `<p>Learning something once isn't the goal — being able to use it without thinking, months later, in an actual conversation, is. <a href="#/review">Review Session</a> runs a real spaced-repetition schedule (the same family of algorithm Anki uses) across every connector, grammar structure, and vocabulary word in this app. Grade a card honestly — Again / Hard / Good / Easy — and it comes back sooner or later depending on how well you knew it, out to a 6-month interval once something is genuinely automatic.</p>
+       <p>Every card is a full sentence, never an isolated word or rule, and every few cards a full paragraph shows up as a reading break. Ten minutes a day is enough to keep everything you've learned — old and new — alive at once, instead of front-loading material and slowly losing it.</p>`
     )
   );
 

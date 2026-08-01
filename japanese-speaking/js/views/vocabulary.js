@@ -11,7 +11,7 @@ export function render(root) {
   container.appendChild(
     el("header", { class: "view-header" }, [
       el("h1", {}, "🈶 Vocabulary in Sentences"),
-      el("p", { class: "subtitle" }, "JLPT N3 → N2, always learned through a full sentence, never as a bare word list. 84 words: the second half of N3 first, then straight into N2." ),
+      el("p", { class: "subtitle" }, "Always learned through a full sentence, never as a bare word list — 84 words, using JLPT N3→N2 only as a rough difficulty scale. The goal is real conversational fluency, not the exam." ),
     ])
   );
 

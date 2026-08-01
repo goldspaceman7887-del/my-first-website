@@ -1,3 +1,5 @@
+import { grade as srsGrade } from "./srs.js";
+
 const KEY = "jpAdvSpeak_v1";
 
 function today() {
@@ -10,7 +12,9 @@ function defaultState() {
     lastActive: today(),
     streak: 0,
     xp: 0,
-    connectorProgress: {}, // id -> { seen: n, correct: n, mastered: bool }
+    connectorProgress: {}, // id -> { seen: n, correct: n, mastered: bool } — used by the Learn/Quiz pages
+    srs: {}, // id -> { interval, ease, reps, lapses, due, lastReviewed } — used by Review Session
+    reviewStats: { totalReviews: 0, sessionsCompleted: 0, newCardsPerSession: 8 },
     completedTasks: {}, // "week-taskIndex" -> true
     recordings: [], // { id, ts, functionId, topic, transcript, wordCount, sentenceCount, connectorHits: [], durationSec, rubricScore }
     rubricAssessments: [], // { id, ts, scores: {dimensionId: 1-4}, average, note }
@@ -72,6 +76,28 @@ export function recordQuizAnswer(connectorId, correct) {
   state.quizStats.attempts += 1;
   if (correct) state.quizStats.correct += 1;
   addXP(correct ? 5 : 1);
+  save();
+}
+
+export function gradeSrsItem(id, gradeName) {
+  const prev = state.srs[id];
+  const next = srsGrade(prev, gradeName);
+  state.srs[id] = next;
+  state.reviewStats.totalReviews += 1;
+  const xpByGrade = { again: 1, hard: 3, good: 5, easy: 7 };
+  addXP(xpByGrade[gradeName] || 3);
+  save();
+  return next;
+}
+
+export function completeReviewSession() {
+  state.reviewStats.sessionsCompleted += 1;
+  addXP(10);
+  save();
+}
+
+export function setNewCardsPerSession(n) {
+  state.reviewStats.newCardsPerSession = n;
   save();
 }
 
