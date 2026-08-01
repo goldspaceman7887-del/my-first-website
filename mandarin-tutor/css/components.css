@@ -251,6 +251,9 @@ table.data-table th { color: var(--text-muted); font-size: .78rem; text-transfor
 .roadmap-node-label { font-size: .78rem; font-weight: 700; text-align: center; color: var(--text-muted); }
 .roadmap-node.locked .roadmap-node-label { color: var(--text-faint); }
 
+.roadmap-tier-header { width: 100%; max-width: 420px; text-align: center; margin: 1.5rem 0 .5rem; position: relative; z-index: 1; }
+.roadmap-tier-header h3 { margin-bottom: .15rem; }
+.roadmap-tier-header:first-child { margin-top: 0; }
 .roadmap-lesson-sentence { padding: .9rem 0; border-bottom: 1px solid var(--border); }
 .roadmap-quiz-option { text-align: left; }
 .roadmap-progress-summary { display: flex; align-items: center; gap: .75rem; margin-bottom: 1rem; }
