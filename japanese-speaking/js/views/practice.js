@@ -80,6 +80,7 @@ export function render(root) {
       el("label", {}, ["Topic", topicSelect]),
     ]),
     el("p", { class: "muted" }, fn.actfl),
+    el("a", { class: "btn subtle", href: "#/levels" }, "🪜 Not sure what this should sound like? See the 4-level ladder →"),
   ]);
   container.appendChild(controlCard);
 

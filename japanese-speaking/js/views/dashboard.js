@@ -1,7 +1,8 @@
 import { getState } from "../core/storage.js";
 import { el, progressBar } from "../core/ui.js";
 import { CONNECTORS, CATEGORIES } from "../data/connectors.js";
-import { ROADMAP } from "../data/roadmap.js";
+import { GRAMMAR } from "../data/grammar.js";
+import { ROADMAP, CHECKPOINTS } from "../data/roadmap.js";
 import { FUNCTIONS } from "../data/prompts.js";
 
 function daysSince(dateStr) {
@@ -21,12 +22,15 @@ export function render(root) {
   const weekData = ROADMAP.find((w) => w.week === week);
   const mastered = Object.values(state.connectorProgress).filter((c) => c.mastered).length;
   const masteredPct = Math.round((mastered / CONNECTORS.length) * 100);
+  const grammarMastered = GRAMMAR.filter((g) => state.connectorProgress[g.id]?.mastered).length;
+  const grammarPct = Math.round((grammarMastered / GRAMMAR.length) * 100);
+  const checkpoint = CHECKPOINTS.find((cp) => cp.week === week);
   const container = el("div", { class: "view" });
 
   container.appendChild(
     el("header", { class: "view-header" }, [
       el("h1", {}, "こんにちは 👋 — Advanced High Speaking Lab"),
-      el("p", { class: "subtitle" }, "Intermediate High → Advanced High, one connected paragraph at a time."),
+      el("p", { class: "subtitle" }, "Mid-Intermediate High → Advanced High, via Advanced Low and Advanced Mid checkpoints — one connected paragraph at a time."),
     ])
   );
 
@@ -35,11 +39,17 @@ export function render(root) {
     statCard("⚡", state.xp, "XP"),
     statCard("📅", `Week ${week} / 8`, "in your plan"),
     statCard("🔗", `${masteredPct}%`, "connectors mastered"),
+    statCard("📚", `${grammarPct}%`, "grammar mastered"),
   ]);
   container.appendChild(statGrid);
 
   const thisWeek = el("section", { class: "card highlight-card" });
-  thisWeek.appendChild(el("h2", {}, `Week ${week}: ${weekData.title}`));
+  thisWeek.appendChild(
+    el("div", { class: "week-card-header" }, [
+      el("h2", {}, `Week ${week}: ${weekData.title}`),
+      checkpoint ? el("span", { class: "badge warn" }, "🎯 Checkpoint week") : null,
+    ])
+  );
   thisWeek.appendChild(el("p", { class: "muted" }, weekData.focus));
   const taskList = el("ul", { class: "task-list" });
   weekData.tasks.forEach((t, i) => {
@@ -55,6 +65,8 @@ export function render(root) {
 
   const quickGrid = el("div", { class: "quick-grid" }, [
     quickCard("🔗", "Connector Lab", "Learn + quiz the phrases that link sentences into paragraphs.", "#/connectors"),
+    quickCard("📚", "Grammar Ladder", "24 structures leveled IH → AL → AM → AH, with example sentences.", "#/grammar"),
+    quickCard("🪜", "Level Ladder", "The same prompt answered at all 4 levels — hear exactly what changes.", "#/levels"),
     quickCard("🎤", "Paragraph Practice", "Scaffolded speaking prompts across 6 Advanced-level functions.", "#/practice"),
     quickCard("🔁", "Shadowing", "Listen and repeat model paragraph-length monologues.", "#/shadowing"),
     quickCard("📋", "Self-Assessment", "Score your recordings against the ACTFL Advanced High rubric.", "#/rubric"),
@@ -80,6 +92,24 @@ export function render(root) {
   });
   progressCard.appendChild(catList);
   container.appendChild(progressCard);
+
+  const grammarCard = el("section", { class: "card" });
+  grammarCard.appendChild(el("h2", {}, "Grammar mastery by level"));
+  const gLevels = [...new Set(GRAMMAR.map((g) => g.level))];
+  const gList = el("div", { class: "category-progress-list" });
+  gLevels.forEach((lvlId) => {
+    const items = GRAMMAR.filter((g) => g.level === lvlId);
+    const done = items.filter((g) => state.connectorProgress[g.id]?.mastered).length;
+    const pct = Math.round((done / items.length) * 100);
+    gList.appendChild(
+      el("div", { class: "category-progress-row" }, [
+        el("div", { class: "category-progress-label" }, [el("span", {}, lvlId), el("span", { class: "muted small" }, ` ${done}/${items.length}`)]),
+        progressBar(pct),
+      ])
+    );
+  });
+  grammarCard.appendChild(gList);
+  container.appendChild(grammarCard);
 
   const recCard = el("section", { class: "card" });
   recCard.appendChild(el("h2", {}, "Recent recordings"));

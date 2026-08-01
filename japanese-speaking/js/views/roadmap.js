@@ -1,4 +1,4 @@
-import { ROADMAP } from "../data/roadmap.js";
+import { ROADMAP, CHECKPOINTS } from "../data/roadmap.js";
 import { getState, toggleTask } from "../core/storage.js";
 import { el, progressBar } from "../core/ui.js";
 
@@ -14,7 +14,7 @@ export function render(root) {
   container.appendChild(
     el("header", { class: "view-header" }, [
       el("h1", {}, "📅 8-Week Roadmap"),
-      el("p", { class: "subtitle" }, "Intermediate High → Advanced High. ~20-30 min/day. Check off tasks as you go — consistency matters more than any single long session."),
+      el("p", { class: "subtitle" }, "Mid-Intermediate High → Advanced High, via explicit Advanced Low and Advanced Mid checkpoints. 30-40 min/day. This plan assumes daily practice — it's built to be demanding, not gentle."),
     ])
   );
 
@@ -27,13 +27,27 @@ export function render(root) {
     ])
   );
 
+  const checkpointCard = el("div", { class: "card checkpoint-card" });
+  checkpointCard.appendChild(el("h2", {}, "Checkpoints"));
+  CHECKPOINTS.forEach((cp) => {
+    checkpointCard.appendChild(
+      el("div", { class: "checkpoint-row" }, [
+        el("span", { class: "badge" }, `Week ${cp.week}`),
+        el("div", {}, [el("strong", {}, cp.label), el("div", { class: "muted small" }, cp.desc)]),
+      ])
+    );
+  });
+  container.appendChild(checkpointCard);
+
   ROADMAP.forEach((w) => {
     const isCurrent = w.week === currentWeek;
+    const checkpoint = CHECKPOINTS.find((cp) => cp.week === w.week);
     const card = el("div", { class: `card week-card ${isCurrent ? "current-week" : ""}` });
     card.appendChild(
       el("div", { class: "week-card-header" }, [
         el("h2", {}, `Week ${w.week}: ${w.title}`),
         isCurrent ? el("span", { class: "badge" }, "You are here") : null,
+        checkpoint ? el("span", { class: "badge warn" }, "🎯 Checkpoint week") : null,
       ])
     );
     card.appendChild(el("p", { class: "muted" }, w.focus));

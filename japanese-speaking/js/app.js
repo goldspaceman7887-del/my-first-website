@@ -2,6 +2,8 @@ import { registerRoute, initRouter } from "./core/router.js";
 import { touchDaily, getState, subscribe } from "./core/storage.js";
 import { render as renderDashboard } from "./views/dashboard.js";
 import { render as renderConnectors } from "./views/connectors.js";
+import { render as renderGrammar } from "./views/grammar.js";
+import { render as renderLevels } from "./views/levels.js";
 import { render as renderPractice } from "./views/practice.js";
 import { render as renderShadowing } from "./views/shadowing.js";
 import { render as renderRoadmap } from "./views/roadmap.js";
@@ -13,6 +15,8 @@ touchDaily();
 
 registerRoute("/dashboard", renderDashboard);
 registerRoute("/connectors", renderConnectors);
+registerRoute("/grammar", renderGrammar);
+registerRoute("/levels", renderLevels);
 registerRoute("/practice", renderPractice);
 registerRoute("/shadowing", renderShadowing);
 registerRoute("/roadmap", renderRoadmap);

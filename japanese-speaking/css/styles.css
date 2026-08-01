@@ -126,7 +126,7 @@ a:hover { text-decoration: underline; }
 .muted { color: var(--text-muted); }
 .small { font-size: 0.85rem; }
 
-.stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 16px; }
 .stat-card {
   background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius);
   padding: 14px; text-align: center; box-shadow: var(--shadow);
@@ -254,6 +254,22 @@ a:hover { text-decoration: underline; }
 .model-en { font-size: 0.92rem; }
 .connector-hl { background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--text); border-radius: 4px; padding: 0 2px; font-weight: 700; }
 .model-btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+
+.grammar-list { display: flex; flex-direction: column; gap: 12px; }
+.grammar-card.mastered { border-color: var(--good); }
+.grammar-card-top { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+.grammar-card-top h3 { margin: 0; font-size: 1.05rem; flex: 1; }
+.grammar-example-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 1rem; margin-top: 4px; }
+.grammar-example-row:first-child { margin-top: 0; }
+.grammar-mistake { background: color-mix(in srgb, var(--warn) 12%, transparent); border-radius: 8px; padding: 8px 10px; font-size: 0.88rem; margin-top: 8px; }
+
+.ladder { display: flex; flex-direction: column; gap: 12px; }
+.ladder-tier-head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.ladder-notes { margin-top: 8px; }
+
+.checkpoint-card { background: color-mix(in srgb, var(--accent) 6%, var(--bg-elevated)); }
+.checkpoint-row { display: flex; gap: 12px; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.checkpoint-row:last-child { border-bottom: none; }
 
 .week-card.current-week { border-left: 4px solid var(--accent-2); }
 .week-card-header { display: flex; align-items: center; gap: 10px; justify-content: space-between; }
