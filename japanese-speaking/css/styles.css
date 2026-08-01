@@ -271,9 +271,55 @@ a:hover { text-decoration: underline; }
 .ladder-tier-head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
 .ladder-notes { margin-top: 8px; }
 
-.checkpoint-card { background: color-mix(in srgb, var(--accent) 6%, var(--bg-elevated)); }
-.checkpoint-row { display: flex; gap: 12px; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid var(--border); }
-.checkpoint-row:last-child { border-bottom: none; }
+/* Duolingo-style winding lesson path */
+.roadmap-path-wrap { position: relative; width: 100%; max-width: 460px; margin: 8px auto 6px; }
+.roadmap-path-svg-host { position: absolute; inset: 0; }
+.roadmap-path-svg { width: 100%; height: 100%; display: block; }
+.path-line-base { fill: none; stroke: var(--border); stroke-width: 8; stroke-linecap: round; }
+.path-line-done { fill: none; stroke: var(--good); stroke-width: 8; stroke-linecap: round; }
+
+.path-node-layer { position: absolute; inset: 0; }
+.path-node-btn {
+  position: absolute; transform: translate(-50%, -50%) scale(var(--node-scale, 1));
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; border: none; font-weight: 800; font-size: 1.15rem; color: #fff;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18); transition: transform 0.15s, box-shadow 0.15s;
+  padding: 0;
+}
+.path-node-btn:hover, .path-node-btn:focus-visible { --node-scale: 1.08; }
+.path-node-btn.completed { background: var(--good); }
+.path-node-btn.current { background: var(--accent); position: absolute; }
+.path-node-btn.current::after {
+  content: ""; position: absolute; inset: -6px; border-radius: 50%;
+  border: 3px solid var(--accent); animation: pathPulseRing 1.8s ease-out infinite;
+}
+@keyframes pathPulseRing {
+  0% { transform: scale(0.9); opacity: 0.7; }
+  100% { transform: scale(1.35); opacity: 0; }
+}
+.path-node-btn.locked { background: var(--bg-elevated); color: var(--text-muted); border: 3px solid var(--border); box-shadow: none; font-size: 0.95rem; }
+.path-node-btn.checkpoint { border: 4px solid var(--warn); }
+.path-node-btn.date-current { box-shadow: 0 0 0 3px var(--bg), 0 0 0 6px var(--accent-2); }
+.path-node-btn.selected { --node-scale: 1.1; }
+@media (prefers-reduced-motion: reduce) {
+  .path-node-btn.current::after { animation: none; }
+}
+
+.path-legend { display: flex; flex-wrap: wrap; gap: 8px 18px; justify-content: center; margin: 4px 0 18px; }
+.path-legend-item { display: flex; align-items: center; gap: 6px; }
+.path-legend-dot {
+  width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 0.78rem; flex-shrink: 0; color: #fff; font-weight: 700;
+}
+.path-legend-dot.completed { background: var(--good); }
+.path-legend-dot.current { background: var(--accent); }
+.path-legend-dot.locked { background: var(--bg); border: 2px solid var(--border); color: var(--text-muted); }
+.path-legend-dot.checkpoint { background: var(--warn); }
+
+.celebration-card { background: color-mix(in srgb, var(--good) 15%, var(--bg-elevated)); border-color: var(--good); font-weight: 600; text-align: center; }
+.week-nav-row { display: flex; gap: 10px; margin-top: 14px; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn:disabled:hover { background: var(--bg-elevated); }
 
 .week-card.current-week { border-left: 4px solid var(--accent-2); }
 .week-card-header { display: flex; align-items: center; gap: 10px; justify-content: space-between; }
