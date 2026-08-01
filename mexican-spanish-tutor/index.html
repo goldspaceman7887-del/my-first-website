@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Mexican Spanish Immersion Tutor — Novice to ACTFL Advanced Low</title>
+<meta name="description" content="A complete, systematic Mexican Spanish tutor: ACTFL proficiency tracking, vocabulary, grammar-through-sentences, dialogues, roleplay, immersion, conversation, story mode, OPI practice, writing coach, and spaced repetition — all in the browser." />
+<meta name="color-scheme" content="light dark" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🇲🇽</text></svg>" />
+<link rel="stylesheet" href="css/themes.css" />
+<link rel="stylesheet" href="css/main.css" />
+<link rel="stylesheet" href="css/components.css" />
+<link rel="stylesheet" href="css/animations.css" />
+</head>
+<body>
+<a class="skip-link" href="#view-root">Skip to content</a>
+
+<div class="app-shell">
+  <header class="topbar">
+    <button class="icon-btn nav-toggle" id="nav-toggle" aria-label="Open menu" aria-expanded="false">
+      <span class="hamburger"></span>
+    </button>
+    <a href="#/dashboard" class="brand" data-nav-link>
+      <span class="brand-flag" aria-hidden="true">🇲🇽</span>
+      <span class="brand-name">Spanish Tutor MX</span>
+    </a>
+
+    <div class="topbar-stats" id="topbar-stats" aria-label="Your progress">
+      <div class="stat-chip stat-streak" title="Day streak">
+        <span aria-hidden="true">🔥</span><span id="stat-streak">0</span>
+      </div>
+      <div class="stat-chip stat-xp" title="Experience (XP)">
+        <span aria-hidden="true">⚡</span><span id="stat-xp">0</span>
+      </div>
+      <div class="stat-chip stat-level" title="Current ACTFL estimate">
+        <span id="stat-level">NL</span>
+      </div>
+      <div class="stat-chip stat-due" title="Reviews due" id="stat-due-chip">
+        <span aria-hidden="true">🔁</span><span id="stat-due">0</span>
+      </div>
+    </div>
+
+    <div class="topbar-actions">
+      <select id="immersion-select" class="immersion-select" title="Immersion level">
+        <option value="1">Immersion 1 · Heavy English</option>
+        <option value="2">Immersion 2 · Mixed</option>
+        <option value="3">Immersion 3 · Mostly Spanish</option>
+        <option value="4">Immersion 4 · Spanish only</option>
+      </select>
+      <button class="icon-btn" id="theme-toggle" aria-label="Toggle light/dark theme">
+        <span id="theme-icon" aria-hidden="true">🌙</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="app-body">
+    <nav class="sidebar" id="sidebar" aria-label="Main navigation">
+      <ul class="nav-list">
+        <li><a href="#/dashboard" data-nav-link><span class="nav-icon">🏠</span><span class="nav-text"><span class="nav-label">Dashboard</span><span class="nav-sub">Panel</span></span></a></li>
+        <li><a href="#/roadmap" data-nav-link><span class="nav-icon">🗺️</span><span class="nav-text"><span class="nav-label">ACTFL Roadmap</span><span class="nav-sub">Can-Do tracker</span></span></a></li>
+        <li><a href="#/daily-lesson" data-nav-link><span class="nav-icon">📅</span><span class="nav-text"><span class="nav-label">Daily Lesson</span><span class="nav-sub">9-part lesson</span></span></a></li>
+        <li><a href="#/review" data-nav-link><span class="nav-icon">🔁</span><span class="nav-text"><span class="nav-label">Review</span><span class="nav-sub">Spaced repetition</span></span></a></li>
+        <li class="nav-divider"></li>
+        <li><a href="#/vocabulary" data-nav-link><span class="nav-icon">🗂️</span><span class="nav-text"><span class="nav-label">Vocabulario</span><span class="nav-sub">Vocabulary</span></span></a></li>
+        <li><a href="#/sentences" data-nav-link><span class="nav-icon">🧩</span><span class="nav-text"><span class="nav-label">Gramática</span><span class="nav-sub">Sentences & grammar</span></span></a></li>
+        <li><a href="#/dialogues" data-nav-link><span class="nav-icon">💬</span><span class="nav-text"><span class="nav-label">Diálogos</span><span class="nav-sub">Dialogues</span></span></a></li>
+        <li class="nav-divider"></li>
+        <li><a href="#/roleplay" data-nav-link><span class="nav-icon">🎭</span><span class="nav-text"><span class="nav-label">Roleplay</span><span class="nav-sub">Real scenarios</span></span></a></li>
+        <li><a href="#/conversation" data-nav-link><span class="nav-icon">🤖</span><span class="nav-text"><span class="nav-label">Conversation</span><span class="nav-sub">Chat partner</span></span></a></li>
+        <li><a href="#/immersion" data-nav-link><span class="nav-icon">🌊</span><span class="nav-text"><span class="nav-label">Immersion</span><span class="nav-sub">Spanish only</span></span></a></li>
+        <li><a href="#/story" data-nav-link><span class="nav-icon">📖</span><span class="nav-text"><span class="nav-label">Story Mode</span><span class="nav-sub">Cuentos</span></span></a></li>
+        <li><a href="#/opi" data-nav-link><span class="nav-icon">🎓</span><span class="nav-text"><span class="nav-label">OPI Practice</span><span class="nav-sub">Mock interview</span></span></a></li>
+        <li><a href="#/correction" data-nav-link><span class="nav-icon">✍️</span><span class="nav-text"><span class="nav-label">Writing Coach</span><span class="nav-sub">Correction mode</span></span></a></li>
+        <li class="nav-divider"></li>
+        <li><a href="#/achievements" data-nav-link><span class="nav-icon">🏆</span><span class="nav-text"><span class="nav-label">Achievements</span><span class="nav-sub">Logros</span></span></a></li>
+        <li><a href="#/settings" data-nav-link><span class="nav-icon">⚙️</span><span class="nav-text"><span class="nav-label">Settings</span><span class="nav-sub">Ajustes</span></span></a></li>
+      </ul>
+      <div class="sidebar-footer">
+        <div class="goal-widget">
+          <div class="goal-label">Daily goal</div>
+          <div class="progress-bar"><div class="progress-bar-fill" id="daily-goal-fill" style="width:0%"></div></div>
+          <div class="goal-text" id="daily-goal-text">0 / 40 XP</div>
+        </div>
+      </div>
+    </nav>
+    <div class="sidebar-scrim" id="sidebar-scrim"></div>
+
+    <main id="view-root" class="view-root" tabindex="-1"></main>
+  </div>
+</div>
+
+<div id="toast-container" class="toast-container"></div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
