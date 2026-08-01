@@ -1,10 +1,12 @@
 // ROADMAP MODE — a Duolingo-style path spanning all 9 ACTFL sub-levels,
-// Novice Low through Advanced High. Each unit: learn 5 sentences + a
-// grammar point, then a 6-exercise practice round (recognition, a
-// grammar-specific drill, and typed free-recall production) before the
-// next unit unlocks. Passing a unit also seeds it into the spaced-
-// repetition Review queue, so it actually comes back later instead of
-// being seen once and forgotten.
+// Novice Low through Advanced High. Each unit follows grammar -> vocabulary
+// -> sentences -> practice: the grammar point is explained first, then the
+// individual words/characters it's built from, then the 8 full sentences
+// in context, then an 8-exercise practice round (recognition, a grammar-
+// specific drill, and typed free-recall production) before the next unit
+// unlocks. Passing a unit also seeds it into the spaced-repetition Review
+// queue, so it actually comes back later instead of being seen once and
+// forgotten.
 
 import { store, todayISO } from "../core/storage.js";
 import { el, blurActive, toast, progressBar } from "../core/ui.js";
@@ -12,6 +14,8 @@ import { audioEngine } from "../core/audio.js";
 import { addXP, registerStudyToday } from "../core/gamification.js";
 import { gradeItem, QUALITY } from "../core/srs.js";
 import { ROADMAP_UNITS, ACTFL_LEVELS, levelIndex } from "../data/roadmap.js";
+import { VOCABULARY } from "../data/vocabulary.js";
+import { findCharacter } from "../core/lookup.js";
 
 function completedSet() {
   return new Set(store.state.progress.roadmapUnitsCompleted || []);
@@ -40,6 +44,18 @@ function shuffle(arr) {
   return a;
 }
 
+// Vocabulary actually used in this unit's sentences, computed on the fly
+// against the existing curriculum data rather than hand-authored per unit.
+function unitVocab(unit) {
+  const text = unit.sentences.map((s) => s.zh).join("");
+  const words = VOCABULARY.filter((v) => text.includes(v.word));
+  const coveredChars = new Set(words.flatMap((v) => [...v.word]));
+  const chars = [...new Set(text)]
+    .map((ch) => findCharacter(ch))
+    .filter((c) => c && !coveredChars.has(c.char));
+  return { words, chars };
+}
+
 const STOPWORDS = new Set(["a", "an", "the", "is", "are", "am", "to", "i", "you", "he", "she", "it", "we", "they", "my", "your", "his", "her", "its", "our", "their", "and", "of", "in", "on", "at", "be", "do", "does", "for", "with"]);
 
 function normalizeWords(s) {
@@ -56,13 +72,13 @@ function lenientMatch(input, expected) {
   return matched / expectedWords.length >= 0.5;
 }
 
-// 6 exercises per attempt: 3 recognition MC, 1 grammar-specific drill,
-// 2 typed free-recall production -- covers all 5 taught sentences plus
+// 8 exercises per attempt: 4 recognition MC, 1 grammar-specific drill,
+// 3 typed free-recall production -- draws on all 8 taught sentences plus
 // the unit's core grammar point, mixed and reshuffled on every attempt.
 function buildPracticeSet(unit) {
   const pool = shuffle(unit.sentences);
-  const mcPool = pool.slice(0, 3);
-  const typedPool = pool.slice(3, 5);
+  const mcPool = pool.slice(0, 4);
+  const typedPool = pool.slice(4, 7);
   const exercises = [];
 
   mcPool.forEach((correct) => {
@@ -92,7 +108,7 @@ export function renderRoadmap(container) {
   container.appendChild(
     el("div", { class: "page-header" }, [
       el("h1", {}, "🗺️ Roadmap"),
-      el("p", {}, "A sentence-first path from zero to ACTFL Advanced High — Novice Low through Advanced High, one unit at a time. Each unit: 5 real sentences, a grammar point, then a 6-exercise practice round (recognition, a grammar drill, and typed production) before the next one unlocks."),
+      el("p", {}, "A path from zero to ACTFL Advanced High — Novice Low through Advanced High, one unit at a time. Each unit: the grammar point first, then the individual vocabulary it uses, then 8 full sentences in context, then an 8-exercise practice round before the next one unlocks."),
       el("p", { class: "text-faint" }, "Passing a unit also adds it to your spaced-repetition Review queue, so it comes back later instead of being seen once and forgotten. A growing foundation, not a finished multi-year curriculum yet.")
     ])
   );
@@ -153,28 +169,20 @@ export function renderRoadmap(container) {
     body.appendChild(el("button", { class: "btn btn-sm", onclick: showPath }, "← Roadmap"));
     body.appendChild(el("span", { class: "badge badge-level", style: "margin-top:.75rem;display:inline-block" }, ACTFL_LEVELS[levelIndex(unit.level)].label));
     body.appendChild(el("h2", { style: "margin-top:.4rem" }, `${unit.icon} ${unit.title} · ${unit.titleZh}`));
-    runLearnStep();
+    runGrammarStep();
 
-    function runLearnStep() {
-      const learnWrap = el("div", {});
-      body.appendChild(learnWrap);
-      learnWrap.appendChild(el("p", { class: "text-muted" }, "Read and listen to each sentence, then continue to practice."));
-      unit.sentences.forEach((s) => {
-        learnWrap.appendChild(
-          el("div", { class: "roadmap-lesson-sentence" }, [
-            el("div", { class: "flex justify-between items-center" }, [
-              el("div", { class: "hanzi", style: "font-size:1.15rem" }, s.zh),
-              el("button", { class: "play-btn", style: "width:34px;height:34px", onclick: () => audioEngine.speak(s.zh) }, "🔊")
-            ]),
-            el("div", { class: "pinyin" }, s.py),
-            el("div", { class: "text-muted" }, s.en)
-          ])
-        );
-      });
+    function stepHeader(n, total, label) {
+      return el("p", { class: "text-faint" }, `Step ${n} of ${total} · ${label}`);
+    }
+
+    function runGrammarStep() {
+      const wrap = el("div", {});
+      body.appendChild(wrap);
+      wrap.appendChild(stepHeader(1, 4, "Grammar point"));
       if (unit.grammar) {
         const g = unit.grammar;
-        learnWrap.appendChild(
-          el("div", { class: "card grammar-note", style: "margin-top:1rem;border-left:3px solid var(--accent)" }, [
+        wrap.appendChild(
+          el("div", { class: "card grammar-note", style: "border-left:3px solid var(--accent)" }, [
             el("div", { class: "badge badge-gold" }, "📐 New Grammar Point"),
             el("h3", { style: "margin-top:.5rem" }, g.title),
             el("p", { style: "font-family:var(--font-zh);font-weight:700" }, g.pattern),
@@ -189,8 +197,66 @@ export function renderRoadmap(container) {
           ].filter(Boolean))
         );
       }
-      const nextBtn = el("button", { class: "btn btn-primary", style: "margin-top:1rem", onclick: () => { learnWrap.remove(); nextBtn.remove(); runPracticeStep(); } }, "Continue to practice →");
-      body.appendChild(nextBtn);
+      const nextBtn = el("button", { class: "btn btn-primary", style: "margin-top:1rem", onclick: () => { wrap.remove(); runVocabStep(); } }, "Continue to vocabulary →");
+      wrap.appendChild(nextBtn);
+    }
+
+    function runVocabStep() {
+      const wrap = el("div", {});
+      body.appendChild(wrap);
+      wrap.appendChild(stepHeader(2, 4, "Vocabulary in this unit"));
+      wrap.appendChild(el("p", { class: "text-muted" }, "The words and characters you'll see in this unit's sentences."));
+      const { words, chars } = unitVocab(unit);
+      if (words.length) {
+        const grid = el("div", { class: "grid grid-auto" });
+        words.forEach((v) => {
+          grid.appendChild(
+            el("div", { class: "card", style: "padding:.7rem" }, [
+              el("div", { class: "flex justify-between items-center" }, [
+                el("span", { class: "hanzi", style: "font-weight:700" }, v.word),
+                el("button", { class: "play-btn", style: "width:30px;height:30px", onclick: () => audioEngine.speak(v.word) }, "🔊")
+              ]),
+              el("div", { class: "text-muted", style: "font-size:.85rem" }, `${v.pinyin} — ${v.meaning}`)
+            ])
+          );
+        });
+        wrap.appendChild(grid);
+      }
+      if (chars.length) {
+        wrap.appendChild(el("h4", { style: "margin-top:1rem" }, "Other characters used"));
+        wrap.appendChild(el("div", { class: "char-grid" }, chars.map((c) =>
+          el("div", { class: "char-tile", onclick: () => audioEngine.speak(c.char) }, [
+            el("div", { class: "hz" }, c.char),
+            el("div", { class: "py" }, c.pinyin)
+          ])
+        )));
+      }
+      if (!words.length && !chars.length) {
+        wrap.appendChild(el("p", { class: "text-faint" }, "Nothing new to flag here — continue to the sentences."));
+      }
+      const nextBtn = el("button", { class: "btn btn-primary", style: "margin-top:1rem", onclick: () => { wrap.remove(); runSentencesStep(); } }, "Continue to sentences →");
+      wrap.appendChild(nextBtn);
+    }
+
+    function runSentencesStep() {
+      const wrap = el("div", {});
+      body.appendChild(wrap);
+      wrap.appendChild(stepHeader(3, 4, "Sentences in context"));
+      wrap.appendChild(el("p", { class: "text-muted" }, "Read and listen to each sentence, then continue to practice."));
+      unit.sentences.forEach((s) => {
+        wrap.appendChild(
+          el("div", { class: "roadmap-lesson-sentence" }, [
+            el("div", { class: "flex justify-between items-center" }, [
+              el("div", { class: "hanzi", style: "font-size:1.15rem" }, s.zh),
+              el("button", { class: "play-btn", style: "width:34px;height:34px", onclick: () => audioEngine.speak(s.zh) }, "🔊")
+            ]),
+            el("div", { class: "pinyin" }, s.py),
+            el("div", { class: "text-muted" }, s.en)
+          ])
+        );
+      });
+      const nextBtn = el("button", { class: "btn btn-primary", style: "margin-top:1rem", onclick: () => { wrap.remove(); runPracticeStep(); } }, "Continue to practice →");
+      wrap.appendChild(nextBtn);
     }
 
     function runPracticeStep() {
@@ -198,6 +264,7 @@ export function renderRoadmap(container) {
       let qi = 0;
       let correctCount = 0;
       const practiceWrap = el("div", { class: "card exercise-card" });
+      body.appendChild(el("p", { class: "text-faint" }, "Step 4 of 4 · Practice"));
       body.appendChild(practiceWrap);
       showExercise();
 
@@ -281,7 +348,7 @@ export function renderRoadmap(container) {
 
       function finishPractice() {
         practiceWrap.innerHTML = "";
-        const passed = correctCount >= 5;
+        const passed = correctCount >= 7;
         practiceWrap.appendChild(
           el("div", { class: "empty-state" }, [
             el("div", { class: "empty-icon" }, passed ? "✅" : "🔁"),
@@ -304,7 +371,7 @@ export function renderRoadmap(container) {
           practiceWrap.appendChild(
             el("div", { class: "btn-row", style: "margin-top:.75rem" }, [
               el("button", { class: "btn btn-primary", onclick: () => { exercises = buildPracticeSet(unit); qi = 0; correctCount = 0; showExercise(); } }, "Try a fresh set"),
-              el("button", { class: "btn", onclick: () => showUnit(unit) }, "Review sentences again")
+              el("button", { class: "btn", onclick: () => showUnit(unit) }, "Start unit over")
             ])
           );
         }
