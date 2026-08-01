@@ -1,3 +1,43 @@
+/* ---------- Lesson Player (Duolingo-style) ---------- */
+.lesson-shell { display: flex; flex-direction: column; min-height: 60vh; }
+.lesson-topbar { display: flex; align-items: center; gap: 1rem; padding: .25rem 0 1.5rem; }
+.lesson-exit-btn {
+  background: none; border: none; font-size: 1.7rem; line-height: 1; color: var(--text-faint);
+  cursor: pointer; padding: .25rem .5rem; flex-shrink: 0;
+}
+.lesson-exit-btn:hover { color: var(--text); }
+.lesson-progress-track { flex: 1; height: 16px; background: var(--surface-2); border-radius: 999px; overflow: hidden; border: 1px solid var(--border); }
+.lesson-progress-fill { height: 100%; background: var(--accent); border-radius: 999px; transition: width .35s ease; }
+.lesson-hearts { display: flex; align-items: center; gap: .25rem; font-weight: 800; font-size: 1.05rem; color: var(--duo-red); white-space: nowrap; flex-shrink: 0; }
+
+.lesson-question-host { flex: 1; display: flex; flex-direction: column; justify-content: center; padding-bottom: 7rem; max-width: 640px; margin: 0 auto; width: 100%; }
+.lesson-card { width: 100%; }
+
+.lesson-bottom-bar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
+  padding: 1.1rem 1.25rem calc(1.1rem + env(safe-area-inset-bottom));
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+  border-top: 2px solid var(--border); background: var(--bg-elevated);
+  transform: translateY(100%); transition: transform .25s ease;
+}
+.lesson-bottom-bar:empty { display: none; }
+.lesson-bottom-bar.show { transform: translateY(0); }
+.lesson-bottom-bar.correct { background: var(--success-bg); border-color: var(--success); }
+.lesson-bottom-bar.incorrect { background: var(--danger-bg); border-color: var(--danger); }
+.lesson-feedback-col { min-width: 0; }
+.lesson-feedback-text { display: flex; align-items: center; gap: .5rem; font-weight: 800; font-size: 1.1rem; }
+.lesson-feedback-text.correct-text { color: var(--success); }
+.lesson-feedback-text.incorrect-text { color: var(--danger); }
+.lesson-feedback-sub { font-weight: 600; font-size: .85rem; color: var(--text-muted); margin-top: .2rem; }
+@media (min-width: 861px) { .lesson-bottom-bar { left: var(--sidebar-w); } }
+
+.lesson-summary { text-align: center; padding: 2rem 1rem; max-width: 480px; margin: 0 auto; }
+.lesson-summary .summary-icon { font-size: 3.6rem; margin-bottom: .5rem; }
+.lesson-summary-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: .75rem; margin: 1.5rem 0; }
+.lesson-summary-stat { background: var(--surface-2); border-radius: var(--radius-md); padding: 1rem .5rem; }
+.lesson-summary-stat .value { font-size: 1.5rem; font-weight: 800; }
+.lesson-summary-stat .label { font-size: .7rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: .03em; }
+
 /* ---------- Cards ---------- */
 .card {
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md);
@@ -16,27 +56,44 @@
 .stat-card .stat-label { color: var(--text-muted); font-size: .85rem; font-weight: 600; }
 .stat-card .stat-icon { font-size: 1.4rem; }
 
-/* ---------- Buttons ---------- */
+/* ---------- Buttons ----------
+   Duolingo-style "chunky" buttons: flat fill + a solid bottom shadow that
+   collapses on press, giving a satisfying tactile click instead of a flat
+   hover-fade. */
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: .45rem;
-  border-radius: 999px; padding: .65rem 1.3rem; font-weight: 700; font-size: .92rem;
-  border: 1px solid var(--border); background: var(--surface-2); color: var(--text);
-  cursor: pointer; transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
-  text-decoration: none;
+  border-radius: 16px; padding: .75rem 1.4rem; font-weight: 800; font-size: .92rem;
+  border: none; background: var(--btn-default-bg); color: var(--text);
+  cursor: pointer; text-decoration: none; position: relative;
+  box-shadow: 0 4px 0 var(--btn-default-shadow);
+  transition: transform .08s ease, box-shadow .08s ease, filter .12s ease;
 }
-.btn:hover { transform: translateY(-1px); }
-.btn:active { transform: translateY(0); }
-.btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
-.btn-primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
-.btn-primary:hover { box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 45%, transparent); }
-.btn-ghost { background: transparent; }
-.btn-success { background: var(--success); border-color: var(--success); color: #fff; }
-.btn-danger { background: var(--danger); border-color: var(--danger); color: #fff; }
-.btn-sm { padding: .4rem .85rem; font-size: .8rem; }
-.btn-lg { padding: .85rem 1.7rem; font-size: 1rem; }
-.btn-icon { width: 44px; height: 44px; padding: 0; border-radius: 50%; }
+.btn:hover { filter: brightness(1.04); }
+.btn:active { transform: translateY(4px); box-shadow: 0 0 0 var(--btn-default-shadow); }
+.btn:disabled { opacity: .5; cursor: not-allowed; transform: none; box-shadow: 0 4px 0 var(--btn-default-shadow); filter: none; }
+.btn-primary { background: var(--accent); color: var(--accent-ink); box-shadow: 0 4px 0 var(--accent-shadow); }
+.btn-primary:active { box-shadow: 0 0 0 var(--accent-shadow); }
+.btn-ghost { background: transparent; color: var(--text-muted); box-shadow: none; }
+.btn-ghost:hover { background: var(--surface-2); filter: none; }
+.btn-ghost:active { transform: translateY(1px); box-shadow: none; }
+.btn-success { background: var(--success); color: #fff; box-shadow: 0 4px 0 color-mix(in srgb, var(--success) 65%, black); }
+.btn-success:active { box-shadow: 0 0 0 color-mix(in srgb, var(--success) 65%, black); }
+.btn-danger { background: var(--danger); color: #fff; box-shadow: 0 4px 0 color-mix(in srgb, var(--danger) 65%, black); }
+.btn-danger:active { box-shadow: 0 0 0 color-mix(in srgb, var(--danger) 65%, black); }
+.btn-sm { padding: .5rem 1rem; font-size: .8rem; border-radius: 12px; box-shadow: 0 3px 0 var(--btn-default-shadow); }
+.btn-sm:active { transform: translateY(3px); }
+.btn-sm.btn-primary { box-shadow: 0 3px 0 var(--accent-shadow); }
+.btn-lg { padding: 1rem 2rem; font-size: 1.05rem; }
+.btn-icon { width: 44px; height: 44px; padding: 0; border-radius: 50%; box-shadow: 0 3px 0 var(--btn-default-shadow); }
 .btn-block { width: 100%; }
 .btn-row { display: flex; gap: .6rem; flex-wrap: wrap; }
+
+/* Short, punchy lesson-flow CTAs (CHECK / CONTINUE) get the full
+   uppercase Duolingo treatment — reserved for short labels only so longer
+   sentence-style buttons elsewhere stay easy to read. */
+.btn-duo-cta {
+  text-transform: uppercase; letter-spacing: .04em; font-size: 1rem; padding: 1rem 2.2rem;
+}
 
 /* ---------- Badges ---------- */
 .badge { display: inline-flex; align-items: center; padding: .2rem .55rem; border-radius: 999px; font-size: .72rem; font-weight: 800; letter-spacing: .02em; }

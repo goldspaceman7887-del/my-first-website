@@ -3,6 +3,8 @@ import { el, blurActive } from "../core/ui.js";
 import { renderExercise, normalize } from "../core/exercises.js";
 import { gradeItem, masteryLevel, QUALITY } from "../core/srs.js";
 import { addXP, updateSkillScore } from "../core/gamification.js";
+import { runLesson } from "../core/lessonPlayer.js";
+import { getHearts, hasHearts, minutesUntilNextHeart } from "../core/hearts.js";
 import { GRAMMAR } from "../data/grammar.js";
 
 const SPANISH_STOPWORDS = new Set([
@@ -138,6 +140,7 @@ function renderConceptDetail(container, id) {
   const body = el("div", {});
   container.appendChild(tabs);
   container.appendChild(body);
+  let activeLessonDestroy = null;
 
   function tabBtn(id2, label, active) {
     const b = el("button", { class: `tab-btn ${active ? "active" : ""}`, onclick: () => setTab(id2) }, label);
@@ -145,6 +148,10 @@ function renderConceptDetail(container, id) {
     return b;
   }
   function setTab(id2) {
+    if (activeLessonDestroy) {
+      activeLessonDestroy();
+      activeLessonDestroy = null;
+    }
     tabs.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("active", b.dataset.id === id2));
     body.innerHTML = "";
     body.appendChild(id2 === "learn" ? renderLearn() : renderPractice());
@@ -205,29 +212,68 @@ function renderConceptDetail(container, id) {
 
   function renderPractice() {
     const wrap = el("div", { class: "flex-col gap-2" });
-    let correctCount = 0;
-    let total = 0;
-    const summary = el("p", { class: "text-muted" }, `0 / ${g.exercises.length} completados`);
-    wrap.appendChild(summary);
-    g.exercises.forEach((ex, i) => {
-      const card = el("div", { class: "card" }, [el("h4", {}, `Ejercicio ${i + 1}`)]);
-      card.appendChild(
-        renderExercise(ex, {
-          onResult: (correct) => {
-            total++;
-            if (correct) correctCount++;
-            summary.textContent = `${total} / ${g.exercises.length} completados · ${correctCount} correctos`;
-            recordAttempt(g.id, correct);
-          }
-        })
+
+    if (!hasHearts()) {
+      const mins = minutesUntilNextHeart();
+      wrap.appendChild(
+        el("div", { class: "card empty-state" }, [
+          el("div", { class: "empty-icon" }, "💔"),
+          el("h3", {}, "Out of hearts for now"),
+          el("p", {}, `Your next heart comes back in about ${mins} minute${mins === 1 ? "" : "s"}. You can still write your own sentence below — that doesn't need hearts.`)
+        ])
       );
-      wrap.appendChild(card);
-    });
+    } else {
+      const hearts = getHearts();
+      wrap.appendChild(
+        el("div", { class: "card", style: "text-align:center;padding:2rem 1.5rem" }, [
+          el("div", { style: "font-size:2.5rem;margin-bottom:.5rem" }, "🎯"),
+          el("h2", { style: "margin:0 0 .5rem" }, "Ready to practice?"),
+          el("p", { class: "text-muted" }, `${g.exercises.length} question${g.exercises.length === 1 ? "" : "s"} · ${hearts.current} ❤️ available`),
+          el(
+            "button",
+            {
+              class: "btn btn-primary btn-lg btn-duo-cta",
+              style: "margin-top:1rem",
+              onclick: () => {
+                body.innerHTML = "";
+                const questions = g.exercises.map((ex) => ({
+                  render(host, onResult) {
+                    host.appendChild(
+                      renderExercise(ex, {
+                        onResult: (correct) => {
+                          recordAttempt(g.id, correct);
+                          onResult(correct);
+                        }
+                      })
+                    );
+                  }
+                }));
+                activeLessonDestroy = runLesson(body, {
+                  title: g.title,
+                  questions,
+                  xpPerCorrect: 6,
+                  onExit: () => {
+                    activeLessonDestroy = null;
+                    setTab("practice");
+                  }
+                });
+              }
+            },
+            "Start Lesson"
+          )
+        ])
+      );
+    }
+
     wrap.appendChild(freeWriteCard(g));
     return wrap;
   }
 
   setTab("learn");
+
+  return () => {
+    if (activeLessonDestroy) activeLessonDestroy();
+  };
 }
 
 function freeWriteCard(g) {
