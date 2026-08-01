@@ -2,7 +2,7 @@
 // Each card normalizes to the same shape regardless of source, so the session UI doesn't need
 // to know or care whether it's looking at a connector, a grammar structure, or a vocab word.
 import { CONNECTORS, CATEGORIES } from "./connectors.js";
-import { GRAMMAR, LEVELS as GRAMMAR_LEVELS } from "./grammar.js";
+import { GRAMMAR, LEVELS } from "./grammar.js";
 import { VOCABULARY, WORD_LEVELS } from "./vocabulary.js";
 import { isDue } from "../core/srs.js";
 
@@ -35,7 +35,7 @@ function buildPool() {
   });
 
   GRAMMAR.forEach((g) => {
-    const lvl = GRAMMAR_LEVELS.find((l) => l.id === g.level);
+    const lvl = LEVELS.find((l) => l.id === g.level);
     const ex = g.examples[0];
     items.push({
       id: g.id,

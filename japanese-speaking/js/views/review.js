@@ -1,6 +1,6 @@
 import { buildSession, getDueCount, getNewAvailableCount } from "../data/reviewPool.js";
 import { MODELS } from "../data/models.js";
-import { grade as previewGrade, formatInterval } from "../core/srs.js";
+import { grade, formatInterval } from "../core/srs.js";
 import { getState, gradeSrsItem, completeReviewSession, setNewCardsPerSession } from "../core/storage.js";
 import { el, toast, renderHighlighted, stripHighlightMarkup } from "../core/ui.js";
 import { speak } from "../core/audio.js";
@@ -180,7 +180,7 @@ function renderCard(item, root, state) {
     ];
     const gradeRow = el("div", { class: "review-grade-row" });
     grades.forEach(([g, label, cls]) => {
-      const preview = formatInterval(previewGrade(record, g).interval);
+      const preview = formatInterval(grade(record, g).interval);
       const wasNew = !record;
       const btn = el(
         "button",

@@ -1,4 +1,4 @@
-import { grade as srsGrade } from "./srs.js";
+import { grade } from "./srs.js";
 
 const KEY = "jpAdvSpeak_v1";
 
@@ -81,7 +81,7 @@ export function recordQuizAnswer(connectorId, correct) {
 
 export function gradeSrsItem(id, gradeName) {
   const prev = state.srs[id];
-  const next = srsGrade(prev, gradeName);
+  const next = grade(prev, gradeName);
   state.srs[id] = next;
   state.reviewStats.totalReviews += 1;
   const xpByGrade = { again: 1, hard: 3, good: 5, easy: 7 };
