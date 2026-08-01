@@ -48,6 +48,9 @@ jobs:
           # Seed English Tokyo at a subpath: /my-first-website/seed-english-tokyo/
           mkdir -p _site/seed-english-tokyo
           cp -r seed-english-tokyo/web/out/. _site/seed-english-tokyo/
+          # Mandarin Tutor at a subpath: /my-first-website/mandarin-tutor/
+          mkdir -p _site/mandarin-tutor
+          cp -r mandarin-tutor/. _site/mandarin-tutor/
 
       - uses: actions/upload-pages-artifact@v3
         with:
