@@ -6,6 +6,7 @@ import { addXP } from "../core/gamification.js";
 import { CHARACTERS } from "../data/characters.js";
 import { VOCABULARY } from "../data/vocabulary.js";
 import { SENTENCES } from "../data/sentences.js";
+import { ROADMAP_UNITS } from "../data/roadmap.js";
 import { toneNumbers } from "../core/pinyin.js";
 
 function resolveItem(srsItem) {
@@ -14,19 +15,23 @@ function resolveItem(srsItem) {
   if (type === "character") return { type, data: CHARACTERS.find((c) => c.id === dataId) };
   if (type === "word") return { type, data: VOCABULARY.find((v) => v.id === dataId) };
   if (type === "sentence") return { type, data: SENTENCES.find((s) => s.id === dataId) };
+  if (type === "roadmap") return { type, data: ROADMAP_UNITS.find((u) => u.id === dataId) };
   return { type, data: null };
 }
 
 function frontText(type, data) {
   if (type === "character") return data.char;
   if (type === "word") return data.word;
+  if (type === "roadmap") return data.grammar.examples[0].zh;
   return data.zh;
 }
 function backPinyin(type, data) {
   if (type === "character") return `${data.pinyin} · ${toneNumbers(data.pinyin)}`;
+  if (type === "roadmap") return data.grammar.examples[0].py;
   return data.pinyin || data.py;
 }
 function backMeaning(type, data) {
+  if (type === "roadmap") return `${data.grammar.examples[0].en} — pattern: ${data.grammar.title}`;
   return data.meaning || data.en;
 }
 
