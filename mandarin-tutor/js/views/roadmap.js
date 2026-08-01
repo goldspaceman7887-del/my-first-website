@@ -128,6 +128,24 @@ export function renderRoadmap(container) {
           ])
         );
       });
+      if (unit.grammar) {
+        const g = unit.grammar;
+        learnWrap.appendChild(
+          el("div", { class: "card grammar-note", style: "margin-top:1rem;border-left:3px solid var(--accent)" }, [
+            el("div", { class: "badge badge-gold" }, "📐 New Grammar Point"),
+            el("h3", { style: "margin-top:.5rem" }, g.title),
+            el("p", { style: "font-family:var(--font-zh);font-weight:700" }, g.pattern),
+            el("p", { class: "text-muted" }, g.explain),
+            el("div", {}, g.examples.map((ex) =>
+              el("p", { style: "margin:.3rem 0" }, [
+                el("span", { class: "hanzi" }, ex.zh),
+                el("span", { class: "text-faint" }, ` — ${ex.py} — ${ex.en}`)
+              ])
+            )),
+            g.commonMistake ? el("p", { class: "text-faint", style: "margin-top:.4rem" }, [el("strong", {}, "Watch out: "), g.commonMistake]) : null
+          ].filter(Boolean))
+        );
+      }
       const nextBtn = el("button", { class: "btn btn-primary", style: "margin-top:1rem", onclick: () => { learnWrap.remove(); nextBtn.remove(); runQuizStep(); } }, "Continue to quiz →");
       body.appendChild(nextBtn);
     }
