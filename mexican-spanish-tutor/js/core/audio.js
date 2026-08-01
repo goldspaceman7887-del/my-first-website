@@ -189,7 +189,7 @@ export function listenOnce({ timeoutMs = 8000 } = {}) {
 function normalize(s) {
   return String(s ?? "")
     .toLowerCase()
-    .normalize("NFD").replace(/[̀-ͯ]/g, "") // strip accents
+    .normalize("NFD").replace(new RegExp("[\\u0300-\\u036f]", "g"), "") // strip accents (escaped range: safe under any source encoding)
     .replace(/[¿?¡!.,;:"'()]/g, "")
     .trim();
 }
