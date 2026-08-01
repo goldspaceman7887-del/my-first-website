@@ -2,6 +2,7 @@ import { getState } from "../core/storage.js";
 import { el, progressBar } from "../core/ui.js";
 import { CONNECTORS, CATEGORIES } from "../data/connectors.js";
 import { GRAMMAR } from "../data/grammar.js";
+import { VOCABULARY, WORD_LEVELS } from "../data/vocabulary.js";
 import { ROADMAP, CHECKPOINTS } from "../data/roadmap.js";
 import { FUNCTIONS } from "../data/prompts.js";
 
@@ -24,6 +25,8 @@ export function render(root) {
   const masteredPct = Math.round((mastered / CONNECTORS.length) * 100);
   const grammarMastered = GRAMMAR.filter((g) => state.connectorProgress[g.id]?.mastered).length;
   const grammarPct = Math.round((grammarMastered / GRAMMAR.length) * 100);
+  const vocabMastered = VOCABULARY.filter((w) => state.connectorProgress[w.id]?.mastered).length;
+  const vocabPct = Math.round((vocabMastered / VOCABULARY.length) * 100);
   const checkpoint = CHECKPOINTS.find((cp) => cp.week === week);
   const container = el("div", { class: "view" });
 
@@ -40,6 +43,7 @@ export function render(root) {
     statCard("📅", `Week ${week} / 12`, "in your plan"),
     statCard("🔗", `${masteredPct}%`, "connectors mastered"),
     statCard("📚", `${grammarPct}%`, "grammar mastered"),
+    statCard("🈶", `${vocabPct}%`, "vocab mastered"),
   ]);
   container.appendChild(statGrid);
 
@@ -66,6 +70,7 @@ export function render(root) {
   const quickGrid = el("div", { class: "quick-grid" }, [
     quickCard("🔗", "Connector Lab", "Learn + quiz the phrases that link sentences into paragraphs.", "#/connectors"),
     quickCard("📚", "Grammar Ladder", "44 structures leveled IH → AL → AM → AH, with example sentences.", "#/grammar"),
+    quickCard("🈶", "Vocabulary (N3→N2)", "84 words, always learned through a full example sentence.", "#/vocabulary"),
     quickCard("🪜", "Level Ladder", "The same prompt answered at all 4 levels — hear exactly what changes.", "#/levels"),
     quickCard("🎤", "Paragraph Practice", "Scaffolded speaking prompts across 6 Advanced-level functions.", "#/practice"),
     quickCard("🔁", "Shadowing", "Listen and repeat model paragraph-length monologues.", "#/shadowing"),
@@ -110,6 +115,27 @@ export function render(root) {
   });
   grammarCard.appendChild(gList);
   container.appendChild(grammarCard);
+
+  const vocabCard = el("section", { class: "card" });
+  vocabCard.appendChild(el("h2", {}, "Vocabulary mastery by JLPT level"));
+  const vList = el("div", { class: "category-progress-list" });
+  WORD_LEVELS.forEach((lvl) => {
+    const items = VOCABULARY.filter((w) => w.level === lvl.id);
+    const done = items.filter((w) => state.connectorProgress[w.id]?.mastered).length;
+    const pct = Math.round((done / items.length) * 100);
+    vList.appendChild(
+      el("div", { class: "category-progress-row" }, [
+        el("div", { class: "category-progress-label" }, [
+          el("span", { class: "dot", style: `background:${lvl.color}` }),
+          el("span", {}, lvl.label),
+          el("span", { class: "muted small" }, ` ${done}/${items.length}`),
+        ]),
+        progressBar(pct),
+      ])
+    );
+  });
+  vocabCard.appendChild(vList);
+  container.appendChild(vocabCard);
 
   const recCard = el("section", { class: "card" });
   recCard.appendChild(el("h2", {}, "Recent recordings"));

@@ -255,6 +255,10 @@ a:hover { text-decoration: underline; }
 .connector-hl { background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--text); border-radius: 4px; padding: 0 2px; font-weight: 700; }
 .model-btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
 
+.vocab-list { display: flex; flex-direction: column; gap: 12px; }
+.vocab-card.mastered { border-color: var(--good); }
+.vocab-reading { font-weight: 400; }
+
 .grammar-list { display: flex; flex-direction: column; gap: 12px; }
 .grammar-card.mastered { border-color: var(--good); }
 .grammar-card-top { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }

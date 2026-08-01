@@ -39,6 +39,7 @@ export function render(root) {
       `<ol>
         <li><strong>Cohesion devices (接続表現).</strong> Varied connectors — not just そして/でも repeated. <a href="#/connectors">Connector Lab</a>, ~40 items.</li>
         <li><strong>Sentence-internal grammar precision.</strong> ~のに/わけだ/として mark AL; ~ものの/つつある/ばかりに/にほかならない mark AM; ~とはいえ/ざるを得ない/かねない/がたい and deliberate register-switching mark AH. <a href="#/grammar">Grammar Ladder</a> has all 44, leveled, with example sentences.</li>
+        <li><strong>Vocabulary depth.</strong> Speaking at Advanced Mid needs Advanced Mid words, not just Advanced Mid grammar. <a href="#/vocabulary">Vocabulary in Sentences</a> carries you from mid-N3 through N2 — 84 words, every one taught inside a full sentence, never as a bare flashcard.</li>
         <li><strong>Sustained turns.</strong> 60-120 seconds uninterrupted, not one-line answers. <a href="#/practice">Paragraph Practice</a>.</li>
         <li><strong>Handling complications and taking a stance.</strong> AM/AH-level tasks almost always include an unexpected twist or ask you to argue a position while acknowledging the other side.</li>
         <li><strong>Hearing the target.</strong> <a href="#/levels">Level Ladder</a> shows the exact same prompt answered at all 4 levels side by side, annotated — the fastest way to internalize what each level actually sounds like.</li>

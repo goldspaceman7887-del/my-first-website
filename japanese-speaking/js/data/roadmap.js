@@ -20,6 +20,7 @@ export const ROADMAP = [
       "Level Ladder: read IH and AL tiers for all 6 topics; say the AL tier out loud after each",
       "Paragraph Practice: Narrate-past, 3 topics, 4+ sentences each, recorded",
       "Daily: one 60-second turn, no notes, self-timed",
+      "Vocabulary in Sentences: learn N3 words 相変わらず→対する (the first 7), quiz to 85%+",
     ],
   },
   {
@@ -33,6 +34,7 @@ export const ROADMAP = [
       "Paragraph Practice: Complication-resolution, 2 topics, 60-75 seconds each",
       "Shadow all narrate-past + complication model paragraphs, twice each",
       "Use at least 2 of this week's new grammar structures out loud today, every day",
+      "Vocabulary in Sentences: learn N3 words 態度→混乱 (next 7), quiz to 85%+",
     ],
   },
   {
@@ -46,6 +48,7 @@ export const ROADMAP = [
       "Paragraph Practice: Complication-resolution, 2 harder topics, 75+ seconds",
       "Level Ladder: reread the AL tier for all 6 topics, note every grammar structure you now recognize",
       "Full AL-so-far grammar quiz (12 items), 85%+",
+      "Vocabulary in Sentences: learn N3 words 実現→影響 (next 7), quiz to 85%+",
     ],
   },
   {
@@ -59,6 +62,7 @@ export const ROADMAP = [
       "Checkpoint: record a narrate-past + a complication topic back to back, no notes, self-score on the Rubric — target 2.7+",
       "Paragraph Practice: Compare & Contrast, 2 topics, first attempt",
       "Write down your 3 weakest AL structures and drill them specifically",
+      "Vocabulary in Sentences: learn N3 words 解決→交流 (next 7), quiz to 85%+",
     ],
   },
   {
@@ -72,6 +76,7 @@ export const ROADMAP = [
       "Paragraph Practice: Support an Opinion, 3 topics, every answer must include a stated counterargument",
       "Connector Lab: Summary + Opinion categories, full-deck quiz 85%+",
       "Daily: describe one complex opinion in 90 seconds with zero preparation time",
+      "Vocabulary in Sentences: learn N3 words 刺激→相互 (next 7), quiz to 85%+",
     ],
   },
   {
@@ -85,6 +90,7 @@ export const ROADMAP = [
       "Shadow all AM-tier Level Ladder examples out loud, twice through",
       "Use ばかりに or からといって〜ない at least once per recording this week",
       "Full connector quiz across all 10 categories, 90%+",
+      "Vocabulary in Sentences: finish N3 with 存在→共通 (last 5), then start N2 with 曖昧・一致 (first 2) — quiz to 85%+",
     ],
   },
   {
@@ -98,6 +104,7 @@ export const ROADMAP = [
       "Complication-resolution, 2 topics, must include a multi-step failed attempt before the resolution (あげく)",
       "Read the AH register-switching entry on the Grammar Ladder — don't drill it yet, just notice it",
       "Self-check: are you stalling or reverting to English at any point? Note exactly when",
+      "Vocabulary in Sentences: learn N2 words 意欲→矛盾 (next 7), quiz to 85%+",
     ],
   },
   {
@@ -111,6 +118,7 @@ export const ROADMAP = [
       "Checkpoint: record an Opinion + a Compare topic back to back, no notes, self-score on the Rubric — target 3.0+",
       "Paragraph Practice: mixed session — one topic from each of the 6 functions, back to back",
       "Identify your weakest connector category from the dashboard and drill it to 90%+",
+      "Vocabulary in Sentences: learn N2 words 補う→分析 (next 7), quiz to 85%+",
     ],
   },
   {
@@ -124,6 +132,7 @@ export const ROADMAP = [
       "Begin deliberate register-switching drills: narrate a story, drop into である-style for one formal aside, return to です・ます",
       "Shadow 3 model paragraphs daily, focusing on pacing, not new vocabulary",
       "Re-run 2 Level Ladder topics from memory, aiming for something between AM and AH",
+      "Vocabulary in Sentences: learn N2 words 偏見→損なう (next 7), quiz to 85%+",
     ],
   },
   {
@@ -137,6 +146,7 @@ export const ROADMAP = [
       "Full grammar + connector review, 90%+ across the board",
       "Review every transcript this week for connector-category variety — aim for 7+ different categories across the week",
       "List your 5 weakest grammar structures overall and schedule daily drilling for them",
+      "Vocabulary in Sentences: learn N2 words 揃う→従来 (next 7), quiz to 85%+",
     ],
   },
   {
@@ -150,6 +160,7 @@ export const ROADMAP = [
       "Shadow every AM-tier model plus the AH-tier Level Ladder examples as a preview of what's next",
       "Deliberately include one register switch per recording, every recording, this week",
       "Compare a Week 1 recording to this week's side by side — write 3 concrete differences you can hear",
+      "Vocabulary in Sentences: learn N2 words 一律→突破 (next 7), quiz to 85%+",
     ],
   },
   {
@@ -163,6 +174,7 @@ export const ROADMAP = [
       "Score every recording on the full Rubric — target 3.2+ average across all 7 dimensions",
       "Preview all 8 Advanced High grammar items on the Grammar Ladder — you won't have drilled them yet, and that's expected",
       "Read the Month 4+ extension plan below and commit to a start date",
+      "Vocabulary in Sentences: learn the final N2 words 排除→融合 (last 7) — you've now covered all 84 words from mid-N3 through N2",
     ],
   },
 ];
