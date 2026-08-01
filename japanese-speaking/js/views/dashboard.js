@@ -13,7 +13,7 @@ function daysSince(dateStr) {
 
 function currentWeekNumber(state) {
   const w = Math.floor(daysSince(state.startDate) / 7) + 1;
-  return Math.max(1, Math.min(8, w));
+  return Math.max(1, Math.min(12, w));
 }
 
 export function render(root) {
@@ -30,14 +30,14 @@ export function render(root) {
   container.appendChild(
     el("header", { class: "view-header" }, [
       el("h1", {}, "こんにちは 👋 — Advanced High Speaking Lab"),
-      el("p", { class: "subtitle" }, "Mid-Intermediate High → Advanced High, via Advanced Low and Advanced Mid checkpoints — one connected paragraph at a time."),
+      el("p", { class: "subtitle" }, "12 intensive weeks: mid-Intermediate High → full Advanced Mid mastery, via Advanced Low and Advanced Mid checkpoints — then straight into Advanced High."),
     ])
   );
 
   const statGrid = el("div", { class: "stat-grid" }, [
     statCard("🔥", state.streak, "day streak"),
     statCard("⚡", state.xp, "XP"),
-    statCard("📅", `Week ${week} / 8`, "in your plan"),
+    statCard("📅", `Week ${week} / 12`, "in your plan"),
     statCard("🔗", `${masteredPct}%`, "connectors mastered"),
     statCard("📚", `${grammarPct}%`, "grammar mastered"),
   ]);
@@ -59,13 +59,13 @@ export function render(root) {
   });
   thisWeek.appendChild(taskList);
   thisWeek.appendChild(
-    el("a", { class: "btn primary", href: "#/roadmap" }, "Open full 8-week roadmap →")
+    el("a", { class: "btn primary", href: "#/roadmap" }, "Open full 12-week roadmap →")
   );
   container.appendChild(thisWeek);
 
   const quickGrid = el("div", { class: "quick-grid" }, [
     quickCard("🔗", "Connector Lab", "Learn + quiz the phrases that link sentences into paragraphs.", "#/connectors"),
-    quickCard("📚", "Grammar Ladder", "24 structures leveled IH → AL → AM → AH, with example sentences.", "#/grammar"),
+    quickCard("📚", "Grammar Ladder", "44 structures leveled IH → AL → AM → AH, with example sentences.", "#/grammar"),
     quickCard("🪜", "Level Ladder", "The same prompt answered at all 4 levels — hear exactly what changes.", "#/levels"),
     quickCard("🎤", "Paragraph Practice", "Scaffolded speaking prompts across 6 Advanced-level functions.", "#/practice"),
     quickCard("🔁", "Shadowing", "Listen and repeat model paragraph-length monologues.", "#/shadowing"),

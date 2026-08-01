@@ -1,4 +1,4 @@
-import { ROADMAP, CHECKPOINTS } from "../data/roadmap.js";
+import { ROADMAP, CHECKPOINTS, EXTENSION } from "../data/roadmap.js";
 import { getState, toggleTask } from "../core/storage.js";
 import { el, progressBar } from "../core/ui.js";
 
@@ -8,13 +8,13 @@ function daysSince(dateStr) {
 
 export function render(root) {
   const state = getState();
-  const currentWeek = Math.max(1, Math.min(8, Math.floor(daysSince(state.startDate) / 7) + 1));
+  const currentWeek = Math.max(1, Math.min(12, Math.floor(daysSince(state.startDate) / 7) + 1));
 
   const container = el("div", { class: "view" });
   container.appendChild(
     el("header", { class: "view-header" }, [
-      el("h1", {}, "📅 8-Week Roadmap"),
-      el("p", { class: "subtitle" }, "Mid-Intermediate High → Advanced High, via explicit Advanced Low and Advanced Mid checkpoints. 30-40 min/day. This plan assumes daily practice — it's built to be demanding, not gentle."),
+      el("h1", {}, "📅 12-Week Intensive Roadmap"),
+      el("p", { class: "subtitle" }, "Mid-Intermediate High → full Advanced Mid grammar mastery in 3 months, via explicit Advanced Low and Advanced Mid checkpoints. 45-60 min/day. This plan is deliberately demanding, not gentle — Advanced High follows immediately after (see the bottom of this page)."),
     ])
   );
 
@@ -69,6 +69,15 @@ export function render(root) {
     card.appendChild(list);
     container.appendChild(card);
   });
+
+  const extCard = el("div", { class: "card extension-card" });
+  extCard.appendChild(el("h2", {}, `🚀 ${EXTENSION.title}`));
+  extCard.appendChild(el("p", { class: "muted" }, EXTENSION.desc));
+  const extList = el("ul", { class: "task-list" });
+  EXTENSION.tasks.forEach((t) => extList.appendChild(el("li", {}, t)));
+  extCard.appendChild(extList);
+  extCard.appendChild(el("a", { class: "btn", href: "#/grammar" }, "Preview the 8 Advanced High grammar items →"));
+  container.appendChild(extCard);
 
   root.innerHTML = "";
   root.appendChild(container);

@@ -1,14 +1,15 @@
 // Sentence-internal grammar structures (as opposed to connectors.js, which is discourse-level).
-// Leveled to ACTFL sublevels so the gap between where you are (mid-IH) and Advanced High is explicit.
+// Leveled to ACTFL sublevels. IH is fast review; AL and AM are the real 3-month payload;
+// AH is the on-ramp for the month after this plan ends.
 export const LEVELS = [
-  { id: "IH", label: "Intermediate High", note: "Should be automatic — foundation you're consolidating right now", color: "#3b82f6" },
-  { id: "AL", label: "Advanced Low", note: "The next checkpoint — narration/description control", color: "#14b8a6" },
-  { id: "AM", label: "Advanced Mid", note: "Nuance, elaboration, tighter logical structures", color: "#f59e0b" },
-  { id: "AH", label: "Advanced High", note: "Register control, sophisticated stance-taking, near-native precision", color: "#d6336c" },
+  { id: "IH", label: "Intermediate High", note: "Should be automatic — foundation you're consolidating in week 1", color: "#3b82f6" },
+  { id: "AL", label: "Advanced Low", note: "Month 1 payload — narration/description control", color: "#14b8a6" },
+  { id: "AM", label: "Advanced Mid", note: "Months 2-3 payload — nuance, elaboration, tighter logic", color: "#f59e0b" },
+  { id: "AH", label: "Advanced High", note: "Where you go after this plan — register control, sophisticated stance-taking", color: "#d6336c" },
 ];
 
 export const GRAMMAR = [
-  // ---- IH: consolidate ----
+  // ================= IH — fast review, week 1 only =================
   {
     id: "g1", level: "IH", title: "~ている (progressive / resultative)",
     structure: "Verb-て + いる",
@@ -60,14 +61,14 @@ export const GRAMMAR = [
   {
     id: "g6", level: "IH", title: "~なければならない / ~なくてはいけない (obligation)",
     structure: "Verb-nai stem + ければならない / くてはいけない",
-    explanation: "Obligation forms. Advanced speakers vary between these and more sophisticated forms (べきだ, ざるを得ない) depending on whether they mean external necessity vs. moral 'should' vs. reluctant compulsion — that variation itself is an Advanced-level signal.",
+    explanation: "Baseline obligation forms. You'll layer べきだ (AM) and ざるを得ない (AH) on top of this later — this plain version needs to be completely automatic first.",
     examples: [
       { jp: "明日までにレポートを提出しなければなりません。", en: "I have to submit the report by tomorrow." },
       { jp: "規則だから、守らなくてはいけない。", en: "It's a rule, so we have to follow it." },
     ],
   },
 
-  // ---- AL: the next checkpoint ----
+  // ================= AL — Month 1 payload =================
   {
     id: "g7", level: "AL", title: "~のに (contrary to expectation)",
     structure: "Plain form + のに",
@@ -122,10 +123,82 @@ export const GRAMMAR = [
       { jp: "早く出発すれば、渋滞を避けられる。", en: "If you leave early, you can avoid the traffic." },
     ],
   },
-
-  // ---- AM: nuance and elaboration ----
   {
-    id: "g13", level: "AM", title: "Causative-passive ~させられる",
+    id: "g13", level: "AL", title: "~ばかりでなく / ~だけでなく (not only X but also Y)",
+    structure: "Clause + ばかりでなく・だけでなく + も",
+    explanation: "Stacks two supporting points into one sentence instead of two separate ones — an easy, high-payoff way to sound more elaborated when you list reasons or qualities.",
+    examples: [
+      { jp: "彼女は語学が得意なだけでなく、リーダーシップもある。", en: "She's not only good at languages, she also has leadership skills." },
+      { jp: "この問題は経済的な影響ばかりでなく、社会的な影響も大きい。", en: "This issue has a large impact not only economically but socially as well." },
+    ],
+  },
+  {
+    id: "g14", level: "AL", title: "~として (in the capacity/role of)",
+    structure: "Noun + として",
+    explanation: "Lets you frame a statement from a specific stance — 'as a student,' 'as a foreigner' — which is exactly the kind of perspective-marking Advanced opinion paragraphs need.",
+    examples: [
+      { jp: "一人の学習者として、この方法は効果的だと感じています。", en: "As a learner myself, I feel this method is effective." },
+      { jp: "彼はエンジニアとして十年の経験がある。", en: "He has ten years of experience as an engineer." },
+    ],
+  },
+  {
+    id: "g15", level: "AL", title: "~にとって (from the standpoint of / for)",
+    structure: "Noun + にとって",
+    explanation: "Frames a judgment as relative to a particular person or group's perspective — a precise way to qualify a claim instead of stating it as a flat universal fact.",
+    examples: [
+      { jp: "この変更は多くの社員にとって大きな負担になる。", en: "This change will be a big burden for many employees." },
+      { jp: "私にとって、家族との時間が一番大切です。", en: "For me, time with family is the most important thing." },
+    ],
+  },
+  {
+    id: "g16", level: "AL", title: "~わりに (considering / for what it is)",
+    structure: "Plain form / Noun + の + わりに",
+    explanation: "Signals a mismatch between an expectation set by one fact and the actual outcome — 'cheap for how good it is,' 'young for how experienced he is.' A compact contrast tool below the sentence level.",
+    examples: [
+      { jp: "このレストランは安いわりに、料理がとても美味しい。", en: "This restaurant is cheap, but (considering that) the food is really delicious." },
+      { jp: "彼は経験が浅いわりに、仕事がとても丁寧だ。", en: "Considering how little experience he has, his work is very careful." },
+    ],
+  },
+  {
+    id: "g17", level: "AL", title: "~おかげで / ~せいで (thanks to / because of — blame)",
+    structure: "Plain form / Noun + の + おかげで・せいで",
+    explanation: "おかげで credits a positive cause; せいで blames a negative one. Using both deliberately (not just だから for everything) signals you can mark the emotional valence of a cause, not just the cause itself.",
+    examples: [
+      { jp: "先生のおかげで、試験に合格することができました。", en: "Thanks to my teacher, I was able to pass the exam." },
+      { jp: "電車が遅れたせいで、会議に遅刻してしまった。", en: "Because the train was late, I ended up being late to the meeting." },
+    ],
+  },
+  {
+    id: "g18", level: "AL", title: "~たびに (every time / whenever)",
+    structure: "Verb (dictionary form) / Noun + の + たびに",
+    explanation: "Marks a recurring pattern tied to an event, useful for description paragraphs that need to show a habit or repeated observation rather than a one-time fact.",
+    examples: [
+      { jp: "彼女に会うたびに、新しい発見がある。", en: "Every time I meet her, there's something new to discover." },
+      { jp: "海外に行くたびに、日本の良さを再確認する。", en: "Every time I go abroad, I reconfirm what's good about Japan." },
+    ],
+  },
+  {
+    id: "g19", level: "AL", title: "~とおり(に) (as / in accordance with)",
+    structure: "Verb-た/る + とおり(に), Noun + の + とおり(に)",
+    explanation: "Marks that something happened exactly matching a plan, instruction, or expectation — useful for narrating whether a situation went as anticipated before you introduce a complication.",
+    examples: [
+      { jp: "計画どおりに進めば、来月には完成する予定です。", en: "If it proceeds as planned, it should be finished next month." },
+      { jp: "先生に言われたとおりにやってみました。", en: "I tried doing it exactly as the teacher told me." },
+    ],
+  },
+  {
+    id: "g20", level: "AL", title: "~ながらも (even while / although)",
+    structure: "Verb-stem / い-adj / な-adj + ながらも",
+    explanation: "A softer, slightly more literary alternative to のに — concedes a fact while asserting something that sits in tension with it, often about your own conflicted feelings or actions.",
+    examples: [
+      { jp: "忙しいと知っていながらも、つい連絡してしまった。", en: "Even though I knew he was busy, I ended up contacting him anyway." },
+      { jp: "不安を感じながらも、新しい挑戦を続けている。", en: "Even while feeling anxious, I keep pursuing the new challenge." },
+    ],
+  },
+
+  // ================= AM — Months 2-3 payload =================
+  {
+    id: "g21", level: "AM", title: "Causative-passive ~させられる",
     structure: "Verb (causative-passive form)",
     explanation: "'Was made to do X (against my will).' One structure, entirely native-sounding way to narrate being compelled into something — replaces a clunky workaround like 'X said I had to.'",
     examples: [
@@ -134,7 +207,7 @@ export const GRAMMAR = [
     ],
   },
   {
-    id: "g14", level: "AM", title: "~ものの (although / despite)",
+    id: "g22", level: "AM", title: "~ものの (although / despite)",
     structure: "Plain form + ものの",
     explanation: "More literary/formal than けれども — signals you acknowledge a fact fully before pivoting. Common in opinion paragraphs when conceding a counterpoint before your main claim.",
     examples: [
@@ -143,7 +216,7 @@ export const GRAMMAR = [
     ],
   },
   {
-    id: "g15", level: "AM", title: "~つつ / ~つつある (while / in the process of)",
+    id: "g23", level: "AM", title: "~つつ / ~つつある (while / in the process of)",
     structure: "Verb-stem + つつ(ある)",
     explanation: "つつ = doing X while doing Y (simultaneous, often contradictory); つつある = a change is currently in progress. Both let you narrate nuance and gradual shifts that plain ~ながら/~ている can't quite capture.",
     examples: [
@@ -152,7 +225,7 @@ export const GRAMMAR = [
     ],
   },
   {
-    id: "g16", level: "AM", title: "~において / ~に関して (formal topic markers)",
+    id: "g24", level: "AM", title: "~において / ~に関して (formal topic markers)",
     structure: "Noun + において・に関して",
     explanation: "Formal register substitutes for で/について — signals you can shift into a more written/formal register mid-speech, which raters read as register flexibility.",
     examples: [
@@ -161,7 +234,7 @@ export const GRAMMAR = [
     ],
   },
   {
-    id: "g17", level: "AM", title: "~ばかりに (unfortunately because of / all because)",
+    id: "g25", level: "AM", title: "~ばかりに (unfortunately because of / all because)",
     structure: "Plain form + ばかりに",
     explanation: "Cause that led to a bad, often disproportionate, result — carries emotional weight (regret/frustration) that plain ~ので lacks. Perfect for 'complication' narratives.",
     examples: [
@@ -170,7 +243,7 @@ export const GRAMMAR = [
     ],
   },
   {
-    id: "g18", level: "AM", title: "~からといって〜ない (just because... doesn't mean...)",
+    id: "g26", level: "AM", title: "~からといって〜ない (just because... doesn't mean...)",
     structure: "Plain form + からといって + negative",
     explanation: "A two-part structure for rejecting an implied overgeneralization — exactly the move Advanced opinion paragraphs need when acknowledging then refuting a counterargument.",
     examples: [
@@ -178,10 +251,97 @@ export const GRAMMAR = [
       { jp: "若いからといって、体力があるわけではない。", en: "Just because someone is young doesn't mean they're physically strong." },
     ],
   },
-
-  // ---- AH: register control and sophisticated stance ----
   {
-    id: "g19", level: "AH", title: "~とはいえ (that said / even so)",
+    id: "g27", level: "AM", title: "~にしても / ~にしろ (even granting that)",
+    structure: "Plain form + にしても・にしろ",
+    explanation: "Concedes a premise as fully valid, then argues your point still holds anyway — a stronger, more formal move than 'even if,' good for rebutting a strong counterargument rather than a weak one.",
+    examples: [
+      { jp: "忙しいにしても、返事ぐらいはできたはずだ。", en: "Even granting that he was busy, he should have at least been able to reply." },
+      { jp: "多少のリスクがあるにしろ、挑戦する価値はある。", en: "Even if there's some risk, it's worth the challenge." },
+    ],
+  },
+  {
+    id: "g28", level: "AM", title: "~上で (after doing / having done, as a basis for)",
+    structure: "Verb-た + 上で",
+    explanation: "Marks a necessary prior step before the main action — useful for describing a careful, deliberate process ('having considered X, we decided Y') rather than a simple sequence.",
+    examples: [
+      { jp: "十分に検討した上で、結論を出したいと思います。", en: "I'd like to reach a conclusion only after considering it thoroughly." },
+      { jp: "上司に相談した上で、返事をします。", en: "I'll reply after consulting with my supervisor first." },
+    ],
+  },
+  {
+    id: "g29", level: "AM", title: "~あげく(に) (in the end, after all that — negative outcome)",
+    structure: "Verb-た + あげく(に)",
+    explanation: "Marks the culmination of a long, difficult, or repetitive process ending in an unfortunate result — a compact way to narrate a drawn-out complication and its (bad) resolution in one clause.",
+    examples: [
+      { jp: "何時間も悩んだあげく、結局その話を断ることにした。", en: "After agonizing over it for hours, I ended up deciding to turn the offer down." },
+      { jp: "何軒も店を回ったあげく、何も買わずに帰った。", en: "After going around to shop after shop, I went home having bought nothing." },
+    ],
+  },
+  {
+    id: "g30", level: "AM", title: "~ことなく (without doing)",
+    structure: "Verb (dictionary form) + ことなく",
+    explanation: "A more literary, elevated register alternative to ~ないで/~ずに — good for narrating persistence or restraint with a slightly more formal, deliberate tone.",
+    examples: [
+      { jp: "彼は一度も諦めることなく、最後までやり遂げた。", en: "He carried it through to the end without ever giving up." },
+      { jp: "誰にも相談することなく、一人で決めてしまった。", en: "I ended up deciding alone, without consulting anyone." },
+    ],
+  },
+  {
+    id: "g31", level: "AM", title: "~かのように (as if / as though)",
+    structure: "Plain form + かのように",
+    explanation: "Marks a comparison to something that isn't actually true — useful for vivid description and for framing someone's behavior skeptically ('he acted as if he didn't know').",
+    examples: [
+      { jp: "彼は何も知らないかのように振る舞った。", en: "He acted as if he didn't know anything." },
+      { jp: "まるで昨日のことのように鮮明に覚えている。", en: "I remember it vividly, as if it were yesterday." },
+    ],
+  },
+  {
+    id: "g32", level: "AM", title: "~にほかならない (nothing other than / precisely because of)",
+    structure: "Noun + にほかならない",
+    explanation: "A strong, formal way of asserting that one specific cause/explanation is the real one, rejecting alternatives — useful for a confident, emphatic conclusion in an opinion paragraph.",
+    examples: [
+      { jp: "彼が成功したのは、努力の結果にほかならない。", en: "The reason he succeeded is nothing other than the result of his effort." },
+    ],
+  },
+  {
+    id: "g33", level: "AM", title: "~を通じて / ~を通して (through / by means of)",
+    structure: "Noun + を通じて・を通して",
+    explanation: "Frames a means or channel through which something happens — common in describing how you learned or experienced something over an extended period, a natural fit for reflective description.",
+    examples: [
+      { jp: "留学を通じて、多くのことを学びました。", en: "Through studying abroad, I learned a great many things." },
+      { jp: "この活動を通して、地域の人々とつながることができた。", en: "Through this activity, I was able to connect with people in the community." },
+    ],
+  },
+  {
+    id: "g34", level: "AM", title: "~に伴って (accompanying / as X happens)",
+    structure: "Noun / Verb (dictionary form) + に伴って",
+    explanation: "Marks that two changes are happening together — good for describing broader trends and their consequences, a common move in comparison and opinion paragraphs about society.",
+    examples: [
+      { jp: "少子化に伴って、学校の数も減少している。", en: "Accompanying the declining birthrate, the number of schools is also decreasing." },
+    ],
+  },
+  {
+    id: "g35", level: "AM", title: "~たところで (even if you were to — it wouldn't help)",
+    structure: "Verb-た + ところで",
+    explanation: "Concedes a hypothetical action but asserts it would be futile — a pointed, slightly world-weary structure for arguing that a proposed solution wouldn't actually fix the underlying problem.",
+    examples: [
+      { jp: "今さら謝ったところで、許してもらえるとは思えない。", en: "Even if I apologized now, I don't think I'd be forgiven." },
+    ],
+  },
+  {
+    id: "g36", level: "AM", title: "~べきだ / ~べきではない (should / shouldn't — moral obligation)",
+    structure: "Verb (dictionary form) + べきだ・べきではない",
+    explanation: "Marks moral or principled obligation, distinct from external necessity (なければならない) — the natural structure for stating and defending a position in an opinion paragraph.",
+    examples: [
+      { jp: "子供にはもっと自然の中で遊ばせるべきだと思う。", en: "I think children should be allowed to play in nature more." },
+      { jp: "他人のプライバシーを軽視するべきではない。", en: "One shouldn't disregard other people's privacy." },
+    ],
+  },
+
+  // ================= AH — where you go after this plan =================
+  {
+    id: "g37", level: "AH", title: "~とはいえ (that said / even so)",
     structure: "Clause + とはいえ",
     explanation: "More formal/written-flavored than でも/しかし — a single word that concedes fully and pivots, letting you sound measured rather than blunt. AH speakers use this to soften disagreement while still making a clear point.",
     examples: [
@@ -189,7 +349,7 @@ export const GRAMMAR = [
     ],
   },
   {
-    id: "g20", level: "AH", title: "~にすぎない (nothing more than / merely)",
+    id: "g38", level: "AH", title: "~にすぎない (nothing more than / merely)",
     structure: "Noun/Clause + にすぎない",
     explanation: "Diminishes a claim precisely — useful for pushing back on an argument without being aggressive ('that's merely one possibility, not the whole picture').",
     examples: [
@@ -197,7 +357,7 @@ export const GRAMMAR = [
     ],
   },
   {
-    id: "g21", level: "AH", title: "~ざるを得ない (have no choice but to)",
+    id: "g39", level: "AH", title: "~ざるを得ない (have no choice but to)",
     structure: "Verb-nai stem (irregular for する→せざるを得ない) + ざるを得ない",
     explanation: "A formal, almost literary way of expressing reluctant compulsion — noticeably more sophisticated than しなければならない, and signals you can modulate obligation language by register.",
     examples: [
@@ -205,7 +365,7 @@ export const GRAMMAR = [
     ],
   },
   {
-    id: "g22", level: "AH", title: "~かねない (might well / risk of)",
+    id: "g40", level: "AH", title: "~かねない (might well / risk of)",
     structure: "Verb-stem + かねない",
     explanation: "Expresses a negative possibility with real weight — 'this could well lead to X (bad outcome).' Distinct from the neutral かもしれない; using it correctly signals precise control over nuance of risk.",
     examples: [
@@ -213,7 +373,7 @@ export const GRAMMAR = [
     ],
   },
   {
-    id: "g23", level: "AH", title: "~がたい (hard to / difficult to, emotionally/morally)",
+    id: "g41", level: "AH", title: "~がたい (hard to / difficult to, emotionally/morally)",
     structure: "Verb-stem + がたい",
     explanation: "More abstract/formal than ~にくい — used for things that are conceptually or morally hard to do (信じがたい, 許しがたい), not physically difficult. A precision marker of advanced vocabulary control.",
     examples: [
@@ -221,7 +381,23 @@ export const GRAMMAR = [
     ],
   },
   {
-    id: "g24", level: "AH", title: "Register switching: だ・である体 vs です・ます体",
+    id: "g42", level: "AH", title: "~ずにはいられない (can't help but / can't resist)",
+    structure: "Verb-nai stem + ずにはいられない",
+    explanation: "Expresses an emotional or physical impulse too strong to suppress — a natural way to narrate a reaction you couldn't control, adding emotional texture to a story's climax.",
+    examples: [
+      { jp: "その話を聞いて、涙を流さずにはいられなかった。", en: "Hearing that story, I couldn't help but cry." },
+    ],
+  },
+  {
+    id: "g43", level: "AH", title: "~んばかりに (as if about to / practically)",
+    structure: "Verb-nai stem (drop ない) + んばかりに",
+    explanation: "A vivid, literary way to describe an intense state that looks like it's on the verge of happening — 'shouting as if about to cry.' Rare in casual speech, but a clear marker of stylistic range when used well.",
+    examples: [
+      { jp: "彼は今にも泣き出さんばかりの顔をしていた。", en: "He had a look on his face as if he were about to burst into tears." },
+    ],
+  },
+  {
+    id: "g44", level: "AH", title: "Register switching: だ・である体 vs です・ます体",
     structure: "Plain/copula style vs. polite style, deployed deliberately",
     explanation: "The clearest Advanced High signal isn't a grammar point at all — it's controlled code-switching. AH speakers can drop into である-style for a formal aside or a definitional statement mid-conversation, then return to です・ます, on purpose, for rhetorical effect (this mirrors how native speakers quote written sources or make a point sound 'official'). Doing this by accident (mixing styles carelessly) reads as an error; doing it deliberately reads as sophistication.",
     examples: [
