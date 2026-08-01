@@ -2,7 +2,8 @@ import { buildSession, getDueCount, getNewAvailableCount } from "../data/reviewP
 import { MODELS } from "../data/models.js";
 import { grade, formatInterval } from "../core/srs.js";
 import { getState, gradeSrsItem, completeReviewSession, setNewCardsPerSession } from "../core/storage.js";
-import { el, toast, renderHighlighted, stripHighlightMarkup } from "../core/ui.js";
+import { el, toast, stripHighlightMarkup } from "../core/ui.js";
+import { renderClickableJp } from "../core/wordLookup.js";
 import { speak } from "../core/audio.js";
 
 const BREATHER_EVERY = 6;
@@ -155,7 +156,7 @@ function renderCard(item, root, state) {
     ])
   );
 
-  const frontEl = el("p", { class: "review-front", lang: "ja" }, renderHighlighted(item.frontJp));
+  const frontEl = el("p", { class: "review-front", lang: "ja" }, renderClickableJp(item.frontJp));
   card.appendChild(frontEl);
 
   if (!flipped) {
@@ -206,7 +207,7 @@ function renderBreather(item, root) {
   const card = el("div", { class: "card review-card breather" });
   card.appendChild(el("div", { class: "cat-tag" }, "📖 Paragraph practice"));
   card.appendChild(el("h3", {}, model.title));
-  const jpBlock = el("p", { class: "model-jp", lang: "ja" }, renderHighlighted(model.jp));
+  const jpBlock = el("p", { class: "model-jp", lang: "ja" }, renderClickableJp(model.jp));
   card.appendChild(jpBlock);
   if (showTranslation[model.id]) card.appendChild(el("p", { class: "muted" }, model.en));
   card.appendChild(

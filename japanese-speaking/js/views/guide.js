@@ -42,7 +42,7 @@ export function render(root) {
         <li><strong>Vocabulary depth.</strong> Speaking at Advanced Mid needs Advanced Mid words, not just Advanced Mid grammar. <a href="#/vocabulary">Vocabulary in Sentences</a> carries you from mid-N3 through N2 — 84 words, every one taught inside a full sentence, never as a bare flashcard. JLPT levels here are only a convenient difficulty scale, not a study target — the real goal is words and structures you actually reach for in daily conversation.</li>
         <li><strong>Sustained turns.</strong> 60-120 seconds uninterrupted, not one-line answers. <a href="#/practice">Paragraph Practice</a>.</li>
         <li><strong>Handling complications and taking a stance.</strong> AM/AH-level tasks almost always include an unexpected twist or ask you to argue a position while acknowledging the other side.</li>
-        <li><strong>Hearing the target.</strong> <a href="#/levels">Level Ladder</a> shows the exact same prompt answered at all 4 levels side by side, annotated — the fastest way to internalize what each level actually sounds like.</li>
+        <li><strong>Hearing the target.</strong> <a href="#/levels">Level Ladder</a> shows the exact same prompt answered at all 4 levels side by side, annotated — the fastest way to internalize what each level actually sounds like. Click any word in any sentence, anywhere in this app, for its reading and English meaning; each Advanced High answer also flags the specific new grammar it uses, with a direct link to learn it and a button to go practice speaking that answer yourself.</li>
       </ol>`
     )
   );

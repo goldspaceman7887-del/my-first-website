@@ -28,20 +28,6 @@ export function toast(message, { type = "info", duration = 2600 } = {}) {
   }, duration);
 }
 
-// Renders text containing **connector** markup, wrapping matches in a highlight span.
-export function renderHighlighted(text) {
-  const frag = document.createDocumentFragment();
-  const parts = text.split(/\*\*(.+?)\*\*/g);
-  parts.forEach((part, i) => {
-    if (i % 2 === 1) {
-      frag.appendChild(el("mark", { class: "connector-hl" }, part));
-    } else if (part) {
-      frag.appendChild(document.createTextNode(part));
-    }
-  });
-  return frag;
-}
-
 export function stripHighlightMarkup(text) {
   return text.replace(/\*\*(.+?)\*\*/g, "$1");
 }

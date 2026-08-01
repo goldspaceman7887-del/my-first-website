@@ -189,6 +189,15 @@ a:hover { text-decoration: underline; }
 .chip.active { background: var(--text); color: var(--bg-elevated); border-color: var(--text); }
 .chip.static { cursor: default; font-weight: 600; }
 
+.grammar-spotlight { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border); }
+.grammar-spotlight-label { margin-bottom: 6px; }
+.grammar-spotlight-chip {
+  cursor: pointer; background: color-mix(in srgb, var(--warn) 15%, var(--bg-elevated));
+  border-color: var(--warn); color: var(--text); text-decoration: none; font-weight: 600;
+}
+.grammar-spotlight-chip:hover { background: color-mix(in srgb, var(--warn) 28%, var(--bg-elevated)); text-decoration: none; }
+.ladder-tier .btn.primary { margin-top: 12px; width: 100%; }
+
 .connector-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
 .connector-card {
   background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius);
@@ -253,6 +262,27 @@ a:hover { text-decoration: underline; }
 .model-jp { font-size: 1.15rem; line-height: 1.9; }
 .model-en { font-size: 0.92rem; }
 .connector-hl { background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--text); border-radius: 4px; padding: 0 2px; font-weight: 700; }
+
+/* Click-any-word lookup */
+.word-click {
+  cursor: pointer; border-bottom: 1.5px dotted var(--accent-2); padding-bottom: 0.5px;
+  transition: background 0.12s;
+}
+.word-click:hover, .word-click:focus-visible { background: color-mix(in srgb, var(--accent-2) 16%, transparent); border-radius: 3px; }
+.connector-hl .word-click { border-bottom-color: color-mix(in srgb, var(--text) 55%, transparent); }
+.word-click-grammar { border-bottom-style: solid; }
+
+.word-popover {
+  position: absolute; z-index: 400; max-width: 280px; background: var(--bg-elevated);
+  border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); padding: 12px 14px;
+}
+.word-popover-close {
+  position: absolute; top: 4px; right: 8px; background: none; border: none; color: var(--text-muted);
+  font-size: 1.1rem; cursor: pointer; line-height: 1; padding: 4px;
+}
+.word-popover-reading { font-size: 1.15rem; font-weight: 800; padding-right: 18px; }
+.word-popover-pos { color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; margin-top: 2px; }
+.word-popover-meaning { margin-top: 6px; font-size: 0.95rem; }
 .model-btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
 
 .vocab-list { display: flex; flex-direction: column; gap: 12px; }

@@ -1,6 +1,7 @@
 import { GRAMMAR, LEVELS } from "../data/grammar.js";
 import { getState, recordQuizAnswer } from "../core/storage.js";
-import { el, toast, renderHighlighted, stripHighlightMarkup } from "../core/ui.js";
+import { el, toast, stripHighlightMarkup } from "../core/ui.js";
+import { renderClickableJp } from "../core/wordLookup.js";
 import { speak } from "../core/audio.js";
 
 let activeLevel = "all";
@@ -70,7 +71,7 @@ function renderLearn(root) {
     const exBox = el("div", { class: "connector-example" });
     g.examples.forEach((ex) => {
       const row = el("div", { class: "grammar-example-row" }, [
-        el("span", { lang: "ja" }, renderHighlighted(ex.jp)),
+        el("span", { lang: "ja" }, renderClickableJp(ex.jp)),
         el("button", { class: "icon-btn small", title: "Listen", onclick: () => speak(stripHighlightMarkup(ex.jp), { rate: getState().settings.rate }) }, "🔊"),
       ]);
       exBox.appendChild(row);

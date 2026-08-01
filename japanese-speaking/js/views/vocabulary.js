@@ -1,6 +1,7 @@
 import { VOCABULARY, WORD_LEVELS } from "../data/vocabulary.js";
 import { getState, recordQuizAnswer } from "../core/storage.js";
-import { el, toast, renderHighlighted, stripHighlightMarkup } from "../core/ui.js";
+import { el, toast, stripHighlightMarkup } from "../core/ui.js";
+import { renderClickableJp } from "../core/wordLookup.js";
 import { speak } from "../core/audio.js";
 
 let activeLevel = "all";
@@ -72,7 +73,7 @@ function renderLearn(root) {
     card.appendChild(el("div", { class: "muted small" }, `${w.pos} — ${w.en}`));
     const sentBox = el("div", { class: "connector-example" });
     const sentRow = el("div", { class: "grammar-example-row" }, [
-      el("span", { lang: "ja" }, renderHighlighted(w.sentence)),
+      el("span", { lang: "ja" }, renderClickableJp(w.sentence)),
       el("button", { class: "icon-btn small", title: "Listen", onclick: () => speak(stripHighlightMarkup(w.sentence), { rate: getState().settings.rate }) }, "🔊"),
     ]);
     sentBox.appendChild(sentRow);

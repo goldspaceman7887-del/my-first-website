@@ -1,6 +1,7 @@
 import { CONNECTORS, CATEGORIES } from "../data/connectors.js";
 import { getState, recordQuizAnswer } from "../core/storage.js";
 import { el, toast } from "../core/ui.js";
+import { renderClickableJp } from "../core/wordLookup.js";
 import { speak } from "../core/audio.js";
 
 let activeCategory = "all";
@@ -71,8 +72,8 @@ function renderLearn() {
     card.appendChild(el("div", { class: "connector-en" }, c.en));
     card.appendChild(el("div", { class: "connector-register muted small" }, `register: ${c.register}`));
     const ex = el("div", { class: "connector-example" });
-    ex.appendChild(el("div", {}, c.a));
-    if (c.b) ex.appendChild(el("div", {}, c.b));
+    ex.appendChild(el("div", { lang: "ja" }, renderClickableJp(c.a)));
+    if (c.b) ex.appendChild(el("div", { lang: "ja" }, renderClickableJp(c.b)));
     ex.appendChild(
       el("button", { class: "icon-btn small", title: "Listen to example", onclick: () => speak(`${c.a} ${c.b || ""}`, { rate: getState().settings.rate }) }, "🔊 example")
     );

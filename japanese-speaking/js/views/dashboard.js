@@ -84,7 +84,7 @@ export function render(root) {
     quickCard("🔗", "Connector Lab", "Learn + quiz the phrases that link sentences into paragraphs.", "#/connectors"),
     quickCard("📚", "Grammar Ladder", "44 structures leveled IH → AL → AM → AH, with example sentences.", "#/grammar"),
     quickCard("🈶", "Vocabulary (N3→N2)", "84 words, always learned through a full example sentence.", "#/vocabulary"),
-    quickCard("🪜", "Level Ladder", "The same prompt answered at all 4 levels — hear exactly what changes.", "#/levels"),
+    quickCard("🪜", "Level Ladder", "10 prompts answered at all 4 levels — click any word to define it, see the grammar used, then practice speaking it.", "#/levels"),
     quickCard("🎤", "Paragraph Practice", "Scaffolded speaking prompts across 6 Advanced-level functions.", "#/practice"),
     quickCard("🔁", "Shadowing", "Listen and repeat model paragraph-length monologues.", "#/shadowing"),
     quickCard("📋", "Self-Assessment", "Score your recordings against the ACTFL Advanced High rubric.", "#/rubric"),

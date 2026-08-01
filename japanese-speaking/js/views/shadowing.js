@@ -1,7 +1,7 @@
 import { MODELS } from "../data/models.js";
 import { FUNCTIONS } from "../data/prompts.js";
-import { el } from "../core/ui.js";
-import { renderHighlighted, stripHighlightMarkup } from "../core/ui.js";
+import { el, stripHighlightMarkup } from "../core/ui.js";
+import { renderClickableJp } from "../core/wordLookup.js";
 import { speak, stopSpeaking, getJapaneseVoices } from "../core/audio.js";
 import { getState, updateSettings } from "../core/storage.js";
 
@@ -47,7 +47,7 @@ export function render(root) {
     card.appendChild(el("div", { class: "model-tag" }, fn.title));
     card.appendChild(el("h3", {}, m.title));
     const jpBlock = el("p", { class: "model-jp", lang: "ja" });
-    jpBlock.appendChild(renderHighlighted(m.jp));
+    jpBlock.appendChild(renderClickableJp(m.jp));
     card.appendChild(jpBlock);
 
     if (showTranslation[m.id]) {

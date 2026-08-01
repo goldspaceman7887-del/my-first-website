@@ -4,6 +4,10 @@ A focused, single-page web app for taking your Japanese speaking from ACTFL **mi
 
 No build step, no backend, no API keys — vanilla HTML/CSS/JS (ES modules), progress stored in `localStorage`.
 
+## Click any word, anywhere
+
+Every Japanese sentence in the app — Connector Lab, Grammar Ladder, Vocabulary, Review Session, Shadowing, Level Ladder — is rendered through a shared word-lookup system (`js/core/wordLookup.js`). It tokenizes the sentence against a merged dictionary (curated common-word list in `js/data/dictionary.js`, plus every connector/grammar/vocabulary entry already in the app) using greedy longest-match, and wraps every recognized word in a clickable span. Click one and a popover shows its reading and English meaning — no need to already know a word to read the sentence it's in.
+
 ## Features
 
 | Page | What it does |
@@ -13,7 +17,7 @@ No build step, no backend, no API keys — vanilla HTML/CSS/JS (ES modules), pro
 | **Connector Lab** | ~40 discourse connectors (接続表現) across 10 categories (sequence, cause, result, contrast, condition, example, summary, opinion, emphasis) with example two-sentence chains, audio playback, and a quiz mode. This is the core toolkit for linking sentences into paragraphs. |
 | **Grammar Ladder** | 44 sentence-internal grammar structures leveled IH (6, review) → AL (14) → AM (16) → AH (8), each with structure pattern, explanation, example sentences with audio, and common mistakes. Includes a quiz mode. |
 | **Vocabulary in Sentences** | 84 JLPT words carrying you from mid-N3 through N2, every word taught inside a full example sentence (never a bare word list), with reading, part of speech, meaning, audio, and a fill-in-the-blank quiz mode. Paced into the 12-week roadmap at ~7 new words/week. |
-| **Level Ladder** | 6 prompts, each answered at all 4 ACTFL sublevels side by side, annotated to show exactly what grammar/connector/structural change moves an answer up a level. |
+| **Level Ladder** | 10 prompts, each answered at all 4 ACTFL sublevels side by side, annotated to show exactly what grammar/connector/structural change moves an answer up a level. Every Advanced High answer flags the specific new grammar it uses (linked to Grammar Ladder) and has a one-click button into Paragraph Practice, pre-selecting that prompt's speaking function. |
 | **Paragraph Practice** | 6 ACTFL Advanced-level speaking functions (narrate in the past, handle a complication, compare & contrast, support an opinion, hypothesize, describe in detail), each with topic prompts and a move-by-move scaffold. Uses the Web Speech Recognition API (Chrome/Edge) to transcribe your spoken paragraph live, then gives feedback on sentence count, connector variety, and duration. Falls back to a manual-transcript mode where recognition isn't supported. |
 | **Shadowing** | Model paragraph-length monologues (with connectors highlighted) for each speaking function, played via `speechSynthesis` at adjustable speed for shadowing practice. |
 | **12-Week Roadmap** | A dense, week-by-week plan (45-60 min/day) covering all IH/AL/AM grammar with 3 hard checkpoints (weeks 4, 8, 12), plus an Advanced High extension plan for month 4 and beyond. |

@@ -38,7 +38,11 @@ function analyzeTranscript(text) {
   return { sentenceCount: sentences.length, charCount, hits, categoriesUsed };
 }
 
-export function render(root) {
+export function render(root, params) {
+  if (params && params.param && FUNCTIONS.find((f) => f.id === params.param)) {
+    selectedFunctionId = params.param;
+    selectedTopic = getFunction(selectedFunctionId).topics[0];
+  }
   const container = el("div", { class: "view" });
   container.appendChild(
     el("header", { class: "view-header" }, [

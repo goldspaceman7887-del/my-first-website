@@ -1,6 +1,8 @@
 import { LEVEL_EXAMPLES } from "../data/levelExamples.js";
-import { LEVELS } from "../data/grammar.js";
-import { el } from "../core/ui.js";
+import { LEVELS, GRAMMAR } from "../data/grammar.js";
+import { FUNCTIONS } from "../data/prompts.js";
+import { el, stripHighlightMarkup } from "../core/ui.js";
+import { renderClickableJp } from "../core/wordLookup.js";
 import { speak } from "../core/audio.js";
 import { getState } from "../core/storage.js";
 
@@ -34,14 +36,34 @@ export function render(root) {
       el("div", { class: "ladder-tier-head" }, [
         el("span", { class: "cat-tag", style: `background:${lvl.color};color:#fff` }, lvl.id),
         el("strong", {}, lvl.label),
-        el("button", { class: "icon-btn small", title: "Listen", onclick: () => speak(tier.jp, { rate: getState().settings.rate }) }, "🔊"),
+        el("button", { class: "icon-btn small", title: "Listen", onclick: () => speak(stripHighlightMarkup(tier.jp), { rate: getState().settings.rate }) }, "🔊"),
       ])
     );
-    card.appendChild(el("p", { class: "model-jp", lang: "ja" }, tier.jp));
+    card.appendChild(el("p", { class: "model-jp", lang: "ja" }, renderClickableJp(tier.jp)));
     card.appendChild(el("p", { class: "muted small" }, tier.en));
     const notesList = el("ul", { class: "tip-list ladder-notes" });
     tier.notes.forEach((n) => notesList.appendChild(el("li", {}, n)));
     card.appendChild(notesList);
+
+    if (tier.grammarIds && tier.grammarIds.length > 0) {
+      const spotlight = el("div", { class: "grammar-spotlight" });
+      spotlight.appendChild(el("div", { class: "muted small grammar-spotlight-label" }, "📚 New grammar used here:"));
+      const chipRow = el("div", { class: "chip-row small" });
+      tier.grammarIds.forEach((gid) => {
+        const g = GRAMMAR.find((x) => x.id === gid);
+        if (!g) return;
+        chipRow.appendChild(el("a", { class: "chip static grammar-spotlight-chip", href: "#/grammar" }, g.title));
+      });
+      spotlight.appendChild(chipRow);
+      card.appendChild(spotlight);
+    }
+
+    if (lvl.id === "AH" && topic.functionId) {
+      card.appendChild(
+        el("a", { class: "btn primary", href: `#/practice/${topic.functionId}` }, "🎤 Practice speaking this now →")
+      );
+    }
+
     ladder.appendChild(card);
   });
   container.appendChild(ladder);
@@ -49,7 +71,7 @@ export function render(root) {
   container.appendChild(
     el("div", { class: "card" }, [
       el("h2", {}, "How to use this page"),
-      el("p", { class: "muted" }, "Pick a topic close to something you'd actually be asked. Read the IH tier first — that's roughly your floor. Then read AL and AM, noticing exactly which connector or grammar structure got added at each step. Finally read AH out loud, then try answering the same topic yourself before checking Paragraph Practice."),
+      el("p", { class: "muted" }, "Pick a topic close to something you'd actually be asked. Read the IH tier first — that's roughly your floor. Then read AL and AM, noticing exactly which connector or grammar structure got added at each step. Finally read AH out loud — click any word you don't know, notice the grammar spotlight, then try answering the same topic yourself before jumping into Paragraph Practice."),
     ])
   );
 
