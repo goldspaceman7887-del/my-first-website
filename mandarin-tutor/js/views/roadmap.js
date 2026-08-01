@@ -1,11 +1,12 @@
-// ROADMAP MODE — a Duolingo-style path through 16 original beginner units.
-// Each unit: review 5 sentences, take a 3-question quiz, unlock the next.
+// ROADMAP MODE — a Duolingo-style path spanning all 9 ACTFL sub-levels,
+// Novice Low through Advanced High. Each unit: review 5 sentences, take a
+// 3-question quiz, unlock the next.
 
 import { store, todayISO } from "../core/storage.js";
 import { el, blurActive, toast, progressBar } from "../core/ui.js";
 import { audioEngine } from "../core/audio.js";
 import { addXP, registerStudyToday } from "../core/gamification.js";
-import { ROADMAP_UNITS } from "../data/roadmap.js";
+import { ROADMAP_UNITS, ACTFL_LEVELS, levelIndex } from "../data/roadmap.js";
 
 function completedSet() {
   return new Set(store.state.progress.roadmapUnitsCompleted || []);
@@ -15,6 +16,14 @@ function unitStatus(index, done) {
   if (done.has(ROADMAP_UNITS[index].id)) return "completed";
   if (index === 0 || done.has(ROADMAP_UNITS[index - 1].id)) return "unlocked";
   return "locked";
+}
+
+// Current ACTFL tier = the tier of the next not-yet-completed unit, or the
+// top tier once everything is done.
+function currentLevel(done) {
+  const nextUnit = ROADMAP_UNITS.find((u) => !done.has(u.id));
+  const level = nextUnit ? nextUnit.level : ROADMAP_UNITS[ROADMAP_UNITS.length - 1].level;
+  return ACTFL_LEVELS[levelIndex(level)];
 }
 
 function shuffle(arr) {
@@ -40,7 +49,8 @@ export function renderRoadmap(container) {
   container.appendChild(
     el("div", { class: "page-header" }, [
       el("h1", {}, "🗺️ Roadmap"),
-      el("p", {}, "A sentence-first path through beginner Mandarin — 16 units, each built around 5 real sentences you'll actually use, plus a quick check before the next one unlocks.")
+      el("p", {}, "A sentence-first path from zero to ACTFL Advanced High — Novice Low through Advanced High, one unit at a time. Each unit: 5 real sentences you'll actually use, then a quick check before the next one unlocks."),
+      el("p", { class: "text-faint" }, "A growing foundation, not a finished multi-year curriculum yet — more units get added over time.")
     ])
   );
 
@@ -51,16 +61,29 @@ export function renderRoadmap(container) {
   function showPath() {
     body.innerHTML = "";
     const done = completedSet();
+    const level = currentLevel(done);
 
     body.appendChild(
       el("div", { class: "roadmap-progress-summary" }, [
         el("span", { class: "badge badge-gold" }, `${done.size} / ${ROADMAP_UNITS.length} units complete`),
+        el("span", { class: "badge badge-level" }, `Current tier: ${level.label}`),
         el("div", { style: "flex:1" }, [progressBar(Math.round((done.size / ROADMAP_UNITS.length) * 100))])
       ])
     );
 
     const path = el("div", { class: "roadmap-path" });
+    let lastLevel = null;
     ROADMAP_UNITS.forEach((unit, i) => {
+      if (unit.level !== lastLevel) {
+        lastLevel = unit.level;
+        const tier = ACTFL_LEVELS[levelIndex(unit.level)];
+        path.appendChild(
+          el("div", { class: "roadmap-tier-header" }, [
+            el("h3", {}, tier.label),
+            el("p", { class: "text-faint" }, tier.blurb)
+          ])
+        );
+      }
       const status = unitStatus(i, done);
       const side = i % 3 === 0 ? "" : i % 3 === 1 ? "offset-left" : "offset-right";
       const row = el("div", { class: `roadmap-node-row ${side}` }, [
@@ -85,7 +108,8 @@ export function renderRoadmap(container) {
   function showUnit(unit) {
     body.innerHTML = "";
     body.appendChild(el("button", { class: "btn btn-sm", onclick: showPath }, "← Roadmap"));
-    body.appendChild(el("h2", { style: "margin-top:.75rem" }, `${unit.icon} ${unit.title} · ${unit.titleZh}`));
+    body.appendChild(el("span", { class: "badge badge-level", style: "margin-top:.75rem;display:inline-block" }, ACTFL_LEVELS[levelIndex(unit.level)].label));
+    body.appendChild(el("h2", { style: "margin-top:.4rem" }, `${unit.icon} ${unit.title} · ${unit.titleZh}`));
     runLearnStep();
 
     function runLearnStep() {
