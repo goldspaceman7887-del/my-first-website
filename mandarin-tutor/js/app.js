@@ -9,6 +9,7 @@ import { CHARACTERS } from "./data/characters.js";
 import { isMastered } from "./core/srs.js";
 
 import { renderDashboard } from "./views/dashboard.js";
+import { renderRoadmap } from "./views/roadmap.js";
 import { renderCharacters } from "./views/characters.js";
 import { renderVocabulary } from "./views/vocabulary.js";
 import { renderSentences } from "./views/sentences.js";
@@ -108,6 +109,7 @@ document.getElementById("stat-due-chip").addEventListener("click", () => navigat
 
 // ---------- Routes ----------
 registerRoute("dashboard", renderDashboard);
+registerRoute("roadmap", renderRoadmap);
 registerRoute("characters", renderCharacters);
 registerRoute("vocabulary", renderVocabulary);
 registerRoute("sentences", renderSentences);
