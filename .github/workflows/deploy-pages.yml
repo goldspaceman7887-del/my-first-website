@@ -6,6 +6,7 @@ on:
       - Root
       - main
       - claude/seed-english-tokyo-platform-05f8r0
+      - claude/mexican-spanish-immersion-9hao6k
   workflow_dispatch:
 
 permissions:
@@ -51,6 +52,9 @@ jobs:
           # Mandarin Tutor at a subpath: /my-first-website/mandarin-tutor/
           mkdir -p _site/mandarin-tutor
           cp -r mandarin-tutor/. _site/mandarin-tutor/
+          # Mexican Spanish Tutor at a subpath: /my-first-website/mexican-spanish-tutor/
+          mkdir -p _site/mexican-spanish-tutor
+          cp -r mexican-spanish-tutor/. _site/mexican-spanish-tutor/
 
       - uses: actions/upload-pages-artifact@v3
         with:
