@@ -9,7 +9,7 @@
 // forgotten.
 
 import { store, todayISO } from "../core/storage.js";
-import { el, blurActive, toast, progressBar } from "../core/ui.js";
+import { el, blurActive, toast, progressBar, downloadJSON } from "../core/ui.js";
 import { audioEngine } from "../core/audio.js";
 import { addXP, registerStudyToday } from "../core/gamification.js";
 import { gradeItem, QUALITY } from "../core/srs.js";
@@ -107,9 +107,24 @@ function seedRoadmapReview(unit) {
 export function renderRoadmap(container) {
   container.appendChild(
     el("div", { class: "page-header" }, [
-      el("h1", {}, "🗺️ Roadmap"),
+      el("div", { class: "flex justify-between items-center flex-wrap gap-2" }, [
+        el("h1", {}, "🗺️ Roadmap"),
+        el(
+          "button",
+          {
+            class: "btn btn-sm",
+            title: "Download a backup of your progress",
+            onclick: () => {
+              downloadJSON("mandarin-tutor-progress.json", store.exportJSON());
+              toast("Progress saved to a file on your device.", { type: "success", icon: "💾" });
+            }
+          },
+          "💾 Save my progress"
+        )
+      ]),
       el("p", {}, "A path from zero to ACTFL Advanced High — Novice Low through Advanced High, one unit at a time. Each unit: the grammar point first, then the individual vocabulary it uses, then 8 full sentences in context, then an 8-exercise practice round before the next one unlocks."),
-      el("p", { class: "text-faint" }, "Passing a unit also adds it to your spaced-repetition Review queue, so it comes back later instead of being seen once and forgotten. A growing foundation, not a finished multi-year curriculum yet.")
+      el("p", { class: "text-faint" }, "Passing a unit also adds it to your spaced-repetition Review queue, so it comes back later instead of being seen once and forgotten. A growing foundation, not a finished multi-year curriculum yet."),
+      el("p", { class: "text-faint" }, "Your progress already saves automatically in this browser as you go. Tap \"Save my progress\" any time to download a backup file — keep it somewhere safe, or import it (in Settings) on another device to pick up where you left off.")
     ])
   );
 
