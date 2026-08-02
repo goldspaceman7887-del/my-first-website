@@ -1,5 +1,6 @@
 import { VOCABULARY, WORD_LEVELS } from "../data/vocabulary.js";
-import { getState, recordQuizAnswer } from "../core/storage.js";
+import { getState, recordQuizAnswer, gradeSrsItem } from "../core/storage.js";
+import { grade, formatInterval, isDue, isNew } from "../core/srs.js";
 import { el, toast, stripHighlightMarkup, progressBar } from "../core/ui.js";
 import { renderClickableJp } from "../core/wordLookup.js";
 import { speak } from "../core/audio.js";
@@ -18,15 +19,21 @@ let activeLevel = "all";
 let mode = "path";
 let selectedLessonIndex = null;
 let quizFilterIds = null; // set when quizzing a single lesson from the Path tab
-let learnPage = 0;
-const LEARN_PAGE_SIZE = 30;
+
+// Learn-tab flip queue (SRS-driven, one word at a time — same pattern as Connector Lab / Grammar Ladder)
+let learnQueue = null;
+let learnQIndex = 0;
+let learnFlipped = false;
+
+// Path tab lesson-detail: browse the lesson's words one at a time instead of as a grid
+let lessonPreviewIndex = 0;
 
 export function render(root) {
   const container = el("div", { class: "view" });
   container.appendChild(
     el("header", { class: "view-header" }, [
       el("h1", {}, "🈶 Vocabulary in Sentences"),
-      el("p", { class: "subtitle" }, "Always learned through a full sentence, never as a bare word list — 284 words, using JLPT N3→N2 only as a rough difficulty scale. The goal is real conversational fluency, not the exam." ),
+      el("p", { class: "subtitle" }, `Always learned through a full sentence, never as a bare word list — ${VOCABULARY.length.toLocaleString()} words, using JLPT N3→N2 only as a rough difficulty scale. The goal is real conversational fluency, not the exam.`),
     ])
   );
 
@@ -176,6 +183,7 @@ function renderPath(root) {
         "aria-label": label,
         onclick: () => {
           selectedLessonIndex = i;
+          lessonPreviewIndex = 0;
           render(root);
           document.getElementById("vocab-lesson-detail")?.scrollIntoView({ behavior: "smooth", block: "start" });
         },
@@ -197,7 +205,7 @@ function renderPath(root) {
   );
 
   if (pathComplete) {
-    wrap.appendChild(el("div", { class: "card celebration-card" }, "🎉 All 284 words mastered — ask for more vocabulary any time to keep going."));
+    wrap.appendChild(el("div", { class: "card celebration-card" }, `🎉 All ${VOCABULARY.length.toLocaleString()} words mastered — ask for more vocabulary any time to keep going.`));
   }
 
   const lesson = lessons[selectedLessonIndex];
@@ -212,9 +220,31 @@ function renderPath(root) {
   detail.appendChild(el("p", { class: "muted small" }, `${doneInLesson}/${lesson.words.length} words mastered in this lesson`));
   detail.appendChild(progressBar(Math.round((doneInLesson / lesson.words.length) * 100)));
 
-  const cardList = el("div", { class: "vocab-list" });
-  lesson.words.forEach((w) => cardList.appendChild(renderVocabCard(w, state)));
-  detail.appendChild(cardList);
+  if (lessonPreviewIndex >= lesson.words.length) lessonPreviewIndex = 0;
+  detail.appendChild(el("p", { class: "muted small" }, `Word ${lessonPreviewIndex + 1} / ${lesson.words.length} in this lesson`));
+  detail.appendChild(renderVocabCard(lesson.words[lessonPreviewIndex], state));
+  detail.appendChild(
+    el("div", { class: "week-nav-row" }, [
+      el(
+        "button",
+        {
+          class: "btn",
+          disabled: lessonPreviewIndex <= 0 ? "disabled" : null,
+          onclick: () => { lessonPreviewIndex -= 1; render(root); },
+        },
+        "← Previous word"
+      ),
+      el(
+        "button",
+        {
+          class: "btn",
+          disabled: lessonPreviewIndex >= lesson.words.length - 1 ? "disabled" : null,
+          onclick: () => { lessonPreviewIndex += 1; render(root); },
+        },
+        "Next word →"
+      ),
+    ])
+  );
 
   detail.appendChild(
     el(
@@ -236,11 +266,17 @@ function renderPath(root) {
   return wrap;
 }
 
-// ================= Learn tab =================
+// ================= Learn tab: one word at a time, flip + self-grade (SRS) =================
+function buildLearnQueue(state) {
+  return VOCABULARY.filter((w) => activeLevel === "all" || w.level === activeLevel).filter(
+    (w) => isNew(state.srs[w.id]) || isDue(state.srs[w.id])
+  );
+}
+
 function renderLearn(root) {
   const wrap = el("div", {});
   const filterRow = el("div", { class: "chip-row" });
-  filterRow.appendChild(el("button", { class: `chip ${activeLevel === "all" ? "active" : ""}`, onclick: () => { activeLevel = "all"; learnPage = 0; render(root); } }, "All"));
+  filterRow.appendChild(el("button", { class: `chip ${activeLevel === "all" ? "active" : ""}`, onclick: () => { activeLevel = "all"; learnQueue = null; render(root); } }, "All"));
   WORD_LEVELS.forEach((lvl) => {
     filterRow.appendChild(
       el(
@@ -248,7 +284,7 @@ function renderLearn(root) {
         {
           class: `chip ${activeLevel === lvl.id ? "active" : ""}`,
           style: activeLevel === lvl.id ? `background:${lvl.color};border-color:${lvl.color};color:#fff` : "",
-          onclick: () => { activeLevel = lvl.id; learnPage = 0; render(root); },
+          onclick: () => { activeLevel = lvl.id; learnQueue = null; render(root); },
         },
         lvl.id
       )
@@ -262,41 +298,79 @@ function renderLearn(root) {
   }
 
   const state = getState();
-  const words = VOCABULARY.filter((w) => activeLevel === "all" || w.level === activeLevel);
-  const masteredCount = words.filter((w) => state.connectorProgress[w.id]?.mastered).length;
-
-  const pageCount = Math.max(1, Math.ceil(words.length / LEARN_PAGE_SIZE));
-  learnPage = Math.min(learnPage, pageCount - 1);
-  const pageWords = words.slice(learnPage * LEARN_PAGE_SIZE, (learnPage + 1) * LEARN_PAGE_SIZE);
-
-  wrap.appendChild(
-    el("p", { class: "muted small" },
-      `${masteredCount}/${words.length} mastered in this view · showing ${pageWords.length ? learnPage * LEARN_PAGE_SIZE + 1 : 0}-${learnPage * LEARN_PAGE_SIZE + pageWords.length} of ${words.length}`
-    )
-  );
-
-  const list = el("div", { class: "vocab-list" });
-  pageWords.forEach((w) => list.appendChild(renderVocabCard(w, state)));
-  wrap.appendChild(list);
-
-  if (pageCount > 1) {
-    wrap.appendChild(
-      el("div", { class: "week-nav-row" }, [
-        el(
-          "button",
-          { class: "btn", disabled: learnPage <= 0 ? "disabled" : null, onclick: () => { learnPage -= 1; render(root); root.scrollIntoView(); } },
-          "← Previous page"
-        ),
-        el("span", { class: "muted small" }, `Page ${learnPage + 1} / ${pageCount}`),
-        el(
-          "button",
-          { class: "btn", disabled: learnPage >= pageCount - 1 ? "disabled" : null, onclick: () => { learnPage += 1; render(root); root.scrollIntoView(); } },
-          "Next page →"
-        ),
-      ])
-    );
+  if (learnQueue === null) {
+    learnQueue = buildLearnQueue(state);
+    learnQIndex = 0;
+    learnFlipped = false;
   }
 
+  if (learnQIndex >= learnQueue.length) {
+    wrap.appendChild(
+      el("div", { class: "card celebration-card" }, [
+        el("p", {}, learnQueue.length === 0
+          ? "🎉 Nothing due in this view right now — everything's ghosted into a future review. Try another level, or check back later."
+          : "✅ Done with this batch — graded words resurface here (or in Review Session) when they're due again."),
+        el("button", { class: "btn primary", onclick: () => { learnQueue = null; render(root); } }, "Check again"),
+      ])
+    );
+    return wrap;
+  }
+
+  const w = learnQueue[learnQIndex];
+  const lvl = WORD_LEVELS.find((l) => l.id === w.level);
+
+  wrap.appendChild(el("div", { class: "review-progress muted small" }, `${learnQIndex + 1} / ${learnQueue.length} in this view`));
+
+  const card = el("div", { class: "card review-card" });
+  card.appendChild(
+    el("div", { class: "review-card-top" }, [
+      el("span", { class: "cat-tag", style: `background:${lvl.color}22;color:${lvl.color}` }, lvl.id),
+      el("button", { class: "icon-btn small", title: "Listen", onclick: (e) => { e.stopPropagation(); speak(stripHighlightMarkup(w.sentence), { rate: getState().settings.rate }); } }, "🔊"),
+    ])
+  );
+  card.appendChild(el("p", { class: "review-front", lang: "ja" }, renderClickableJp(w.sentence)));
+
+  if (!learnFlipped) {
+    card.appendChild(el("p", { class: "muted small review-tap-hint" }, "Tap the card (or press space) to reveal"));
+    card.classList.add("review-card-clickable");
+    card.addEventListener("click", () => { learnFlipped = true; render(root); });
+  } else {
+    const back = el("div", { class: "review-back" });
+    back.appendChild(el("div", { class: "review-back-title" }, [w.jp, el("span", { class: "muted small vocab-reading" }, ` 【${w.reading}】`)]));
+    back.appendChild(el("div", {}, `${w.pos} — ${w.en}`));
+    card.appendChild(back);
+
+    const record = state.srs[w.id];
+    const grades = [
+      ["again", "Again", "danger"],
+      ["hard", "Hard", "warn2"],
+      ["good", "Good", "good2"],
+      ["easy", "Easy", "accent2b"],
+    ];
+    const gradeRow = el("div", { class: "review-grade-row" });
+    grades.forEach(([g, label, cls]) => {
+      const preview = formatInterval(grade(record, g).interval);
+      const btn = el(
+        "button",
+        {
+          class: `review-grade-btn ${cls}`,
+          onclick: (e) => {
+            e.stopPropagation();
+            gradeSrsItem(w.id, g);
+            learnQIndex += 1;
+            learnFlipped = false;
+            render(root);
+          },
+        },
+        [el("div", {}, label), el("div", { class: "review-grade-preview" }, preview)]
+      );
+      gradeRow.appendChild(btn);
+    });
+    card.appendChild(gradeRow);
+    card.appendChild(el("p", { class: "muted small" }, "Grade honestly — Good/Easy ghost it into a future review; Again/Hard bring it back soon."));
+  }
+
+  wrap.appendChild(card);
   return wrap;
 }
 
