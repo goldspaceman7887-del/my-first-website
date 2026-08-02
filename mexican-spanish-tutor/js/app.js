@@ -5,6 +5,7 @@ import { reviewCounts } from "./core/srs.js";
 import { el } from "./core/ui.js";
 import { maybeShowOnboarding } from "./core/onboarding.js";
 import { estimatedLevel } from "./core/gamification.js";
+import { getHearts } from "./core/hearts.js";
 
 import { renderDashboard } from "./views/dashboard.js";
 import { renderRoadmap } from "./views/roadmap.js";
@@ -77,6 +78,9 @@ function initImmersion() {
 
 // ---------- Topbar stats ----------
 function refreshTopbarStats() {
+  const hearts = getHearts();
+  document.getElementById("stat-hearts").textContent = hearts.current;
+  document.getElementById("stat-hearts-chip").classList.toggle("empty", hearts.current === 0);
   document.getElementById("stat-streak").textContent = store.state.profile.streak || 0;
   document.getElementById("stat-xp").textContent = store.state.profile.xp || 0;
   document.getElementById("stat-level").textContent = estimatedLevel().short;

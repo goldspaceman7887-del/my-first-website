@@ -52,6 +52,9 @@
 .badge-informal { background: color-mix(in srgb, var(--gold) 18%, transparent); color: var(--gold); }
 .badge-slang { background: color-mix(in srgb, var(--c-marigold) 18%, transparent); color: var(--c-marigold); }
 
+/* ---------- Hearts (stakes) ---------- */
+.stat-chip.stat-hearts.empty { background: var(--danger-bg); border-color: var(--danger); color: var(--danger); }
+
 /* ---------- Progress ---------- */
 .progress-bar { position: relative; height: 10px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; overflow: hidden; }
 .progress-bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--gold)); border-radius: 999px; transition: width .4s ease; }

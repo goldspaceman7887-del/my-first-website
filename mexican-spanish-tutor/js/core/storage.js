@@ -27,7 +27,10 @@ function defaultState() {
       studyDates: [],
       totalStudyMinutes: 0,
       createdAt: Date.now(),
-      selfReportedLevel: "novice-low" // ACTFL level reported at onboarding
+      selfReportedLevel: "novice-low", // ACTFL level reported at onboarding
+      // Declared here so it survives reloads — deepMerge only keeps keys that
+      // exist in defaultState, so anything omitted is silently dropped.
+      hearts: { current: 5, max: 5, lastRegenAt: Date.now() }
     },
     srs: {
       // itemId -> { type, repetition, easeFactor, interval, stepIndex, nextReview, lastReview, correct, incorrect, history: [] }
@@ -48,7 +51,8 @@ function defaultState() {
       grammarAttempts: {}, // patternId -> { attempts, correct }
       vocabExposure: {}, // wordId -> count
       activeSentenceIds: [], // sentence ids currently "being studied"
-      canDoCompleted: [] // ACTFL can-do statement ids marked as achieved
+      canDoCompleted: [], // ACTFL can-do statement ids marked as achieved
+      roadmapUnitsCompleted: [] // roadmap unit ids passed, drives sequential unlock
     },
     achievements: {
       unlocked: []
