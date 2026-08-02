@@ -1,7 +1,7 @@
 // Central localStorage-backed state store for the whole app.
 // Single JSON blob keeps writes atomic and simple to version/migrate.
 
-const STORAGE_KEY = "ssp_state_v1";
+const STORAGE_KEY = "mzh_state_v1";
 const SCHEMA_VERSION = 1;
 
 function defaultState() {
@@ -9,51 +9,48 @@ function defaultState() {
     version: SCHEMA_VERSION,
     settings: {
       theme: "auto", // "light" | "dark" | "auto"
-      immersionLevel: 1, // 1-4
-      voiceRate: 0.95,
-      slowVoiceRate: 0.6,
+      immersionLevel: 1, // 1-4, mirrors the app-wide "how much English support" dial
+      voiceRate: 0.92,
+      slowVoiceRate: 0.55,
       preferredVoiceName: null,
       preferredVoiceGender: "any", // "male" | "female" | "any"
-      dailyGoalXP: 50,
+      dailyGoalXP: 40,
       autoplayAudio: true,
-      showFurigana: true, // reused generically as "show hints"
+      showPinyin: true,
+      showToneColors: true,
       onboardingSeen: false
     },
     profile: {
       name: "",
       xp: 0,
-      level: "A0",
       streak: 0,
       longestStreak: 0,
       lastStudyDate: null, // "YYYY-MM-DD"
-      studyDates: [], // history of days studied, for heatmap
+      studyDates: [],
       totalStudyMinutes: 0,
       createdAt: Date.now(),
-      hearts: { current: 5, max: 5, lastRegenAt: Date.now() }
+      selfReportedKnownChars: [] // characters the learner told onboarding they already know
     },
     srs: {
       // itemId -> { type, repetition, easeFactor, interval, stepIndex, nextReview, lastReview, correct, incorrect, history: [] }
     },
     progress: {
-      lessonsCompleted: [],
-      dialoguesCompleted: [], // dialogue ids
-      dialogueSectionsCompleted: {}, // dialogueId -> { comprehension:true, dictation:true, speaking:true }
-      grammarAttempts: {}, // gramId -> { attempts, correct, lastReview }
-      readingCompleted: [],
-      writingSubmissions: [], // { id, promptId, text, wordCount, date, selfCheck }
-      cultureCompleted: [],
-      cultureQuizScores: {}, // culId -> { attempts, best }
-      vocabExposure: {} // vocId -> count
-    },
-    scores: {
-      speaking: 0,
-      listening: 0,
-      grammar: 0,
-      vocabulary: 0,
-      cultural: 0
+      lessonsCompleted: [], // daily lesson ids/dates
+      dialoguesCompleted: [],
+      dialogueSectionsCompleted: {},
+      storiesCompleted: [],
+      sentenceMiningSessions: [], // { date, sourceLength, extractedCount }
+      correctionSessions: [], // { date, count }
+      speakingSessions: [], // { date, topicId, turns }
+      immersionSessions: [], // { date, turns }
+      grammarAttempts: {}, // patternId -> { attempts, correct, lastReview }
+      charExposure: {}, // charId -> count
+      vocabExposure: {}, // wordId -> count
+      activeSentenceIds: [], // sentence ids currently "being studied"
+      roadmapUnitsCompleted: [] // roadmap unit ids completed, in the Duolingo-style path
     },
     achievements: {
-      unlocked: [] // achievement ids
+      unlocked: []
     },
     xpLog: [] // { amount, reason, date }
   };
@@ -85,9 +82,6 @@ class Store {
     this.state = this._load();
     this._listeners = new Set();
     this._saveTimer = null;
-    // Keep this tab's in-memory state from going stale (and later clobbering
-    // newer data via the beforeunload autosave) if another tab/window for
-    // this same site changes localStorage.
     if (typeof window !== "undefined") {
       window.addEventListener("storage", (e) => {
         if (e.key === STORAGE_KEY && e.newValue) {
@@ -121,7 +115,6 @@ class Store {
   }
 
   save() {
-    // Debounce writes so rapid updates don't thrash localStorage.
     clearTimeout(this._saveTimer);
     this._saveTimer = setTimeout(() => this._persist(), 150);
     this._notify();

@@ -4,19 +4,16 @@ import { audioEngine } from "./core/audio.js";
 import { reviewCounts } from "./core/srs.js";
 import { el } from "./core/ui.js";
 import { maybeShowOnboarding } from "./core/onboarding.js";
-import { getHearts, MAX_HEARTS } from "./core/hearts.js";
+import { estimatedLevel } from "./core/gamification.js";
+import { getHearts } from "./core/hearts.js";
 
 import { renderDashboard } from "./views/dashboard.js";
-import { renderVocabulary } from "./views/vocabulary.js";
-import { renderGrammar } from "./views/grammar.js";
-import { renderDialogueList, renderDialogueDetail } from "./views/dialogues.js";
-import { renderListening } from "./views/listening.js";
-import { renderSpeaking } from "./views/speaking.js";
-import { renderReading } from "./views/reading.js";
-import { renderWriting } from "./views/writing.js";
-import { renderCulture } from "./views/culture.js";
+import { renderRoadmap } from "./views/roadmap.js";
+import { renderDialogueDetail } from "./views/dialogues.js";
+import { renderLearn } from "./views/learn.js";
+import { renderPractice } from "./views/practice.js";
+import { renderLevelTest } from "./views/levelTest.js";
 import { renderReview } from "./views/review.js";
-import { renderTutor } from "./views/tutor.js";
 import { renderAchievements } from "./views/achievements.js";
 import { renderSettings } from "./views/settings.js";
 
@@ -75,22 +72,19 @@ function initImmersion() {
 
 // ---------- Topbar stats ----------
 function refreshTopbarStats() {
+  const hearts = getHearts();
+  document.getElementById("stat-hearts").textContent = hearts.current;
+  document.getElementById("stat-hearts-chip").classList.toggle("empty", hearts.current === 0);
   document.getElementById("stat-streak").textContent = store.state.profile.streak || 0;
   document.getElementById("stat-xp").textContent = store.state.profile.xp || 0;
-  document.getElementById("stat-level").textContent = store.state.profile.level || "A0";
-
-  const hearts = getHearts();
-  document.getElementById("stat-hearts").textContent = `${hearts.current}/${MAX_HEARTS}`;
-  document.getElementById("stat-hearts-chip").classList.toggle("low-hearts", hearts.current <= 1);
-
+  document.getElementById("stat-level").textContent = estimatedLevel().short;
   const counts = reviewCounts();
   const dueEl = document.getElementById("stat-due");
   const chip = document.getElementById("stat-due-chip");
   dueEl.textContent = counts.dueToday;
   chip.classList.toggle("has-due", counts.dueToday > 0);
 
-  const goal = store.state.settings.dailyGoalXP || 50;
-  const today = store.state.profile.studyDates.includes(new Date().toISOString().slice(0, 10));
+  const goal = store.state.settings.dailyGoalXP || 40;
   const xpToday = store.state.xpLog
     .filter((l) => new Date(l.date).toDateString() === new Date().toDateString())
     .reduce((s, l) => s + l.amount, 0);
@@ -105,20 +99,14 @@ document.getElementById("stat-due-chip").addEventListener("click", () => navigat
 
 // ---------- Routes ----------
 registerRoute("dashboard", renderDashboard);
-registerRoute("vocabulary", renderVocabulary);
-registerRoute("grammar", renderGrammar);
-registerRoute("grammar/:id", renderGrammar);
-registerRoute("dialogues", renderDialogueList);
+registerRoute("roadmap", renderRoadmap);
+registerRoute("level-test", renderLevelTest);
+registerRoute("learn", renderLearn);
+registerRoute("learn/:tab", renderLearn);
 registerRoute("dialogues/:id", renderDialogueDetail);
-registerRoute("listening", renderListening);
-registerRoute("speaking", renderSpeaking);
-registerRoute("reading", renderReading);
-registerRoute("reading/:id", renderReading);
-registerRoute("writing", renderWriting);
-registerRoute("culture", renderCulture);
-registerRoute("culture/:id", renderCulture);
+registerRoute("practice", renderPractice);
+registerRoute("practice/:tab", renderPractice);
 registerRoute("review", renderReview);
-registerRoute("tutor", renderTutor);
 registerRoute("achievements", renderAchievements);
 registerRoute("settings", renderSettings);
 
@@ -126,9 +114,9 @@ setNotFound((container) => {
   container.appendChild(
     el("div", { class: "card empty-state" }, [
       el("div", { class: "empty-icon" }, "🧭"),
-      el("h2", {}, "Página no encontrada"),
-      el("p", {}, "Esa sección no existe todavía."),
-      el("a", { class: "btn btn-primary", href: "#/dashboard" }, "Volver al panel")
+      el("h2", {}, "Page not found"),
+      el("p", {}, "That section doesn't exist yet."),
+      el("a", { class: "btn btn-primary", href: "#/dashboard" }, "Back to dashboard")
     ])
   );
 });

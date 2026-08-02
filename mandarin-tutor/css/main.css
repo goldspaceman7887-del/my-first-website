@@ -1,11 +1,7 @@
 *, *::before, *::after { box-sizing: border-box; }
 html {
   -webkit-text-size-adjust: 100%;
-  /* Keeps the browser's "scroll focused input into view" (e.g. iOS keyboard avoidance)
-     from landing content underneath the sticky topbar. */
   scroll-padding-top: calc(var(--topbar-h) + 16px);
-  /* Comfortable reading size by default — this app is built for learners of
-     all ages, including people who find typical web text too small. */
   font-size: 18px;
 }
 body {
@@ -23,8 +19,6 @@ a { color: var(--link); }
 button { font-family: inherit; }
 :focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; border-radius: 4px; }
 
-/* Comfortable minimum touch-target size (Apple/WCAG guidance ~44px) for
-   anyone who finds small tap targets hard to hit precisely. */
 button, .btn, a.btn, select, input[type="text"], input[type="search"], .option-btn, .word-chip, .level-pill, .chip-filter {
   min-height: 44px;
 }
@@ -65,8 +59,6 @@ button, .btn, a.btn, select, input[type="text"], input[type="search"], .option-b
 }
 .stat-chip.stat-due { cursor: pointer; }
 .stat-chip.stat-due.has-due { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
-.stat-chip.stat-hearts { background: var(--danger-bg); border-color: color-mix(in srgb, var(--danger) 35%, var(--border)); color: var(--danger); }
-.stat-chip.stat-hearts.low-hearts span:first-child { animation: flicker 1s ease-in-out infinite; }
 
 .topbar-actions { display: flex; align-items: center; gap: .5rem; }
 .immersion-select {
@@ -100,6 +92,7 @@ button, .btn, a.btn, select, input[type="text"], input[type="search"], .option-b
 .nav-list a:hover { background: var(--surface-2); color: var(--text); }
 .nav-list a.active { background: var(--accent-soft); color: var(--accent); }
 .nav-list a.active .nav-sub { color: var(--accent); opacity: .75; }
+.nav-divider { height: 1px; background: var(--border); margin: .5rem .4rem; }
 
 .sidebar-footer { padding: .9rem; border-top: 1px solid var(--border); }
 .goal-widget .goal-label { font-size: .78rem; color: var(--text-muted); font-weight: 700; margin-bottom: .35rem; }
@@ -112,6 +105,7 @@ button, .btn, a.btn, select, input[type="text"], input[type="search"], .option-b
 /* ---------- Utility ---------- */
 .flex { display: flex; }
 .flex-col { display: flex; flex-direction: column; }
+.flex-wrap { flex-wrap: wrap; }
 .gap-1 { gap: .5rem; } .gap-2 { gap: 1rem; } .gap-3 { gap: 1.5rem; }
 .items-center { align-items: center; } .justify-between { justify-content: space-between; }
 .text-muted { color: var(--text-muted); } .text-faint { color: var(--text-faint); }

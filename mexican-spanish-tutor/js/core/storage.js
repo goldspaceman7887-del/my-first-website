@@ -1,7 +1,7 @@
 // Central localStorage-backed state store for the whole app.
 // Single JSON blob keeps writes atomic and simple to version/migrate.
 
-const STORAGE_KEY = "ssp_state_v1";
+const STORAGE_KEY = "mx_es_state_v1";
 const SCHEMA_VERSION = 1;
 
 function defaultState() {
@@ -9,51 +9,54 @@ function defaultState() {
     version: SCHEMA_VERSION,
     settings: {
       theme: "auto", // "light" | "dark" | "auto"
-      immersionLevel: 1, // 1-4
+      immersionLevel: 1, // 1-4, mirrors the app-wide "how much English support" dial
       voiceRate: 0.95,
       slowVoiceRate: 0.6,
       preferredVoiceName: null,
       preferredVoiceGender: "any", // "male" | "female" | "any"
-      dailyGoalXP: 50,
+      dailyGoalXP: 40,
       autoplayAudio: true,
-      showFurigana: true, // reused generically as "show hints"
       onboardingSeen: false
     },
     profile: {
       name: "",
       xp: 0,
-      level: "A0",
       streak: 0,
       longestStreak: 0,
       lastStudyDate: null, // "YYYY-MM-DD"
-      studyDates: [], // history of days studied, for heatmap
+      studyDates: [],
       totalStudyMinutes: 0,
       createdAt: Date.now(),
+      selfReportedLevel: "novice-low", // ACTFL level reported at onboarding
+      // Declared here so it survives reloads — deepMerge only keeps keys that
+      // exist in defaultState, so anything omitted is silently dropped.
       hearts: { current: 5, max: 5, lastRegenAt: Date.now() }
     },
     srs: {
       // itemId -> { type, repetition, easeFactor, interval, stepIndex, nextReview, lastReview, correct, incorrect, history: [] }
     },
-    progress: {
-      lessonsCompleted: [],
-      dialoguesCompleted: [], // dialogue ids
-      dialogueSectionsCompleted: {}, // dialogueId -> { comprehension:true, dictation:true, speaking:true }
-      grammarAttempts: {}, // gramId -> { attempts, correct, lastReview }
-      readingCompleted: [],
-      writingSubmissions: [], // { id, promptId, text, wordCount, date, selfCheck }
-      cultureCompleted: [],
-      cultureQuizScores: {}, // culId -> { attempts, best }
-      vocabExposure: {} // vocId -> count
-    },
     scores: {
-      speaking: 0,
-      listening: 0,
-      grammar: 0,
-      vocabulary: 0,
-      cultural: 0
+      // skill -> 0-100 heuristic score, nudged by every gradeable interaction
+      speaking: 0, listening: 0, reading: 0, writing: 0, vocabulary: 0, grammar: 0
+    },
+    progress: {
+      lessonsCompleted: [], // daily lesson ids/dates
+      dialoguesCompleted: [],
+      storiesCompleted: [],
+      correctionSessions: [], // { date, count }
+      roleplaySessions: [], // { date, scenarioId, turns }
+      immersionSessions: [], // { date, turns }
+      conversationSessions: [], // { date, turns }
+      levelTests: [], // { date, level } from the Level Test
+      speakingTests: [], // { date, level, avg } from the spoken OPI-style test
+      grammarAttempts: {}, // patternId -> { attempts, correct }
+      vocabExposure: {}, // wordId -> count
+      activeSentenceIds: [], // sentence ids currently "being studied"
+      canDoCompleted: [], // ACTFL can-do statement ids marked as achieved
+      roadmapUnitsCompleted: [] // roadmap unit ids passed, drives sequential unlock
     },
     achievements: {
-      unlocked: [] // achievement ids
+      unlocked: []
     },
     xpLog: [] // { amount, reason, date }
   };
@@ -85,9 +88,6 @@ class Store {
     this.state = this._load();
     this._listeners = new Set();
     this._saveTimer = null;
-    // Keep this tab's in-memory state from going stale (and later clobbering
-    // newer data via the beforeunload autosave) if another tab/window for
-    // this same site changes localStorage.
     if (typeof window !== "undefined") {
       window.addEventListener("storage", (e) => {
         if (e.key === STORAGE_KEY && e.newValue) {
@@ -121,7 +121,6 @@ class Store {
   }
 
   save() {
-    // Debounce writes so rapid updates don't thrash localStorage.
     clearTimeout(this._saveTimer);
     this._saveTimer = setTimeout(() => this._persist(), 150);
     this._notify();
