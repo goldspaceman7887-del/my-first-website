@@ -1,6 +1,7 @@
 import { ROADMAP, CHECKPOINTS, EXTENSION } from "../data/roadmap.js";
 import { getState, toggleTask } from "../core/storage.js";
 import { el, progressBar } from "../core/ui.js";
+import { waveOffset, buildPathD } from "../core/pathGeometry.js";
 
 // Path geometry: a fixed internal coordinate space, scaled responsively via aspect-ratio + %-based
 // node positions so the SVG line and the node buttons always line up regardless of viewport width.
@@ -23,23 +24,6 @@ function isWeekComplete(week, tasksLen, state) {
     if (!state.completedTasks[`${week}-${i}`]) return false;
   }
   return true;
-}
-
-function waveOffset(i, isCheckpoint) {
-  if (isCheckpoint) return 0;
-  return Math.round(Math.sin(i * (Math.PI / 3)) * AMPLITUDE);
-}
-
-function buildPathD(points) {
-  if (points.length === 0) return "";
-  let d = `M ${points[0].x} ${points[0].y}`;
-  for (let i = 1; i < points.length; i++) {
-    const p0 = points[i - 1];
-    const p1 = points[i];
-    const midY = (p0.y + p1.y) / 2;
-    d += ` C ${p0.x} ${midY}, ${p1.x} ${midY}, ${p1.x} ${p1.y}`;
-  }
-  return d;
 }
 
 export function render(root) {
@@ -78,7 +62,7 @@ export function render(root) {
     const checkpoint = !!CHECKPOINTS.find((cp) => cp.week === w.week);
     return {
       week: w.week,
-      x: PATH_W / 2 + waveOffset(i, checkpoint),
+      x: PATH_W / 2 + waveOffset(i, AMPLITUDE, checkpoint),
       y: TOP_PAD + i * ROW_H,
       checkpoint,
     };
