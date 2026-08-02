@@ -88,11 +88,51 @@ function tokenize(text) {
   return tokens;
 }
 
+function isHiragana(ch) {
+  return ch >= "぀" && ch <= "ゟ";
+}
+function hasKanji(s) {
+  return /[一-鿿]/.test(s);
+}
+function trailingHiraganaCount(s) {
+  let count = 0;
+  for (let i = s.length - 1; i >= 0; i--) {
+    if (isHiragana(s[i])) count++;
+    else break;
+  }
+  return count;
+}
+// Connector entries store a romanized reading (e.g. "sono ato"), not kana — furigana only
+// makes sense when the reading is itself kana, so this rules those out before anything else.
+function isKanaReading(s) {
+  return /^[ぁ-んー]+$/.test(s);
+}
+
+// Computes a correct furigana split for the word as it actually appears (which may be a
+// conjugated surface form, e.g. 会った), not just the dictionary form (会う). Falls back to
+// null when the alignment can't be trusted, rather than ever guessing wrong.
+function buildFurigana(entry, surfaceText) {
+  const { base, reading } = entry;
+  if (!reading || !hasKanji(base) || !isKanaReading(reading)) return null;
+  const baseTrail = trailingHiraganaCount(base);
+  const baseKanji = base.slice(0, base.length - baseTrail);
+  const baseTailText = baseTrail > 0 ? base.slice(base.length - baseTrail) : "";
+  if (baseTrail > 0 && !reading.endsWith(baseTailText)) return null;
+  if (!hasKanji(baseKanji)) return null;
+  const kanjiReading = reading.slice(0, reading.length - baseTrail);
+
+  if (surfaceText === base) {
+    return { kanjiPart: baseKanji, kanjiReading, tailPart: baseTailText };
+  }
+  if (!surfaceText.startsWith(baseKanji)) return null;
+  return { kanjiPart: baseKanji, kanjiReading, tailPart: surfaceText.slice(baseKanji.length) };
+}
+
 function ensurePopover() {
   if (popoverEl) return popoverEl;
   popoverEl = el("div", { class: "word-popover", role: "dialog" }, [
     el("button", { class: "word-popover-close", "aria-label": "Close", onclick: hidePopover }, "×"),
-    el("div", { class: "word-popover-reading", id: "word-popover-reading" }),
+    el("div", { class: "word-popover-furigana", id: "word-popover-furigana" }),
     el("div", { class: "word-popover-pos", id: "word-popover-pos" }),
     el("div", { class: "word-popover-meaning", id: "word-popover-meaning" }),
   ]);
@@ -107,7 +147,24 @@ function hidePopover() {
 
 function showPopoverFor(target, entry, surfaceText) {
   const pop = ensurePopover();
-  pop.querySelector("#word-popover-reading").textContent = `${entry.base}${entry.reading ? `【${entry.reading}】` : ""}`;
+  const furiganaHost = pop.querySelector("#word-popover-furigana");
+  furiganaHost.innerHTML = "";
+  const furigana = buildFurigana(entry, surfaceText);
+  if (furigana) {
+    const ruby = el("ruby", { class: "furigana-ruby" }, [
+      furigana.kanjiPart,
+      el("rt", {}, furigana.kanjiReading),
+    ]);
+    furiganaHost.appendChild(ruby);
+    if (furigana.tailPart) furiganaHost.appendChild(document.createTextNode(furigana.tailPart));
+    if (surfaceText !== entry.base) {
+      furiganaHost.appendChild(el("span", { class: "muted small furigana-base-note" }, ` (dictionary form: ${entry.base})`));
+    }
+  } else if (entry.reading && entry.reading !== entry.base) {
+    furiganaHost.textContent = `${entry.base}【${entry.reading}】`;
+  } else {
+    furiganaHost.textContent = entry.base;
+  }
   pop.querySelector("#word-popover-pos").textContent = entry.isGrammar ? "grammar point" : entry.pos || "";
   pop.querySelector("#word-popover-meaning").textContent = entry.meaning;
   pop.style.display = "block";
@@ -125,6 +182,12 @@ function showPopoverFor(target, entry, surfaceText) {
 function attachGlobalListeners() {
   if (listenersAttached) return;
   listenersAttached = true;
+  // Capture phase, not bubble: a word-click can sit inside something else that also reacts to
+  // clicks (e.g. a "tap to flip" card). Catching it on the way down, before it ever reaches that
+  // ancestor, means stopPropagation here reliably pre-empts that ancestor's own handler instead
+  // of racing it — and the popover-dismiss branch below no longer depends on an unrelated
+  // handler *not* having called stopPropagation() during bubble (e.g. a grade button's own
+  // stopPropagation(), which used to hide the popover from ever finding out the click happened).
   document.addEventListener("click", (e) => {
     const wordEl = e.target.closest && e.target.closest(".word-click");
     if (wordEl) {
@@ -135,8 +198,12 @@ function attachGlobalListeners() {
       }
       return;
     }
-    if (popoverEl && !popoverEl.contains(e.target)) hidePopover();
-  });
+    // Any other click dismisses the popover — including a click that visually landed on the
+    // popover itself because it happened to overlap something underneath (e.g. a button). The
+    // popover has no interactive content besides the explicit close button, so this never eats
+    // a click a user actually wanted to land on the popover.
+    hidePopover();
+  }, true);
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") hidePopover();
   });

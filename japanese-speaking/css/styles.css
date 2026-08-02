@@ -280,7 +280,10 @@ a:hover { text-decoration: underline; }
   position: absolute; top: 4px; right: 8px; background: none; border: none; color: var(--text-muted);
   font-size: 1.1rem; cursor: pointer; line-height: 1; padding: 4px;
 }
-.word-popover-reading { font-size: 1.15rem; font-weight: 800; padding-right: 18px; }
+.word-popover-furigana { font-size: 1.3rem; font-weight: 800; padding-right: 18px; line-height: 2.1; }
+.furigana-ruby { ruby-align: center; }
+.furigana-ruby rt { font-size: 0.55em; font-weight: 700; color: var(--accent-2); user-select: none; }
+.furigana-base-note { display: block; font-weight: 500; font-size: 0.72rem; margin-top: 2px; }
 .word-popover-pos { color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; margin-top: 2px; }
 .word-popover-meaning { margin-top: 6px; font-size: 0.95rem; }
 .model-btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
