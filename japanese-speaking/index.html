@@ -6,7 +6,10 @@
 <title>上級への道 — Advanced High Speaking Lab</title>
 <meta name="description" content="A focused speaking-practice app to take your Japanese from ACTFL Intermediate High to Advanced High, with an emphasis on connecting sentences into paragraphs." />
 <meta name="color-scheme" content="light dark" />
+<meta name="theme-color" content="#141b2c" />
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎤</text></svg>" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="manifest" href="manifest.json" />
 <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
@@ -64,5 +67,12 @@
 <div id="toast-container" class="toast-container"></div>
 
 <script type="module" src="js/app.js"></script>
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("sw.js").catch(() => {});
+    });
+  }
+</script>
 </body>
 </html>
