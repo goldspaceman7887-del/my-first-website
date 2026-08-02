@@ -7,9 +7,11 @@ import { renderConversation } from "./conversation.js";
 import { renderImmersion } from "./immersion.js";
 import { renderStory } from "./story.js";
 import { renderCorrection } from "./correction.js";
+import { renderSpeakingTest } from "./speakingTest.js";
 
 const TABS = [
   { id: "roleplay", label: "🎭 Roleplay", render: renderRoleplay },
+  { id: "speaking-test", label: "🎓 Speaking Test", render: renderSpeakingTest },
   { id: "conversation", label: "🤖 Conversation", render: renderConversation },
   { id: "immersion", label: "🌊 Immersion", render: renderImmersion },
   { id: "story", label: "📖 Stories", render: renderStory },

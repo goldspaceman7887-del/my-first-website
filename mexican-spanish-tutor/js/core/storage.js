@@ -48,6 +48,7 @@ function defaultState() {
       immersionSessions: [], // { date, turns }
       conversationSessions: [], // { date, turns }
       levelTests: [], // { date, level } from the Level Test
+      speakingTests: [], // { date, level, avg } from the spoken OPI-style test
       grammarAttempts: {}, // patternId -> { attempts, correct }
       vocabExposure: {}, // wordId -> count
       activeSentenceIds: [], // sentence ids currently "being studied"

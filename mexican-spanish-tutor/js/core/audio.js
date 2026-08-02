@@ -186,6 +186,79 @@ export function listenOnce({ timeoutMs = 8000 } = {}) {
   });
 }
 
+/**
+ * Continuous Spanish dictation for long, paragraph-length answers.
+ *
+ * listenOnce() is single-utterance and gives up after a short silence, which
+ * cuts people off mid-thought. This keeps the mic open, streams interim text
+ * as you speak, and auto-restarts when the engine stops on its own (Chrome
+ * ends a session after a pause even in continuous mode) — so the transcript
+ * keeps growing until you explicitly stop.
+ *
+ * Returns a controller with .stop(). Resolves nothing; use the callbacks.
+ */
+export function startDictation({ onInterim, onFinal, onStateChange, onError } = {}) {
+  if (!SpeechRecognitionImpl) {
+    onError && onError("unsupported");
+    return { stop() {}, supported: false };
+  }
+  let stopped = false;
+  let finalText = "";
+  let rec = null;
+
+  const emitState = (s) => onStateChange && onStateChange(s);
+
+  function begin() {
+    if (stopped) return;
+    rec = new SpeechRecognitionImpl();
+    rec.lang = "es-MX";
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.maxAlternatives = 1;
+
+    rec.onresult = (e) => {
+      let interim = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const chunk = e.results[i][0].transcript;
+        if (e.results[i].isFinal) finalText += (finalText ? " " : "") + chunk.trim();
+        else interim += chunk;
+      }
+      onInterim && onInterim(finalText, interim.trim());
+    };
+    rec.onerror = (e) => {
+      // "no-speech"/"aborted" are routine while waiting; only surface real faults.
+      if (e.error && !["no-speech", "aborted"].includes(e.error)) onError && onError(e.error);
+      if (e.error === "not-allowed" || e.error === "service-not-allowed") {
+        stopped = true;
+        emitState("denied");
+      }
+    };
+    rec.onend = () => {
+      if (stopped) { emitState("stopped"); return; }
+      begin(); // keep the mic alive through natural pauses
+    };
+    try {
+      rec.start();
+      emitState("listening");
+    } catch (err) {
+      onError && onError(String(err));
+    }
+  }
+
+  begin();
+
+  return {
+    supported: true,
+    stop() {
+      stopped = true;
+      try { rec && rec.stop(); } catch (e) {}
+      emitState("stopped");
+      onFinal && onFinal(finalText.trim());
+      return finalText.trim();
+    }
+  };
+}
+
 function normalize(s) {
   return String(s ?? "")
     .toLowerCase()
