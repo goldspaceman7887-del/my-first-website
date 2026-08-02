@@ -47,7 +47,7 @@ function defaultState() {
       roleplaySessions: [], // { date, scenarioId, turns }
       immersionSessions: [], // { date, turns }
       conversationSessions: [], // { date, turns }
-      opiSessions: [], // { date, estimatedLevel, strengths, weaknesses }
+      levelTests: [], // { date, level } from the Level Test
       grammarAttempts: {}, // patternId -> { attempts, correct }
       vocabExposure: {}, // wordId -> count
       activeSentenceIds: [], // sentence ids currently "being studied"

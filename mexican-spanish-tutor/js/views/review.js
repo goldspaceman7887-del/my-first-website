@@ -48,7 +48,7 @@ export function renderReview(container) {
         el("div", { class: "empty-icon" }, "🎉"),
         el("h3", {}, "Nothing due right now"),
         el("p", {}, "Great work staying on top of reviews. Learn something new in Vocabulario or Gramática, or try a Daily Lesson."),
-        el("a", { class: "btn btn-primary", href: "#/daily-lesson" }, "Daily Lesson")
+        el("a", { class: "btn btn-primary", href: "#/roadmap" }, "Continue roadmap")
       ])
     );
     return;

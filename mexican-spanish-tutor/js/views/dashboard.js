@@ -2,7 +2,7 @@ import { store } from "../core/storage.js";
 import { el, progressBar, badge } from "../core/ui.js";
 import { reviewCounts, masteryLevel } from "../core/srs.js";
 import { estimatedLevel, xpProgressToNextLevel, currentStreak } from "../core/gamification.js";
-import { ACTFL_LEVELS, levelIndex } from "../data/roadmap.js";
+import { ACTFL_LEVELS, levelIndex, ROADMAP_UNITS } from "../data/roadmap.js";
 import { VOCABULARY } from "../data/vocabulary.js";
 
 function srsEntriesByType(type) {
@@ -15,8 +15,9 @@ function badgeVariantForLevel(code) {
   return "advanced";
 }
 
+// Compact tiles — these are a glanceable strip, not the main event.
 function statCard(icon, value, label) {
-  return el("div", { class: "card stat-card" }, [
+  return el("div", { class: "card stat-card compact" }, [
     el("div", { class: "stat-icon" }, icon),
     el("div", { class: "stat-value" }, String(value)),
     el("div", { class: "stat-label" }, label)
@@ -59,20 +60,25 @@ export function renderDashboard(container) {
   const masteredWords = words.filter((w) => masteryLevel(w.id) >= 70);
   const { strengths, weaknesses } = strengthsAndWeaknesses();
   const canDoCount = (store.state.progress.canDoCompleted || []).length;
+  const completed = store.state.progress.roadmapUnitsCompleted || [];
+  const unitsDone = ROADMAP_UNITS.filter((u) => completed.includes(u.id)).length;
+  const nextUnit = ROADMAP_UNITS.find((u) => !completed.includes(u.id));
+  const tested = (store.state.progress.levelTests || []).length > 0;
 
   container.appendChild(
     el("div", { class: "page-header" }, [
-      el("h1", {}, "🏠 Panel / Dashboard"),
-      el("p", {}, "Your Mexican Spanish memory system, tracked against the ACTFL proficiency scale — review first, then new material.")
+      el("h1", {}, "🏠 Dashboard"),
+      el("p", {}, "Where you are, and what to do next.")
     ])
   );
 
   container.appendChild(
-    el("div", { class: "grid grid-4" }, [
+    el("div", { class: "stat-strip" }, [
       statCard("🔥", streak, "Day streak"),
-      statCard("⚡", store.state.profile.xp || 0, "Total XP"),
+      statCard("⚡", store.state.profile.xp || 0, "XP"),
       statCard("🔁", counts.dueToday, "Reviews due"),
-      statCard("📚", masteredWords.length, "Words mastered")
+      statCard("📚", masteredWords.length, "Words mastered"),
+      statCard("🗺️", `${unitsDone}/${ROADMAP_UNITS.length}`, "Units done")
     ])
   );
 
@@ -105,24 +111,27 @@ export function renderDashboard(container) {
   container.appendChild(
     el("div", { class: "card", style: "margin-top:1rem" }, [
       el("div", { class: "card-title" }, "✅ Requirements for the next ACTFL level"),
-      el("p", { class: "text-muted" }, progress.isMax ? "You've unlocked every level this app tracks toward — Advanced Low. Keep practicing OPI Practice and abstract-topic conversation to consolidate it." : `To reach ${progress.next.label}, you can typically:`),
+      el("p", { class: "text-muted" }, progress.isMax ? "You've reached this app's target level — Advanced Low. Keep practicing abstract-topic conversation to consolidate it." : `To reach ${progress.next.label}, you can typically:`),
       !progress.isMax ? el("ul", { style: "margin:.3rem 0 0;padding-left:1.2rem" }, progress.next.canDo.map((c) => el("li", {}, c))) : null,
       el("p", { class: "text-faint", style: "margin-top:.5rem" }, `${canDoCount} Can-Do statement(s) checked off so far.`),
-      el("a", { class: "btn btn-sm", href: "#/roadmap", style: "margin-top:.4rem" }, "Open ACTFL Roadmap")
+      el("a", { class: "btn btn-sm", href: "#/roadmap", style: "margin-top:.4rem" }, "Open roadmap")
     ].filter(Boolean))
   );
 
   const nudge = el("div", { class: "card", style: "margin-top:1rem;border-left:3px solid var(--accent)" }, [
-    el("div", { class: "card-title" }, counts.dueToday > 0 ? `🔁 ${counts.dueToday} review(s) waiting` : "🆕 Ready for something new"),
-    el("p", { class: "text-muted" }, counts.dueToday > 0
-      ? "Reviewing due material first is the single best thing you can do for long-term retention."
-      : "No reviews due right now — great time to start today's Daily Lesson."),
+    el("div", { class: "card-title" }, !tested
+      ? "📊 Start by finding your level"
+      : nextUnit ? `🗺️ Next up: ${nextUnit.title}` : "🎉 Roadmap complete"),
+    el("p", { class: "text-muted" }, !tested
+      ? "Take the two-minute Level Test so the roadmap starts in the right place."
+      : nextUnit
+        ? `${nextUnit.icon} ${nextUnit.subtitle} — 8 sentences, a grammar note, then a 10-question quiz.`
+        : "You've finished every unit. Keep sharp with Review and Practice."),
     el("div", { class: "btn-row", style: "margin-top:.5rem" }, [
-      counts.dueToday > 0 ? el("a", { class: "btn btn-primary", href: "#/review" }, "Start review") : null,
-      el("a", { class: "btn btn-primary", href: "#/daily-lesson" }, "Daily Lesson"),
-      el("a", { class: "btn", href: "#/roleplay" }, "🎭 Roleplay"),
-      el("a", { class: "btn", href: "#/immersion" }, "🌊 Immersion"),
-      el("a", { class: "btn", href: "#/opi" }, "🎓 OPI Practice")
+      !tested ? el("a", { class: "btn btn-primary", href: "#/level-test" }, "📊 Take the Level Test") : null,
+      el("a", { class: "btn btn-primary", href: "#/roadmap" }, "🗺️ Continue roadmap"),
+      counts.dueToday > 0 ? el("a", { class: "btn", href: "#/review" }, `🔁 Review (${counts.dueToday})`) : null,
+      el("a", { class: "btn", href: "#/practice" }, "🎯 Practice")
     ].filter(Boolean))
   ]);
   container.appendChild(nudge);

@@ -111,7 +111,8 @@ export const ACHIEVEMENTS = [
   { id: "roleplay_5", name: "Actor/actriz", desc: "Complete 5 roleplay sessions.", icon: "🎭", check: (s) => s.progress.roleplaySessions.length >= 5 },
   { id: "immersion_5", name: "Inmersión total", desc: "Complete 5 immersion-mode sessions.", icon: "🌊", check: (s) => s.progress.immersionSessions.length >= 5 },
   { id: "conversation_10", name: "Conversador/a nato/a", desc: "Complete 10 conversation-mode turns sessions.", icon: "🤖", check: (s) => s.progress.conversationSessions.length >= 10 },
-  { id: "opi_1", name: "Primera entrevista", desc: "Complete your first OPI practice interview.", icon: "🎓", check: (s) => s.progress.opiSessions.length >= 1 },
+  { id: "level_test_1", name: "¿Cuál es mi nivel?", desc: "Take the Level Test to find your level.", icon: "📊", check: (s) => (s.progress.levelTests || []).length >= 1 },
+  { id: "roadmap_5", name: "En camino", desc: "Complete 5 roadmap units.", icon: "🗺️", check: (s) => (s.progress.roadmapUnitsCompleted || []).length >= 5 },
   { id: "writing_5", name: "Escritor/a", desc: "Submit 5 writing corrections.", icon: "✍️", check: (s) => s.progress.correctionSessions.length >= 5 },
   { id: "srs_100", name: "100 repasos", desc: "Complete 100 spaced-repetition reviews.", icon: "🔁", check: (s) => Object.values(s.srs).reduce((a, i) => a + i.correct + i.incorrect, 0) >= 100 },
   { id: "candos_10", name: "10 Can-Do", desc: "Check off 10 ACTFL Can-Do statements.", icon: "✅", check: (s) => (s.progress.canDoCompleted || []).length >= 10 }

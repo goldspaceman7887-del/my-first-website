@@ -35,13 +35,13 @@ export function renderDialogueList(container) {
 export function renderDialogueDetail(container, params) {
   const d = DIALOGUES.find((x) => x.id === params.id);
   if (!d) {
-    container.appendChild(el("div", { class: "card empty-state" }, [el("h3", {}, "Dialogue not found"), el("a", { class: "btn", href: "#/dialogues" }, "Back to dialogues")]));
+    container.appendChild(el("div", { class: "card empty-state" }, [el("h3", {}, "Dialogue not found"), el("a", { class: "btn", href: "#/learn/dialogues" }, "Back to dialogues")]));
     return;
   }
 
   container.appendChild(
     el("div", { class: "page-header" }, [
-      el("a", { class: "text-muted", href: "#/dialogues" }, "← All dialogues"),
+      el("a", { class: "text-muted", href: "#/learn/dialogues" }, "← All dialogues"),
       el("h1", {}, `${d.title} · ${d.titleEs}`)
     ])
   );
@@ -50,7 +50,7 @@ export function renderDialogueDetail(container, params) {
     el("div", { class: "audio-controls-row" }, [
       el("button", { class: "btn btn-sm", onclick: () => playAll(1) }, "▶️ Play all"),
       el("button", { class: "btn btn-sm", onclick: () => playAll(0.6) }, "🐢 Play all (slow)"),
-      el("a", { class: "btn btn-sm", href: "#/roleplay" }, "🎭 Practice as roleplay")
+      el("a", { class: "btn btn-sm", href: "#/practice/roleplay" }, "🎭 Practice as roleplay")
     ])
   );
 

@@ -9,19 +9,13 @@ import { getHearts } from "./core/hearts.js";
 
 import { renderDashboard } from "./views/dashboard.js";
 import { renderRoadmap } from "./views/roadmap.js";
-import { renderVocabulary } from "./views/vocabulary.js";
-import { renderSentences } from "./views/sentences.js";
-import { renderDialogueList, renderDialogueDetail } from "./views/dialogues.js";
+import { renderDialogueDetail } from "./views/dialogues.js";
+import { renderLearn } from "./views/learn.js";
+import { renderPractice } from "./views/practice.js";
+import { renderLevelTest } from "./views/levelTest.js";
 import { renderReview } from "./views/review.js";
 import { renderAchievements } from "./views/achievements.js";
 import { renderSettings } from "./views/settings.js";
-import { renderDailyLesson } from "./views/dailyLesson.js";
-import { renderRoleplay } from "./views/roleplay.js";
-import { renderImmersion } from "./views/immersion.js";
-import { renderConversation } from "./views/conversation.js";
-import { renderStory } from "./views/story.js";
-import { renderOpi } from "./views/opi.js";
-import { renderCorrection } from "./views/correction.js";
 
 // ---------- Theme ----------
 function applyTheme(theme) {
@@ -106,18 +100,13 @@ document.getElementById("stat-due-chip").addEventListener("click", () => navigat
 // ---------- Routes ----------
 registerRoute("dashboard", renderDashboard);
 registerRoute("roadmap", renderRoadmap);
-registerRoute("vocabulary", renderVocabulary);
-registerRoute("sentences", renderSentences);
-registerRoute("dialogues", renderDialogueList);
+registerRoute("level-test", renderLevelTest);
+registerRoute("learn", renderLearn);
+registerRoute("learn/:tab", renderLearn);
 registerRoute("dialogues/:id", renderDialogueDetail);
+registerRoute("practice", renderPractice);
+registerRoute("practice/:tab", renderPractice);
 registerRoute("review", renderReview);
-registerRoute("daily-lesson", renderDailyLesson);
-registerRoute("roleplay", renderRoleplay);
-registerRoute("immersion", renderImmersion);
-registerRoute("conversation", renderConversation);
-registerRoute("story", renderStory);
-registerRoute("opi", renderOpi);
-registerRoute("correction", renderCorrection);
 registerRoute("achievements", renderAchievements);
 registerRoute("settings", renderSettings);
 
