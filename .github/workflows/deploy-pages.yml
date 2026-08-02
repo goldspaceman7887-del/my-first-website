@@ -6,7 +6,6 @@ on:
       - Root
       - main
       - claude/seed-english-tokyo-platform-05f8r0
-      - claude/mexican-spanish-immersion-9hao6k
   workflow_dispatch:
 
 permissions:
