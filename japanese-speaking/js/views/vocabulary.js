@@ -18,6 +18,8 @@ let activeLevel = "all";
 let mode = "path";
 let selectedLessonIndex = null;
 let quizFilterIds = null; // set when quizzing a single lesson from the Path tab
+let learnPage = 0;
+const LEARN_PAGE_SIZE = 30;
 
 export function render(root) {
   const container = el("div", { class: "view" });
@@ -238,7 +240,7 @@ function renderPath(root) {
 function renderLearn(root) {
   const wrap = el("div", {});
   const filterRow = el("div", { class: "chip-row" });
-  filterRow.appendChild(el("button", { class: `chip ${activeLevel === "all" ? "active" : ""}`, onclick: () => { activeLevel = "all"; render(root); } }, "All"));
+  filterRow.appendChild(el("button", { class: `chip ${activeLevel === "all" ? "active" : ""}`, onclick: () => { activeLevel = "all"; learnPage = 0; render(root); } }, "All"));
   WORD_LEVELS.forEach((lvl) => {
     filterRow.appendChild(
       el(
@@ -246,7 +248,7 @@ function renderLearn(root) {
         {
           class: `chip ${activeLevel === lvl.id ? "active" : ""}`,
           style: activeLevel === lvl.id ? `background:${lvl.color};border-color:${lvl.color};color:#fff` : "",
-          onclick: () => { activeLevel = lvl.id; render(root); },
+          onclick: () => { activeLevel = lvl.id; learnPage = 0; render(root); },
         },
         lvl.id
       )
@@ -262,11 +264,39 @@ function renderLearn(root) {
   const state = getState();
   const words = VOCABULARY.filter((w) => activeLevel === "all" || w.level === activeLevel);
   const masteredCount = words.filter((w) => state.connectorProgress[w.id]?.mastered).length;
-  wrap.appendChild(el("p", { class: "muted small" }, `${masteredCount}/${words.length} mastered in this view`));
+
+  const pageCount = Math.max(1, Math.ceil(words.length / LEARN_PAGE_SIZE));
+  learnPage = Math.min(learnPage, pageCount - 1);
+  const pageWords = words.slice(learnPage * LEARN_PAGE_SIZE, (learnPage + 1) * LEARN_PAGE_SIZE);
+
+  wrap.appendChild(
+    el("p", { class: "muted small" },
+      `${masteredCount}/${words.length} mastered in this view · showing ${pageWords.length ? learnPage * LEARN_PAGE_SIZE + 1 : 0}-${learnPage * LEARN_PAGE_SIZE + pageWords.length} of ${words.length}`
+    )
+  );
 
   const list = el("div", { class: "vocab-list" });
-  words.forEach((w) => list.appendChild(renderVocabCard(w, state)));
+  pageWords.forEach((w) => list.appendChild(renderVocabCard(w, state)));
   wrap.appendChild(list);
+
+  if (pageCount > 1) {
+    wrap.appendChild(
+      el("div", { class: "week-nav-row" }, [
+        el(
+          "button",
+          { class: "btn", disabled: learnPage <= 0 ? "disabled" : null, onclick: () => { learnPage -= 1; render(root); root.scrollIntoView(); } },
+          "← Previous page"
+        ),
+        el("span", { class: "muted small" }, `Page ${learnPage + 1} / ${pageCount}`),
+        el(
+          "button",
+          { class: "btn", disabled: learnPage >= pageCount - 1 ? "disabled" : null, onclick: () => { learnPage += 1; render(root); root.scrollIntoView(); } },
+          "Next page →"
+        ),
+      ])
+    );
+  }
+
   return wrap;
 }
 
