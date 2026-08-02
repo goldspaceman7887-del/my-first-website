@@ -54,6 +54,9 @@ jobs:
           # Mexican Spanish Tutor at a subpath: /my-first-website/mexican-spanish-tutor/
           mkdir -p _site/mexican-spanish-tutor
           cp -r mexican-spanish-tutor/. _site/mexican-spanish-tutor/
+          # Japanese Speaking Lab at a subpath: /my-first-website/japanese-speaking/
+          mkdir -p _site/japanese-speaking
+          cp -r japanese-speaking/. _site/japanese-speaking/
 
       - uses: actions/upload-pages-artifact@v3
         with:
