@@ -91,6 +91,16 @@ export function badge(text, variant = "default") {
   return el("span", { class: `badge badge-${variant}` }, text);
 }
 
+export function downloadJSON(filename, content) {
+  const blob = new Blob([content], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = el("a", { href: url, download: filename });
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 export function confettiBurst() {
   const layer = el("div", { class: "confetti-layer" });
   document.body.appendChild(layer);
