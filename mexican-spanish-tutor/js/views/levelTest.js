@@ -11,6 +11,7 @@ import { el, progressBar, blurActive, confettiBurst } from "../core/ui.js";
 import { audioEngine } from "../core/audio.js";
 import { addXP, registerStudyToday } from "../core/gamification.js";
 import { ACTFL_LEVELS, ROADMAP_UNITS } from "../data/roadmap.js";
+import { spanishDistractors, englishDistractors } from "../core/distractors.js";
 
 const PER_LEVEL = 3;
 const OPTIONS = 4;      // more choices = less passing by luck
@@ -33,13 +34,16 @@ function buildTest() {
     const units = ROADMAP_UNITS.filter((u) => u.level === lvl.code);
     const sentences = shuffle(units.flatMap((u) => u.sentences));
     if (sentences.length < OPTIONS) return;
+    const others = sentences.filter((x) => !sentences.slice(0, PER_LEVEL).includes(x));
     sentences.slice(0, PER_LEVEL).forEach((s, i) => {
-      const others = shuffle(sentences.filter((x) => x.es !== s.es)).slice(0, OPTIONS - 1);
-      // Alternate direction so it tests both recognition and production.
+      // Decoys are minimal pairs of the right answer, not other topics — you
+      // have to know the grammar, not just recognise the subject matter.
       if (i % 2 === 0) {
-        qs.push({ level: lvl.code, prompt: s.es, sub: "What does this mean?", correct: s.en, options: shuffle([s.en, ...others.map((o) => o.en)]), speak: s.es });
+        const wrong = englishDistractors(s.en, OPTIONS - 1, others.map((o) => o.en));
+        qs.push({ level: lvl.code, prompt: s.es, sub: "What does this mean?", correct: s.en, options: shuffle([s.en, ...wrong]), speak: s.es });
       } else {
-        qs.push({ level: lvl.code, prompt: s.en, sub: "Choose the Spanish", correct: s.es, options: shuffle([s.es, ...others.map((o) => o.es)]), spanish: true });
+        const wrong = spanishDistractors(s.es, OPTIONS - 1, others.map((o) => o.es));
+        qs.push({ level: lvl.code, prompt: s.en, sub: "Choose the Spanish", correct: s.es, options: shuffle([s.es, ...wrong]), spanish: true });
       }
     });
   });
