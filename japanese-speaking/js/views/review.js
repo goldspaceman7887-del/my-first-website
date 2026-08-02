@@ -1,13 +1,14 @@
-import { buildSession, getDueCount, getNewAvailableCount } from "../data/reviewPool.js";
+import { buildSession, getDueCount, getNewAvailableCount, REVIEW_POOL } from "../data/reviewPool.js";
 import { MODELS } from "../data/models.js";
 import { grade, formatInterval } from "../core/srs.js";
-import { getState, gradeSrsItem, completeReviewSession, setNewCardsPerSession } from "../core/storage.js";
+import { getState, gradeSrsItem, completeReviewSession, setNewCardsPerSession, saveSession, loadSession, clearSession } from "../core/storage.js";
 import { el, toast, stripHighlightMarkup } from "../core/ui.js";
 import { renderClickableJp } from "../core/wordLookup.js";
 import { speak } from "../core/audio.js";
 
 const BREATHER_EVERY = 6;
 const MARKER_ID = "review-view-marker";
+const SESSION_KEY = "review";
 
 let session = null;
 let index = 0;
@@ -16,6 +17,7 @@ let stats = { reviewed: 0, newLearned: 0, again: 0, hard: 0, good: 0, easy: 0 };
 let sessionCompleteRecorded = false;
 let keyListenerAttached = false;
 let showTranslation = {};
+let restoredFromStorage = false;
 
 function buildQueueWithBreathers(state) {
   const cards = buildSession(state);
@@ -31,12 +33,50 @@ function buildQueueWithBreathers(state) {
   return withBreathers;
 }
 
+// Persist just enough to rebuild `session` on reload: real cards by id (looked up in
+// REVIEW_POOL), breathers by their model id (looked up in MODELS) — not the full objects.
+function persistSession() {
+  if (!session) {
+    clearSession(SESSION_KEY);
+    return;
+  }
+  saveSession(SESSION_KEY, {
+    items: session.map((c) => (c.kind === "breather" ? { kind: "breather", modelId: c.model.id } : { kind: "item", id: c.id })),
+    index,
+    flipped,
+    stats,
+    sessionCompleteRecorded,
+  });
+}
+
+function restoreSession() {
+  restoredFromStorage = true;
+  const saved = loadSession(SESSION_KEY);
+  if (!saved) return;
+  const rebuilt = saved.items
+    .map((s) => {
+      if (s.kind === "breather") {
+        const model = MODELS.find((m) => m.id === s.modelId);
+        return model ? { kind: "breather", model } : null;
+      }
+      return REVIEW_POOL.find((c) => c.id === s.id) || null;
+    })
+    .filter(Boolean);
+  if (rebuilt.length === 0) return;
+  session = rebuilt;
+  index = Math.min(saved.index ?? 0, session.length);
+  flipped = !!saved.flipped;
+  stats = saved.stats || stats;
+  sessionCompleteRecorded = !!saved.sessionCompleteRecorded;
+}
+
 function startSession(state) {
   session = buildQueueWithBreathers(state);
   index = 0;
   flipped = false;
   stats = { reviewed: 0, newLearned: 0, again: 0, hard: 0, good: 0, easy: 0 };
   sessionCompleteRecorded = false;
+  persistSession();
 }
 
 function gradeAndAdvance(item, gradeName, root, wasNew) {
@@ -46,6 +86,7 @@ function gradeAndAdvance(item, gradeName, root, wasNew) {
   if (wasNew) stats.newLearned += 1;
   index += 1;
   flipped = false;
+  persistSession();
   render(root);
 }
 
@@ -60,6 +101,7 @@ function attachKeyListener(root) {
       if (e.code === "Space" || e.key === "Enter") {
         e.preventDefault();
         index += 1;
+        persistSession();
         render(root);
       }
       return;
@@ -68,6 +110,7 @@ function attachKeyListener(root) {
       if (e.code === "Space" || e.key === "Enter") {
         e.preventDefault();
         flipped = true;
+        persistSession();
         render(root);
       }
       return;
@@ -82,6 +125,7 @@ function attachKeyListener(root) {
 
 export function render(root) {
   attachKeyListener(root);
+  if (!restoredFromStorage) restoreSession();
   const state = getState();
   const container = el("div", { class: "view", id: MARKER_ID });
 
@@ -162,7 +206,7 @@ function renderCard(item, root, state) {
   if (!flipped) {
     card.appendChild(el("p", { class: "muted small review-tap-hint" }, "Tap the card (or press space) to reveal"));
     card.classList.add("review-card-clickable");
-    card.addEventListener("click", () => { flipped = true; render(root); });
+    card.addEventListener("click", () => { flipped = true; persistSession(); render(root); });
   } else {
     const back = el("div", { class: "review-back" });
     back.appendChild(el("div", { class: "review-back-title" }, item.backTitle));
@@ -224,7 +268,7 @@ function renderBreather(item, root) {
     ])
   );
   card.appendChild(
-    el("button", { class: "btn primary review-continue-btn", onclick: () => { index += 1; render(root); } }, "Continue →")
+    el("button", { class: "btn primary review-continue-btn", onclick: () => { index += 1; persistSession(); render(root); } }, "Continue →")
   );
   wrap.appendChild(card);
   return wrap;
@@ -248,7 +292,7 @@ function renderSummary(root) {
   );
   card.appendChild(
     el("div", { class: "review-summary-actions" }, [
-      el("button", { class: "btn primary", onclick: () => { session = null; render(root); } }, "Check for more"),
+      el("button", { class: "btn primary", onclick: () => { session = null; clearSession(SESSION_KEY); render(root); } }, "Check for more"),
       el("a", { class: "btn", href: "#/dashboard" }, "Back to Dashboard"),
     ])
   );

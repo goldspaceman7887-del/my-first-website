@@ -1,5 +1,5 @@
 import { VOCABULARY, WORD_LEVELS } from "../data/vocabulary.js";
-import { getState, recordQuizAnswer, gradeSrsItem } from "../core/storage.js";
+import { getState, recordQuizAnswer, gradeSrsItem, saveSession, loadSession, clearSession } from "../core/storage.js";
 import { grade, formatInterval, isDue, isNew } from "../core/srs.js";
 import { el, toast, stripHighlightMarkup, progressBar } from "../core/ui.js";
 import { renderClickableJp } from "../core/wordLookup.js";
@@ -14,6 +14,7 @@ const BOTTOM_PAD = 60;
 const AMPLITUDE = 92;
 const NODE_SIZE = 60;
 const CHECKPOINT_SIZE = 78;
+const SESSION_KEY = "vocabulary";
 
 let activeLevel = "all";
 let mode = "path";
@@ -28,7 +29,42 @@ let learnFlipped = false;
 // Path tab lesson-detail: browse the lesson's words one at a time instead of as a grid
 let lessonPreviewIndex = 0;
 
+let restored = false;
+
+// Persists everything needed to land back exactly where you were: which tab, the Path's
+// selected lesson + word-within-lesson, and the Learn tab's flip queue/position/filter.
+function persistState() {
+  saveSession(SESSION_KEY, {
+    mode,
+    activeLevel,
+    selectedLessonIndex,
+    lessonPreviewIndex,
+    learnIds: learnQueue ? learnQueue.map((w) => w.id) : null,
+    learnIndex: learnQIndex,
+    learnFlipped,
+  });
+}
+
+function restoreState() {
+  restored = true;
+  const saved = loadSession(SESSION_KEY);
+  if (!saved) return;
+  if (saved.mode) mode = saved.mode;
+  if (typeof saved.activeLevel === "string") activeLevel = saved.activeLevel;
+  if (typeof saved.selectedLessonIndex === "number") selectedLessonIndex = saved.selectedLessonIndex;
+  if (typeof saved.lessonPreviewIndex === "number") lessonPreviewIndex = saved.lessonPreviewIndex;
+  if (Array.isArray(saved.learnIds)) {
+    const rebuilt = saved.learnIds.map((id) => VOCABULARY.find((w) => w.id === id)).filter(Boolean);
+    if (rebuilt.length > 0) {
+      learnQueue = rebuilt;
+      learnQIndex = Math.min(saved.learnIndex ?? 0, learnQueue.length);
+      learnFlipped = !!saved.learnFlipped;
+    }
+  }
+}
+
 export function render(root) {
+  if (!restored) restoreState();
   const container = el("div", { class: "view" });
   container.appendChild(
     el("header", { class: "view-header" }, [
@@ -38,13 +74,13 @@ export function render(root) {
   );
 
   const tabs = el("div", { class: "tab-row" }, [
-    el("button", { class: `tab ${mode === "path" ? "active" : ""}`, onclick: () => { mode = "path"; render(root); } }, "🛤 Path"),
-    el("button", { class: `tab ${mode === "learn" ? "active" : ""}`, onclick: () => { mode = "learn"; render(root); } }, "📖 Learn"),
+    el("button", { class: `tab ${mode === "path" ? "active" : ""}`, onclick: () => { mode = "path"; persistState(); render(root); } }, "🛤 Path"),
+    el("button", { class: `tab ${mode === "learn" ? "active" : ""}`, onclick: () => { mode = "learn"; persistState(); render(root); } }, "📖 Learn"),
     el(
       "button",
       {
         class: `tab ${mode === "quiz" ? "active" : ""}`,
-        onclick: () => { mode = "quiz"; quizFilterIds = null; currentQuiz = null; render(root); },
+        onclick: () => { mode = "quiz"; quizFilterIds = null; currentQuiz = null; persistState(); render(root); },
       },
       "❓ Quiz"
     ),
@@ -184,6 +220,7 @@ function renderPath(root) {
         onclick: () => {
           selectedLessonIndex = i;
           lessonPreviewIndex = 0;
+          persistState();
           render(root);
           document.getElementById("vocab-lesson-detail")?.scrollIntoView({ behavior: "smooth", block: "start" });
         },
@@ -230,7 +267,7 @@ function renderPath(root) {
         {
           class: "btn",
           disabled: lessonPreviewIndex <= 0 ? "disabled" : null,
-          onclick: () => { lessonPreviewIndex -= 1; render(root); },
+          onclick: () => { lessonPreviewIndex -= 1; persistState(); render(root); },
         },
         "← Previous word"
       ),
@@ -239,7 +276,7 @@ function renderPath(root) {
         {
           class: "btn",
           disabled: lessonPreviewIndex >= lesson.words.length - 1 ? "disabled" : null,
-          onclick: () => { lessonPreviewIndex += 1; render(root); },
+          onclick: () => { lessonPreviewIndex += 1; persistState(); render(root); },
         },
         "Next word →"
       ),
@@ -255,6 +292,7 @@ function renderPath(root) {
           quizFilterIds = lesson.words.map((w) => w.id);
           currentQuiz = null;
           mode = "quiz";
+          persistState();
           render(root);
         },
       },
@@ -276,7 +314,7 @@ function buildLearnQueue(state) {
 function renderLearn(root) {
   const wrap = el("div", {});
   const filterRow = el("div", { class: "chip-row" });
-  filterRow.appendChild(el("button", { class: `chip ${activeLevel === "all" ? "active" : ""}`, onclick: () => { activeLevel = "all"; learnQueue = null; render(root); } }, "All"));
+  filterRow.appendChild(el("button", { class: `chip ${activeLevel === "all" ? "active" : ""}`, onclick: () => { activeLevel = "all"; learnQueue = null; persistState(); render(root); } }, "All"));
   WORD_LEVELS.forEach((lvl) => {
     filterRow.appendChild(
       el(
@@ -284,7 +322,7 @@ function renderLearn(root) {
         {
           class: `chip ${activeLevel === lvl.id ? "active" : ""}`,
           style: activeLevel === lvl.id ? `background:${lvl.color};border-color:${lvl.color};color:#fff` : "",
-          onclick: () => { activeLevel = lvl.id; learnQueue = null; render(root); },
+          onclick: () => { activeLevel = lvl.id; learnQueue = null; persistState(); render(root); },
         },
         lvl.id
       )
@@ -302,6 +340,7 @@ function renderLearn(root) {
     learnQueue = buildLearnQueue(state);
     learnQIndex = 0;
     learnFlipped = false;
+    persistState();
   }
 
   if (learnQIndex >= learnQueue.length) {
@@ -310,7 +349,7 @@ function renderLearn(root) {
         el("p", {}, learnQueue.length === 0
           ? "🎉 Nothing due in this view right now — everything's ghosted into a future review. Try another level, or check back later."
           : "✅ Done with this batch — graded words resurface here (or in Review Session) when they're due again."),
-        el("button", { class: "btn primary", onclick: () => { learnQueue = null; render(root); } }, "Check again"),
+        el("button", { class: "btn primary", onclick: () => { learnQueue = null; persistState(); render(root); } }, "Check again"),
       ])
     );
     return wrap;
@@ -333,7 +372,7 @@ function renderLearn(root) {
   if (!learnFlipped) {
     card.appendChild(el("p", { class: "muted small review-tap-hint" }, "Tap the card (or press space) to reveal"));
     card.classList.add("review-card-clickable");
-    card.addEventListener("click", () => { learnFlipped = true; render(root); });
+    card.addEventListener("click", () => { learnFlipped = true; persistState(); render(root); });
   } else {
     const back = el("div", { class: "review-back" });
     back.appendChild(el("div", { class: "review-back-title" }, [w.jp, el("span", { class: "muted small vocab-reading" }, ` 【${w.reading}】`)]));
@@ -359,6 +398,7 @@ function renderLearn(root) {
             gradeSrsItem(w.id, g);
             learnQIndex += 1;
             learnFlipped = false;
+            persistState();
             render(root);
           },
         },

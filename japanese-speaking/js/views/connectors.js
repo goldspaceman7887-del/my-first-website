@@ -1,9 +1,11 @@
 import { CONNECTORS, CATEGORIES } from "../data/connectors.js";
-import { getState, recordQuizAnswer, gradeSrsItem } from "../core/storage.js";
+import { getState, recordQuizAnswer, gradeSrsItem, saveSession, loadSession, clearSession } from "../core/storage.js";
 import { grade, formatInterval, isDue, isNew } from "../core/srs.js";
 import { el, toast } from "../core/ui.js";
 import { renderClickableJp } from "../core/wordLookup.js";
 import { speak } from "../core/audio.js";
+
+const SESSION_KEY = "connectors";
 
 let activeCategory = "all";
 let mode = "learn"; // "learn" | "quiz"
@@ -12,8 +14,31 @@ let mode = "learn"; // "learn" | "quiz"
 let queue = null;
 let qIndex = 0;
 let flipped = false;
+let restored = false;
+
+function persistQueue() {
+  if (!queue) {
+    clearSession(SESSION_KEY);
+    return;
+  }
+  saveSession(SESSION_KEY, { ids: queue.map((c) => c.id), index: qIndex, flipped, activeCategory, mode });
+}
+
+function restoreQueue() {
+  restored = true;
+  const saved = loadSession(SESSION_KEY);
+  if (!saved) return;
+  if (saved.mode) mode = saved.mode;
+  const rebuilt = saved.ids.map((id) => CONNECTORS.find((c) => c.id === id)).filter(Boolean);
+  if (rebuilt.length === 0) return;
+  queue = rebuilt;
+  qIndex = Math.min(saved.index ?? 0, queue.length);
+  flipped = !!saved.flipped;
+  activeCategory = saved.activeCategory || "all";
+}
 
 export function render(root) {
+  if (!restored) restoreQueue();
   const container = el("div", { class: "view" });
   container.appendChild(
     el("header", { class: "view-header" }, [
@@ -23,8 +48,8 @@ export function render(root) {
   );
 
   const tabs = el("div", { class: "tab-row" }, [
-    el("button", { class: `tab ${mode === "learn" ? "active" : ""}`, onclick: () => { mode = "learn"; render(root); root.scrollIntoView(); } }, "📖 Learn"),
-    el("button", { class: `tab ${mode === "quiz" ? "active" : ""}`, onclick: () => { mode = "quiz"; render(root); } }, "❓ Quiz"),
+    el("button", { class: `tab ${mode === "learn" ? "active" : ""}`, onclick: () => { mode = "learn"; persistQueue(); render(root); root.scrollIntoView(); } }, "📖 Learn"),
+    el("button", { class: `tab ${mode === "quiz" ? "active" : ""}`, onclick: () => { mode = "quiz"; persistQueue(); render(root); } }, "❓ Quiz"),
   ]);
   container.appendChild(tabs);
 
@@ -72,13 +97,14 @@ function buildQueue(state) {
 // ================= Learn tab: one connector at a time, flip + self-grade =================
 function renderLearn(root) {
   const wrap = el("div", {});
-  wrap.appendChild(categoryFilterRow(root, () => { queue = null; }));
+  wrap.appendChild(categoryFilterRow(root, () => { queue = null; persistQueue(); }));
 
   const state = getState();
   if (queue === null) {
     queue = buildQueue(state);
     qIndex = 0;
     flipped = false;
+    persistQueue();
   }
 
   if (qIndex >= queue.length) {
@@ -87,7 +113,7 @@ function renderLearn(root) {
         el("p", {}, queue.length === 0
           ? "🎉 Nothing due in this category right now — everything's ghosted into a future review. Try another category, or check back later."
           : "✅ Done with this batch — graded items will resurface here (or in Review Session) when they're due again."),
-        el("button", { class: "btn primary", onclick: () => { queue = null; render(root); } }, "Check again"),
+        el("button", { class: "btn primary", onclick: () => { queue = null; clearSession(SESSION_KEY); render(root); } }, "Check again"),
       ])
     );
     return wrap;
@@ -112,7 +138,7 @@ function renderLearn(root) {
   if (!flipped) {
     card.appendChild(el("p", { class: "muted small review-tap-hint" }, "Tap the card (or press space) to reveal"));
     card.classList.add("review-card-clickable");
-    card.addEventListener("click", () => { flipped = true; render(root); });
+    card.addEventListener("click", () => { flipped = true; persistQueue(); render(root); });
   } else {
     const back = el("div", { class: "review-back" });
     back.appendChild(el("div", { class: "review-back-title" }, c.jp));
@@ -140,6 +166,7 @@ function renderLearn(root) {
             gradeSrsItem(c.id, g);
             qIndex += 1;
             flipped = false;
+            persistQueue();
             render(root);
           },
         },

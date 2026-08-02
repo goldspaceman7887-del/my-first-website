@@ -20,6 +20,7 @@ function defaultState() {
     rubricAssessments: [], // { id, ts, scores: {dimensionId: 1-4}, average, note }
     quizStats: { attempts: 0, correct: 0 },
     settings: { rate: 0.85, voiceName: null },
+    lastRoute: null, // last visited page, e.g. "/vocabulary" — so re-opening the app returns you there
   };
 }
 
@@ -155,4 +156,37 @@ export function importData(json) {
 export function resetAll() {
   state = defaultState();
   save();
+}
+
+export function setLastRoute(path) {
+  if (state.lastRoute === path) return;
+  state.lastRoute = path;
+  save();
+}
+
+// ---- in-progress session snapshots (current queue/index/filters for a page's flip-through
+// flow) — separate localStorage keys so a card flip doesn't re-serialize the entire app state
+// (srs/connectorProgress can get large). Lets closing and reopening the app resume exactly
+// where you left off, not just keep the graded results.
+const SESSION_PREFIX = "jpAdvSpeak_session_";
+
+export function saveSession(key, data) {
+  try {
+    localStorage.setItem(SESSION_PREFIX + key, JSON.stringify(data));
+  } catch {
+    // storage full or unavailable — resuming mid-session is a nice-to-have, fail silently
+  }
+}
+
+export function loadSession(key) {
+  try {
+    const raw = localStorage.getItem(SESSION_PREFIX + key);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function clearSession(key) {
+  localStorage.removeItem(SESSION_PREFIX + key);
 }

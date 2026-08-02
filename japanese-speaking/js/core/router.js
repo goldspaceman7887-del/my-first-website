@@ -1,3 +1,5 @@
+import { getState, setLastRoute } from "./storage.js";
+
 const routes = new Map();
 let rootEl = null;
 let navLinks = [];
@@ -8,7 +10,10 @@ export function registerRoute(path, render) {
 
 function currentPath() {
   const hash = window.location.hash.replace(/^#/, "");
-  return hash || "/dashboard";
+  if (hash) return hash;
+  // No hash means a fresh load (e.g. tapping the home-screen icon) — go back to wherever
+  // the user last was instead of always resetting to the Dashboard.
+  return getState().lastRoute || "/dashboard";
 }
 
 function resolve() {
@@ -27,11 +32,18 @@ function resolve() {
   });
   rootEl.focus();
   window.scrollTo(0, 0);
+  setLastRoute(path);
 }
 
 export function initRouter(root, links) {
   rootEl = root;
   navLinks = links;
+  // Fresh load with no hash: adopt the remembered route into the URL itself so refreshing
+  // or sharing the link keeps you where you were, instead of only resolving it once here.
+  if (!window.location.hash) {
+    const remembered = getState().lastRoute;
+    if (remembered) window.location.hash = remembered;
+  }
   window.addEventListener("hashchange", resolve);
   resolve();
 }
