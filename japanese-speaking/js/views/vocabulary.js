@@ -69,7 +69,6 @@ function renderVocabCard(w, state) {
     el("button", { class: "icon-btn small", title: "Listen", onclick: () => speak(stripHighlightMarkup(w.sentence), { rate: getState().settings.rate }) }, "🔊"),
   ]);
   sentBox.appendChild(sentRow);
-  sentBox.appendChild(el("div", { class: "muted small" }, w.sentenceEn));
   card.appendChild(sentBox);
   return card;
 }
@@ -320,7 +319,6 @@ function renderQuiz(root) {
   card.appendChild(el("p", { class: "muted" }, "Which word fits the blank in this sentence?"));
   const blanked = target.sentence.replace(/\*\*(.+?)\*\*/, "（　　　　）");
   card.appendChild(el("p", { class: "quiz-sentence", lang: "ja" }, blanked));
-  card.appendChild(el("p", { class: "muted small" }, target.sentenceEn));
 
   const optRow = el("div", { class: "quiz-options" });
   options.forEach((opt) => {

@@ -1,11 +1,17 @@
 import { GRAMMAR, LEVELS } from "../data/grammar.js";
-import { getState, recordQuizAnswer } from "../core/storage.js";
+import { getState, recordQuizAnswer, gradeSrsItem } from "../core/storage.js";
+import { grade, formatInterval, isDue, isNew } from "../core/srs.js";
 import { el, toast, stripHighlightMarkup } from "../core/ui.js";
 import { renderClickableJp } from "../core/wordLookup.js";
 import { speak } from "../core/audio.js";
 
 let activeLevel = "all";
 let mode = "learn";
+
+// Learn-tab flip queue state
+let queue = null;
+let qIndex = 0;
+let flipped = false;
 
 export function render(root) {
   const container = el("div", { class: "view" });
@@ -29,10 +35,9 @@ export function render(root) {
   root.appendChild(container);
 }
 
-function renderLearn(root) {
-  const wrap = el("div", {});
+function levelFilterRow(root, onChange) {
   const filterRow = el("div", { class: "chip-row" });
-  filterRow.appendChild(el("button", { class: `chip ${activeLevel === "all" ? "active" : ""}`, onclick: () => { activeLevel = "all"; render(root); } }, "All"));
+  filterRow.appendChild(el("button", { class: `chip ${activeLevel === "all" ? "active" : ""}`, onclick: () => { activeLevel = "all"; onChange(); render(root); } }, "All"));
   LEVELS.forEach((lvl) => {
     filterRow.appendChild(
       el(
@@ -40,13 +45,25 @@ function renderLearn(root) {
         {
           class: `chip ${activeLevel === lvl.id ? "active" : ""}`,
           style: activeLevel === lvl.id ? `background:${lvl.color};border-color:${lvl.color};color:#fff` : "",
-          onclick: () => { activeLevel = lvl.id; render(root); },
+          onclick: () => { activeLevel = lvl.id; onChange(); render(root); },
         },
         lvl.id
       )
     );
   });
-  wrap.appendChild(filterRow);
+  return filterRow;
+}
+
+function buildQueue(state) {
+  return GRAMMAR.filter((g) => activeLevel === "all" || g.level === activeLevel).filter(
+    (g) => isNew(state.srs[g.id]) || isDue(state.srs[g.id])
+  );
+}
+
+// ================= Learn tab: one grammar point at a time, flip + self-grade =================
+function renderLearn(root) {
+  const wrap = el("div", {});
+  wrap.appendChild(levelFilterRow(root, () => { queue = null; }));
 
   if (activeLevel !== "all") {
     const lvl = LEVELS.find((l) => l.id === activeLevel);
@@ -54,39 +71,91 @@ function renderLearn(root) {
   }
 
   const state = getState();
-  const list = el("div", { class: "grammar-list" });
-  GRAMMAR.filter((g) => activeLevel === "all" || g.level === activeLevel).forEach((g) => {
-    const lvl = LEVELS.find((l) => l.id === g.level);
-    const mastered = state.connectorProgress[g.id]?.mastered;
-    const card = el("div", { class: `card grammar-card ${mastered ? "mastered" : ""}` });
-    card.appendChild(
-      el("div", { class: "grammar-card-top" }, [
-        el("span", { class: "cat-tag", style: `background:${lvl.color}22;color:${lvl.color}` }, lvl.id),
-        el("h3", {}, g.title),
-        mastered ? el("span", { class: "mastered-badge" }, "✓ mastered") : null,
+  if (queue === null) {
+    queue = buildQueue(state);
+    qIndex = 0;
+    flipped = false;
+  }
+
+  if (qIndex >= queue.length) {
+    wrap.appendChild(
+      el("div", { class: "card celebration-card" }, [
+        el("p", {}, queue.length === 0
+          ? "🎉 Nothing due in this level right now — everything's ghosted into a future review. Try another level, or check back later."
+          : "✅ Done with this batch — graded items will resurface here (or in Review Session) when they're due again."),
+        el("button", { class: "btn primary", onclick: () => { queue = null; render(root); } }, "Check again"),
       ])
     );
-    card.appendChild(el("div", { class: "muted small" }, `structure: ${g.structure}`));
-    card.appendChild(el("p", {}, g.explanation));
-    const exBox = el("div", { class: "connector-example" });
-    g.examples.forEach((ex) => {
-      const row = el("div", { class: "grammar-example-row" }, [
-        el("span", { lang: "ja" }, renderClickableJp(ex.jp)),
-        el("button", { class: "icon-btn small", title: "Listen", onclick: () => speak(stripHighlightMarkup(ex.jp), { rate: getState().settings.rate }) }, "🔊"),
-      ]);
-      exBox.appendChild(row);
-      exBox.appendChild(el("div", { class: "muted small" }, ex.en));
-    });
-    card.appendChild(exBox);
-    if (g.mistake) {
-      card.appendChild(el("p", { class: "grammar-mistake" }, [el("strong", {}, "Common mistake: "), g.mistake]));
+    return wrap;
+  }
+
+  const g = queue[qIndex];
+  const lvl = LEVELS.find((l) => l.id === g.level);
+  const ex = g.examples[0];
+
+  wrap.appendChild(el("div", { class: "review-progress muted small" }, `${qIndex + 1} / ${queue.length} in this level`));
+
+  const card = el("div", { class: "card review-card" });
+  card.appendChild(
+    el("div", { class: "review-card-top" }, [
+      el("span", { class: "cat-tag", style: `background:${lvl.color}22;color:${lvl.color}` }, lvl.id),
+      el("button", { class: "icon-btn small", title: "Listen", onclick: (e) => { e.stopPropagation(); speak(stripHighlightMarkup(ex.jp), { rate: getState().settings.rate }); } }, "🔊"),
+    ])
+  );
+  card.appendChild(el("p", { class: "review-front", lang: "ja" }, renderClickableJp(ex.jp)));
+
+  if (!flipped) {
+    card.appendChild(el("p", { class: "muted small review-tap-hint" }, "Tap the card (or press space) to reveal"));
+    card.classList.add("review-card-clickable");
+    card.addEventListener("click", () => { flipped = true; render(root); });
+  } else {
+    const back = el("div", { class: "review-back" });
+    back.appendChild(el("div", { class: "review-back-title" }, g.title));
+    back.appendChild(el("div", { class: "muted small" }, `structure: ${g.structure}`));
+    back.appendChild(el("div", {}, g.explanation));
+    if (g.examples.length > 1) {
+      g.examples.slice(1).forEach((extraEx) => {
+        back.appendChild(el("p", { class: "muted small", lang: "ja" }, stripHighlightMarkup(extraEx.jp)));
+      });
     }
-    list.appendChild(card);
-  });
-  wrap.appendChild(list);
+    if (g.mistake) back.appendChild(el("p", { class: "grammar-mistake" }, [el("strong", {}, "Common mistake: "), g.mistake]));
+    card.appendChild(back);
+
+    const record = state.srs[g.id];
+    const grades = [
+      ["again", "Again", "danger"],
+      ["hard", "Hard", "warn2"],
+      ["good", "Good", "good2"],
+      ["easy", "Easy", "accent2b"],
+    ];
+    const gradeRow = el("div", { class: "review-grade-row" });
+    grades.forEach(([gr, label, cls]) => {
+      const preview = formatInterval(grade(record, gr).interval);
+      const btn = el(
+        "button",
+        {
+          class: `review-grade-btn ${cls}`,
+          onclick: (e) => {
+            e.stopPropagation();
+            gradeSrsItem(g.id, gr);
+            qIndex += 1;
+            flipped = false;
+            render(root);
+          },
+        },
+        [el("div", {}, label), el("div", { class: "review-grade-preview" }, preview)]
+      );
+      gradeRow.appendChild(btn);
+    });
+    card.appendChild(gradeRow);
+    card.appendChild(el("p", { class: "muted small" }, "Grade honestly — Good/Easy ghost it into a future review; Again/Hard bring it back soon."));
+  }
+
+  wrap.appendChild(card);
   return wrap;
 }
 
+// ================= Quiz tab (unchanged: multiple choice) =================
 function buildQuizItem() {
   const target = GRAMMAR[Math.floor(Math.random() * GRAMMAR.length)];
   const distractors = [];
