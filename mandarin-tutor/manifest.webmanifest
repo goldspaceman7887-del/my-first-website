@@ -1,0 +1,17 @@
+{
+  "name": "Mandarin Tutor",
+  "short_name": "Mandarin Tutor",
+  "description": "A complete, systematic Mandarin Chinese tutor — roadmap, characters, vocabulary, sentences, dialogues, and spaced repetition, usable fully offline.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#7f1d1d",
+  "theme_color": "#7f1d1d",
+  "lang": "en",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

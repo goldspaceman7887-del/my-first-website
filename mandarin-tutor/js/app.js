@@ -2,7 +2,7 @@ import { store } from "./core/storage.js";
 import { registerRoute, setNotFound, initRouter, navigate } from "./core/router.js";
 import { audioEngine } from "./core/audio.js";
 import { reviewCounts } from "./core/srs.js";
-import { el } from "./core/ui.js";
+import { el, toast } from "./core/ui.js";
 import { maybeShowOnboarding } from "./core/onboarding.js";
 import { levelForCharCount } from "./core/gamification.js";
 import { CHARACTERS } from "./data/characters.js";
@@ -136,6 +136,27 @@ setNotFound((container) => {
   );
 });
 
+// ---------- Offline support ----------
+function initServiceWorker() {
+  if (!("serviceWorker" in navigator)) return;
+  window.addEventListener("load", () => {
+    navigator.serviceWorker
+      .register("service-worker.js")
+      .then((reg) => {
+        reg.addEventListener("updatefound", () => {
+          const installing = reg.installing;
+          if (!installing) return;
+          installing.addEventListener("statechange", () => {
+            if (installing.state === "installed" && navigator.serviceWorker.controller) {
+              toast("App updated — refresh anytime to get the latest lessons.", { type: "info", duration: 6000, icon: "⬆️" });
+            }
+          });
+        });
+      })
+      .catch(() => {});
+  });
+}
+
 // ---------- Boot ----------
 function boot() {
   initTheme();
@@ -146,6 +167,7 @@ function boot() {
   audioEngine.onReady(() => {});
   initRouter();
   maybeShowOnboarding();
+  initServiceWorker();
 }
 
 if (document.readyState === "loading") {
