@@ -111,19 +111,59 @@ export function renderCharacters(container) {
     return wrap;
   }
 
-  function renderFlashcards() {
-    const wrap = el("div", {});
+  function dueQueue() {
     const due = dueItems("character").map((d) => d.id.replace("character_", ""));
     const fresh = newItems(CHARACTERS.map(srsId), "character").map((id) => id.replace("character_", ""));
-    let queue = [...new Set([...due, ...fresh])].slice(0, 20);
-    const items = queue.map((id) => CHARACTERS.find((c) => c.id === id)).filter(Boolean);
+    const queue = [...new Set([...due, ...fresh])].slice(0, 20);
+    return queue.map((id) => CHARACTERS.find((c) => c.id === id)).filter(Boolean);
+  }
+
+  function renderFlashcards() {
+    const wrap = el("div", {});
+    if (!state.reviewMode) state.reviewMode = dueQueue().length > 0 ? "due" : "all";
+
+    const modeRow = el("div", { class: "level-pills" }, [
+      modePill("due", "🎯 Due for review"),
+      modePill("all", "🔀 Flip through all 110")
+    ]);
+    wrap.appendChild(modeRow);
+
+    const stageWrap = el("div", {});
+    wrap.appendChild(stageWrap);
+
+    function modePill(id, label) {
+      const b = el(
+        "button",
+        { class: `level-pill ${state.reviewMode === id ? "active" : ""}`, onclick: () => { state.reviewMode = id; refreshPills(); renderStage(); } },
+        label
+      );
+      b.dataset.mode = id;
+      return b;
+    }
+    function refreshPills() {
+      modeRow.querySelectorAll(".level-pill").forEach((b) => b.classList.toggle("active", b.dataset.mode === state.reviewMode));
+    }
+    function renderStage() {
+      stageWrap.innerHTML = "";
+      stageWrap.appendChild(state.reviewMode === "all" ? renderFlipThroughAll() : renderDueReview());
+    }
+
+    renderStage();
+    return wrap;
+  }
+
+  // "Due for review" -- SRS-scheduled queue (due items + a few new ones), capped at 20.
+  // Grading is required to advance; this is the spaced-repetition engine's own queue.
+  function renderDueReview() {
+    const wrap = el("div", {});
+    const items = dueQueue();
 
     if (items.length === 0) {
       wrap.appendChild(
         el("div", { class: "card empty-state" }, [
           el("div", { class: "empty-icon" }, "🎉"),
           el("h3", {}, "All caught up!"),
-          el("p", {}, "No character reviews due right now. Browse the full list in the \"Browse\" tab.")
+          el("p", {}, "No character reviews due right now. Try \"Flip through all 110\" above, or browse the full list in the \"Browse\" tab.")
         ])
       );
       return wrap;
@@ -201,6 +241,105 @@ export function renderCharacters(container) {
               } else {
                 showCard();
               }
+            }
+          },
+          label
+        );
+      }
+    }
+    showCard();
+    return wrap;
+  }
+
+  // "Flip through all" -- every character in the dataset, in order, with free
+  // Previous/Next navigation. Grading is optional (still feeds the SRS if
+  // used) but you can just tap through and read the English definitions.
+  // Position is saved automatically so it picks up where you left off.
+  function renderFlipThroughAll() {
+    const wrap = el("div", {});
+    const total = CHARACTERS.length;
+    let idx = Math.min(Math.max(store.state.progress.charFlipIndex || 0, 0), total - 1);
+
+    const counter = el("p", { class: "text-muted" }, `Card ${idx + 1} of ${total}`);
+    const stage = el("div", { class: "flashcard-stage" });
+    wrap.appendChild(counter);
+    wrap.appendChild(stage);
+
+    function saveIndex() {
+      store.state.progress.charFlipIndex = idx;
+      store.save();
+    }
+
+    function showCard() {
+      stage.innerHTML = "";
+      const c = CHARACTERS[idx];
+      const card = el("div", { class: "flashcard" });
+      const inner = el("div", { class: "flashcard-inner" }, [
+        el("div", { class: "flashcard-face front" }, [
+          el("div", { class: "flashcard-word hanzi" }, c.char),
+          el("div", { class: "flashcard-hint" }, "Tap to reveal pinyin + English meaning")
+        ]),
+        el("div", { class: "flashcard-face back" }, [
+          el("div", { class: "pinyin-lg" }, `${c.pinyin} · ${toneNumbers(c.pinyin)}`),
+          el("div", { class: "flashcard-sub", style: "font-weight:700" }, c.meaning),
+          el("div", { class: "flashcard-sub text-faint" }, c.trick)
+        ])
+      ]);
+      let exposed = false;
+      card.appendChild(inner);
+      card.addEventListener("click", () => {
+        card.classList.toggle("flipped");
+        if (!exposed) {
+          exposed = true;
+          store.state.progress.charExposure[c.id] = (store.state.progress.charExposure[c.id] || 0) + 1;
+          store.save();
+        }
+      });
+      stage.appendChild(card);
+
+      const playRow = el("div", { class: "btn-row" }, [
+        el("button", { class: "btn btn-sm", onclick: (e) => { e.stopPropagation(); audioEngine.speak(c.char); } }, "🔊 Normal"),
+        el("button", { class: "btn btn-sm", onclick: (e) => { e.stopPropagation(); audioEngine.speakSlow(c.char); } }, "🐢 Slow")
+      ]);
+      stage.appendChild(playRow);
+
+      const detail = characterCard(c, { compact: false });
+      detail.classList.add("hidden");
+      const detailToggle = el("button", { class: "btn btn-ghost btn-block", onclick: () => detail.classList.toggle("hidden") }, "Show full breakdown (words, sentences, conversation)");
+      stage.appendChild(detailToggle);
+      stage.appendChild(detail);
+
+      const navRow = el("div", { class: "btn-row", style: "margin-top:.6rem" }, [
+        el("button", { class: "btn", disabled: idx === 0 ? "true" : null, onclick: () => { idx--; saveIndex(); showCard(); } }, "◀ Previous"),
+        el("button", { class: "btn btn-primary", disabled: idx === total - 1 ? "true" : null, onclick: () => { idx++; saveIndex(); showCard(); } }, "Next ▶")
+      ]);
+      stage.appendChild(navRow);
+
+      const ratingRow = el("div", { class: "srs-rating-row", style: "margin-top:.6rem" }, [
+        el("p", { class: "text-faint", style: "width:100%;margin-bottom:.3rem" }, "Optional: grade it to add this character to your spaced-repetition Review queue too."),
+        ratingBtn("Again", QUALITY.AGAIN, "btn-danger"),
+        ratingBtn("Hard", QUALITY.HARD, "btn"),
+        ratingBtn("Good", QUALITY.GOOD, "btn"),
+        ratingBtn("Easy", QUALITY.EASY, "btn-success")
+      ]);
+      stage.appendChild(ratingRow);
+
+      counter.textContent = `Card ${idx + 1} of ${total}`;
+      if (store.state.settings.autoplayAudio) audioEngine.speak(c.char);
+
+      function ratingBtn(label, quality, cls) {
+        return el(
+          "button",
+          {
+            class: `btn ${cls}`,
+            onclick: () => {
+              blurActive();
+              gradeItem(srsId(c), "character", quality);
+              store.state.progress.charExposure[c.id] = (store.state.progress.charExposure[c.id] || 0) + 1;
+              addXP(quality >= 3 ? 3 : 1, `Character: ${c.char}`);
+              if (idx < total - 1) idx++;
+              saveIndex();
+              showCard();
             }
           },
           label
