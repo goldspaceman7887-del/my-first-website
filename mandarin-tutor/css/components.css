@@ -298,3 +298,7 @@ table.data-table th { color: var(--text-muted); font-size: .78rem; text-transfor
 .level-pills { display: flex; flex-wrap: wrap; gap: .4rem; }
 .level-pill { border: 1px solid var(--border); background: var(--surface-2); border-radius: 999px; padding: .3rem .85rem; font-weight: 800; font-size: .78rem; cursor: pointer; }
 .level-pill.active { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+
+/* ---------- Can-Do checklist ---------- */
+.candoItem input[type="checkbox"] { margin-top: .2rem; width: 1.1rem; height: 1.1rem; flex-shrink: 0; }
+.candoItem.is-checked span { color: var(--text-muted); text-decoration: line-through; }

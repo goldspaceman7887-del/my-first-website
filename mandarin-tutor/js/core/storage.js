@@ -18,7 +18,8 @@ function defaultState() {
       autoplayAudio: true,
       showPinyin: true,
       showToneColors: true,
-      onboardingSeen: false
+      onboardingSeen: false,
+      roadmapTrack: "actfl" // "actfl" | "hsk" -- which scale the Roadmap path groups units by
     },
     profile: {
       name: "",
@@ -48,7 +49,8 @@ function defaultState() {
       vocabExposure: {}, // wordId -> count
       activeSentenceIds: [], // sentence ids currently "being studied"
       roadmapUnitsCompleted: [], // roadmap unit ids completed, in the Duolingo-style path
-      charFlipIndex: 0 // resume position in the "flip through all characters" practice deck
+      charFlipIndex: 0, // resume position in the "flip through all characters" practice deck
+      canDoChecked: [] // ids of self-assessed "I can..." statements the learner has checked off
     },
     achievements: {
       unlocked: []

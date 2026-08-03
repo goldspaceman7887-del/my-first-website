@@ -1,4 +1,4 @@
-const CACHE_NAME = "mzh-cache-v3";
+const CACHE_NAME = "mzh-cache-v4";
 
 const PRECACHE_URLS = [
   "./",
@@ -21,6 +21,7 @@ const PRECACHE_URLS = [
   "js/core/srs.js",
   "js/core/storage.js",
   "js/core/ui.js",
+  "js/data/canDo.js",
   "js/data/characters.js",
   "js/data/dialogues.js",
   "js/data/mistakePatterns.js",
