@@ -13,7 +13,8 @@ import { el, blurActive, toast, progressBar, downloadJSON } from "../core/ui.js"
 import { audioEngine } from "../core/audio.js";
 import { addXP, registerStudyToday } from "../core/gamification.js";
 import { gradeItem, QUALITY } from "../core/srs.js";
-import { ROADMAP_UNITS, ACTFL_LEVELS, levelIndex } from "../data/roadmap.js";
+import { ROADMAP_UNITS, ACTFL_LEVELS, levelIndex, HSK_LEVELS, hskForLevel, hskInfo } from "../data/roadmap.js";
+import { CAN_DO_STATEMENTS } from "../data/canDo.js";
 import { VOCABULARY } from "../data/vocabulary.js";
 import { findCharacter } from "../core/lookup.js";
 
@@ -105,6 +106,8 @@ function seedRoadmapReview(unit) {
 }
 
 export function renderRoadmap(container) {
+  const state = { view: "path" };
+
   container.appendChild(
     el("div", { class: "page-header" }, [
       el("div", { class: "flex justify-between items-center flex-wrap gap-2" }, [
@@ -128,27 +131,87 @@ export function renderRoadmap(container) {
     ])
   );
 
+  const tabs = el("div", { class: "tabs" }, [tabBtn("path", "🗺️ Path"), tabBtn("candos", "✅ Can-Do Checklist")]);
+  container.appendChild(tabs);
+
   const body = el("div", {});
   container.appendChild(body);
-  showPath();
+
+  function tabBtn(id, label) {
+    const b = el("button", { class: `tab-btn ${state.view === id ? "active" : ""}`, onclick: () => setView(id) }, label);
+    b.dataset.viewId = id;
+    return b;
+  }
+  function setView(id) {
+    state.view = id;
+    tabs.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("active", b.dataset.viewId === id));
+    render();
+  }
+  function render() {
+    body.innerHTML = "";
+    if (state.view === "candos") showCanDo();
+    else showPath();
+  }
+
+  render();
 
   function showPath() {
-    body.innerHTML = "";
     const done = completedSet();
     const level = currentLevel(done);
+    const track = store.state.settings.roadmapTrack === "hsk" ? "hsk" : "actfl";
 
     body.appendChild(
       el("div", { class: "roadmap-progress-summary" }, [
         el("span", { class: "badge badge-gold" }, `${done.size} / ${ROADMAP_UNITS.length} units complete`),
-        el("span", { class: "badge badge-level" }, `Current tier: ${level.label}`),
+        el("span", { class: "badge badge-level" }, track === "hsk" ? `Current tier: HSK ${hskForLevel(level.code)}` : `Current tier: ${level.label}`),
         el("div", { style: "flex:1" }, [progressBar(Math.round((done.size / ROADMAP_UNITS.length) * 100))])
       ])
     );
 
+    const trackRow = el("div", { class: "level-pills" }, [
+      trackPill("actfl", "ACTFL levels"),
+      trackPill("hsk", "HSK 1–6")
+    ]);
+    body.appendChild(trackRow);
+    body.appendChild(
+      el(
+        "p",
+        { class: "text-faint", style: "margin-top:.4rem" },
+        track === "hsk"
+          ? "HSK bands here are an approximate correlation based on the grammar each unit teaches — there's no single official ACTFL↔HSK crosswalk, so treat this as a helpful guide rather than an exact equivalence."
+          : "Switch to HSK 1–6 if you're studying toward the HSK exam — the same units and progression, just grouped by HSK band instead of ACTFL sub-level."
+      )
+    );
+
+    function trackPill(id, label) {
+      const b = el(
+        "button",
+        {
+          class: `level-pill ${track === id ? "active" : ""}`,
+          onclick: () => { store.set("settings.roadmapTrack", id); render(); }
+        },
+        label
+      );
+      return b;
+    }
+
     const path = el("div", { class: "roadmap-path" });
     let lastLevel = null;
+    let lastHsk = null;
     ROADMAP_UNITS.forEach((unit, i) => {
-      if (unit.level !== lastLevel) {
+      if (track === "hsk") {
+        const hsk = hskForLevel(unit.level);
+        if (hsk !== lastHsk) {
+          lastHsk = hsk;
+          const info = hskInfo(hsk);
+          path.appendChild(
+            el("div", { class: "roadmap-tier-header" }, [
+              el("h3", {}, info.label),
+              el("p", { class: "text-faint" }, info.blurb)
+            ])
+          );
+        }
+      } else if (unit.level !== lastLevel) {
         lastLevel = unit.level;
         const tier = ACTFL_LEVELS[levelIndex(unit.level)];
         path.appendChild(
@@ -179,9 +242,74 @@ export function renderRoadmap(container) {
     body.appendChild(path);
   }
 
+  function showCanDo() {
+    const checked = new Set(store.state.progress.canDoChecked || []);
+    const track = store.state.settings.roadmapTrack === "hsk" ? "hsk" : "actfl";
+    const totalStatements = ACTFL_LEVELS.reduce((sum, l) => sum + CAN_DO_STATEMENTS[l.code].length, 0);
+
+    const overallBadge = el("span", { class: "badge badge-gold" }, `${checked.size} / ${totalStatements} checked off`);
+    const overallBar = progressBar(Math.round((checked.size / totalStatements) * 100));
+    body.appendChild(
+      el("div", { class: "roadmap-progress-summary" }, [overallBadge, el("div", { style: "flex:1" }, [overallBar])])
+    );
+    body.appendChild(
+      el("p", { class: "text-faint" }, "Self-assessment, not a test: check off a statement once you feel you can actually do it in a real conversation, not just recognize it on a flashcard. Written for this course, not copied from any official ACTFL document.")
+    );
+
+    function refreshOverall() {
+      const n = (store.state.progress.canDoChecked || []).length;
+      overallBadge.textContent = `${n} / ${totalStatements} checked off`;
+      overallBar.querySelector(".progress-bar-fill").style.width = `${Math.round((n / totalStatements) * 100)}%`;
+    }
+
+    ACTFL_LEVELS.forEach((tier) => {
+      const statements = CAN_DO_STATEMENTS[tier.code] || [];
+      const levelDone = statements.filter((s) => checked.has(s.id)).length;
+      const heading = track === "hsk" ? `${tier.label} · HSK ${hskForLevel(tier.code)}` : tier.label;
+
+      const levelBadge = el("span", { class: "badge badge-default" }, `${levelDone} / ${statements.length}`);
+      function refreshLevelBadge() {
+        const n = statements.filter((s) => (store.state.progress.canDoChecked || []).includes(s.id)).length;
+        levelBadge.textContent = `${n} / ${statements.length}`;
+      }
+
+      const card = el("div", { class: "card", style: "margin-top:1rem" });
+      card.appendChild(
+        el("div", { class: "flex justify-between items-center flex-wrap gap-2" }, [
+          el("h3", { class: "card-title" }, heading),
+          levelBadge
+        ])
+      );
+      card.appendChild(el("p", { class: "text-faint", style: "margin-top:.2rem" }, tier.blurb));
+
+      statements.forEach((s) => {
+        const isChecked = checked.has(s.id);
+        const row = el("label", { class: "candoItem", style: "display:flex;align-items:flex-start;gap:.6rem;margin-top:.6rem;cursor:pointer" });
+        const box = el("input", { type: "checkbox" });
+        box.checked = isChecked;
+        box.addEventListener("change", () => {
+          const set = new Set(store.state.progress.canDoChecked || []);
+          if (box.checked) set.add(s.id);
+          else set.delete(s.id);
+          store.state.progress.canDoChecked = [...set];
+          store.save();
+          row.classList.toggle("is-checked", box.checked);
+          refreshLevelBadge();
+          refreshOverall();
+        });
+        row.classList.toggle("is-checked", isChecked);
+        row.appendChild(box);
+        row.appendChild(el("span", {}, s.text));
+        card.appendChild(row);
+      });
+
+      body.appendChild(card);
+    });
+  }
+
   function showUnit(unit) {
     body.innerHTML = "";
-    body.appendChild(el("button", { class: "btn btn-sm", onclick: showPath }, "← Roadmap"));
+    body.appendChild(el("button", { class: "btn btn-sm", onclick: render }, "← Roadmap"));
     body.appendChild(el("span", { class: "badge badge-level", style: "margin-top:.75rem;display:inline-block" }, ACTFL_LEVELS[levelIndex(unit.level)].label));
     body.appendChild(el("h2", { style: "margin-top:.4rem" }, `${unit.icon} ${unit.title} · ${unit.titleZh}`));
     runGrammarStep();
@@ -381,7 +509,7 @@ export function renderRoadmap(container) {
             store.save();
             toast("Unit complete! +15 XP · added to your Review queue", { type: "xp", icon: "⚡" });
           }
-          practiceWrap.appendChild(el("button", { class: "btn btn-primary", style: "margin-top:.75rem", onclick: showPath }, "Back to roadmap"));
+          practiceWrap.appendChild(el("button", { class: "btn btn-primary", style: "margin-top:.75rem", onclick: render }, "Back to roadmap"));
         } else {
           practiceWrap.appendChild(
             el("div", { class: "btn-row", style: "margin-top:.75rem" }, [
