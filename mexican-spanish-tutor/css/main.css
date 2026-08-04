@@ -151,3 +151,97 @@ button, .btn, a.btn, select, input[type="text"], input[type="search"], .option-b
   .stat-chip.stat-level { display: none; }
   .topbar-stats { gap: .25rem; }
 }
+
+/* ---------- Phone-first: bottom tab bar ---------- */
+/* Hidden on desktop; the sidebar is the navigation there. On phones the
+   sidebar becomes a drawer behind "More" and this bar is the primary nav. */
+.tabbar { display: none; }
+
+/* Inputs don't inherit typography by default, so most answer boxes were
+   rendering at the browser's ~13px default. */
+input, textarea { font-family: inherit; }
+
+/* Touch polish: kill the grey tap flash and the 300ms double-tap-zoom wait. */
+button, .btn, a, .option-btn, .word-chip, .roadmap-node, .unit-tick, select, summary {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* Hover transforms stick on touch screens (the element keeps :hover after a
+   tap), so restrict the lift to devices that actually have a pointer. */
+@media (hover: none) {
+  .btn:hover, .icon-btn:hover, .card:hover { transform: none; }
+}
+
+@media (max-width: 860px) {
+  /* Notch / home-indicator awareness — needs viewport-fit=cover in the meta. */
+  :root {
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --tabbar-h: 57px;
+  }
+  .topbar {
+    height: calc(var(--topbar-h) + var(--safe-top));
+    padding-top: var(--safe-top);
+  }
+  .sidebar,
+  .sidebar-scrim.show { top: calc(var(--topbar-h) + var(--safe-top)); }
+  /* Stop the drawer above the tab bar so its footer isn't tucked underneath. */
+  .sidebar {
+    height: calc(100vh - var(--topbar-h) - var(--safe-top) - var(--tabbar-h) - var(--safe-bottom));
+  }
+  .sidebar-scrim.show { bottom: calc(var(--tabbar-h) + var(--safe-bottom)); }
+
+  .tabbar {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 55;
+    background: var(--bg-elevated);
+    border-top: 1px solid var(--border);
+    padding-bottom: var(--safe-bottom);
+    box-shadow: 0 -2px 12px rgba(0,0,0,.06);
+  }
+  .tabbar a, .tabbar button {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    min-height: 56px; padding: .4rem .1rem;
+    background: none; border: 0; cursor: pointer;
+    text-decoration: none; color: var(--text-muted); font-weight: 700;
+  }
+  .tabbar .tb-icon { font-size: 1.25rem; line-height: 1; }
+  .tabbar .tb-label { font-size: .62rem; letter-spacing: .01em; }
+  .tabbar a.active { color: var(--accent); }
+  .tabbar a.active .tb-icon { transform: translateY(-1px) scale(1.08); }
+  .tabbar button[aria-expanded="true"] { color: var(--accent); }
+
+  /* Content has to clear the fixed bar, plus the home indicator. */
+  .view-root { padding-bottom: calc(var(--tabbar-h) + 24px + var(--safe-bottom)); }
+  .toast-container { bottom: calc(var(--tabbar-h) + 12px + var(--safe-bottom)) !important; }
+
+  /* The hamburger is redundant now that "More" opens the same drawer. */
+  .nav-toggle { display: none; }
+
+  /* iOS zooms the whole page when you focus a field under 16px. The
+     element+attribute selectors outrank the single-class rules in
+     components.css, so this holds everywhere. */
+  input[type="text"], input[type="search"], input[type="number"],
+  input[type="email"], input:not([type]), textarea {
+    font-size: 16px;
+  }
+
+  /* Don't let a downward swipe in a quiz trigger pull-to-refresh. */
+  html, body { overscroll-behavior-y: contain; }
+
+  /* Bigger body type for thumbs, but a much tighter page header — on a phone
+     the intro blurb was pushing the actual content below the fold. */
+  html { font-size: 17px; }
+  .page-header { margin-bottom: .8rem; }
+  .page-header h1 { font-size: 1.3rem; margin-bottom: .2rem; }
+  .page-header p { font-size: .85rem; line-height: 1.45; margin-bottom: 0; }
+  /* Scoped so it outranks the base .card rule in components.css, which
+     loads after this file. */
+  .view-root .card { padding: .9rem 1rem; }
+}
+
+@media (max-width: 560px) {
+  .tabbar .tb-label { font-size: .58rem; }
+}

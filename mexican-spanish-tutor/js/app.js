@@ -46,20 +46,48 @@ function initTheme() {
 function initNav() {
   const sidebar = document.getElementById("sidebar");
   const scrim = document.getElementById("sidebar-scrim");
-  const toggle = document.getElementById("nav-toggle");
+  // Two ways in to the same drawer: the desktop-ish hamburger, and the
+  // "More" tab on the phone tab bar.
+  const openers = ["nav-toggle", "tabbar-more"]
+    .map((id) => document.getElementById(id))
+    .filter(Boolean);
   function close() {
     sidebar.classList.remove("open");
     scrim.classList.remove("show");
-    toggle.setAttribute("aria-expanded", "false");
+    openers.forEach((b) => b.setAttribute("aria-expanded", "false"));
   }
-  toggle.addEventListener("click", () => {
-    const open = sidebar.classList.toggle("open");
-    scrim.classList.toggle("show", open);
-    toggle.setAttribute("aria-expanded", String(open));
-  });
+  openers.forEach((btn) =>
+    btn.addEventListener("click", () => {
+      const open = sidebar.classList.toggle("open");
+      scrim.classList.toggle("show", open);
+      openers.forEach((b) => b.setAttribute("aria-expanded", String(open)));
+    })
+  );
   scrim.addEventListener("click", close);
   sidebar.querySelectorAll("a").forEach((a) => a.addEventListener("click", close));
   window.addEventListener("hashchange", close);
+}
+
+// ---------- Phone keyboards ----------
+// A phone keyboard set to English autocorrects Spanish into nonsense — "esta"
+// becomes "east", "hola" becomes "hola?" with a red squiggle. Views create
+// their inputs on every route render, so watch the view root rather than
+// tagging each one by hand.
+function tameKeyboards(root) {
+  root.querySelectorAll("input[type='text'], input[type='search'], input:not([type]), textarea").forEach((f) => {
+    if (f.dataset.tamed) return;
+    f.dataset.tamed = "1";
+    f.setAttribute("autocorrect", "off");
+    f.setAttribute("spellcheck", "false");
+    f.setAttribute("autocomplete", f.getAttribute("autocomplete") || "off");
+  });
+}
+
+function initKeyboardTaming() {
+  const root = document.getElementById("view-root");
+  if (!root) return;
+  tameKeyboards(root);
+  new MutationObserver(() => tameKeyboards(root)).observe(root, { childList: true, subtree: true });
 }
 
 // ---------- Immersion selector ----------
@@ -141,6 +169,7 @@ function boot() {
   initServiceWorker();
   initTheme();
   initNav();
+  initKeyboardTaming();
   initImmersion();
   refreshTopbarStats();
   store.subscribe(refreshTopbarStats);
