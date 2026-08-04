@@ -85,7 +85,10 @@ export function renderSettings(container) {
       "button",
       {
         class: "btn",
-        onclick: () => downloadJSON("mandarin-tutor-progress.json", store.exportJSON())
+        onclick: () => {
+          downloadJSON("mandarin-tutor-progress.json", store.exportJSON());
+          store.set("settings.lastBackupAt", Date.now());
+        }
       },
       "⬇️ Export progress"
     )

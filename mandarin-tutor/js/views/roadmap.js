@@ -115,24 +115,21 @@ function chineseMatch(input, expectedZh, expectedPy) {
 // 3 typed free-recall production -- draws on all 8 taught sentences plus
 // the unit's core grammar point, mixed and reshuffled on every attempt.
 function buildPracticeSet(unit) {
-  const pool = shuffle(unit.sentences);
-  const mcPool = pool.slice(0, 4);
-  const typedPool = pool.slice(4, 7);
+  const mcPool = shuffle(unit.sentences).slice(0, 7);
   const exercises = [];
 
   mcPool.forEach((correct) => {
     const distractors = shuffle(unit.sentences.filter((s) => s !== correct)).slice(0, 2).map((s) => s.en);
     const options = shuffle([correct.en, ...distractors]);
+    // zh/py carried along so the optional "type it in Chinese" bonus box
+    // (not required -- just there for people who want extra practice)
+    // has something to check the typed answer against.
     exercises.push({ type: "mc", zh: correct.zh, py: correct.py, correct: correct.en, options });
   });
 
   if (unit.drill) {
     exercises.push({ type: "drill", question: unit.drill.question, options: shuffle(unit.drill.options), answer: unit.drill.answer });
   }
-
-  typedPool.forEach((s) => {
-    exercises.push({ type: "typed", zh: s.zh, py: s.py, expected: s.en });
-  });
 
   return shuffle(exercises);
 }
@@ -146,22 +143,17 @@ function seedRoadmapReview(unit) {
 export function renderRoadmap(container) {
   const state = { view: "path" };
 
+  function doBackup() {
+    downloadJSON("mandarin-tutor-progress.json", store.exportJSON());
+    store.set("settings.lastBackupAt", Date.now());
+    toast("Progress saved to a file on your device.", { type: "success", icon: "💾" });
+  }
+
   container.appendChild(
     el("div", { class: "page-header" }, [
       el("div", { class: "flex justify-between items-center flex-wrap gap-2" }, [
         el("h1", {}, "🗺️ Roadmap"),
-        el(
-          "button",
-          {
-            class: "btn btn-sm",
-            title: "Download a backup of your progress",
-            onclick: () => {
-              downloadJSON("mandarin-tutor-progress.json", store.exportJSON());
-              toast("Progress saved to a file on your device.", { type: "success", icon: "💾" });
-            }
-          },
-          "💾 Save my progress"
-        )
+        el("button", { class: "btn btn-sm", title: "Download a backup of your progress", onclick: doBackup }, "💾 Save my progress")
       ]),
       el("p", {}, "A path from zero to ACTFL Advanced High — Novice Low through Advanced High. Each unit: the grammar point first, then the individual vocabulary it uses, then 8 full sentences in context, then an 8-exercise practice round."),
       el("p", { class: "text-faint" }, "Passing a unit adds it to your spaced-repetition Review queue, so it comes back later instead of being seen once and forgotten. Every unit is open, not just the next one in line — jump ahead to preview or use any unit for review anytime, no need to go strictly in order."),
@@ -171,6 +163,32 @@ export function renderRoadmap(container) {
 
   const tabs = el("div", { class: "tabs" }, [tabBtn("path", "🗺️ Path"), tabBtn("candos", "✅ Can-Do Checklist")]);
   container.appendChild(tabs);
+
+  maybeShowBackupNudge();
+
+  function maybeShowBackupNudge() {
+    const NUDGE_DISMISSED_KEY = "mzh_backup_nudge_dismissed";
+    if (sessionStorage.getItem(NUDGE_DISMISSED_KEY)) return;
+    const hasProgress = (store.state.profile.xp || 0) > 0 || (store.state.progress.roadmapUnitsCompleted || []).length > 0;
+    if (!hasProgress) return;
+    const last = store.state.settings.lastBackupAt;
+    const daysSince = last ? (Date.now() - last) / 86400000 : Infinity;
+    if (daysSince < 3) return;
+
+    const banner = el("div", { class: "card", style: "margin-bottom:1.25rem;border-left:3px solid var(--accent)" }, [
+      el("div", { class: "flex justify-between items-center flex-wrap gap-2" }, [
+        el("div", {}, [
+          el("strong", {}, last ? "It's been a few days since your last backup" : "You haven't backed up your progress yet"),
+          el("p", { class: "text-muted", style: "margin:.3rem 0 0" }, "Browsers (especially iPhone Safari) can sometimes clear saved data after long periods of inactivity. A quick backup file protects you from ever losing progress.")
+        ]),
+        el("div", { class: "flex gap-1" }, [
+          el("button", { class: "btn btn-primary btn-sm", onclick: () => { doBackup(); banner.remove(); } }, "💾 Save now"),
+          el("button", { class: "btn btn-ghost btn-sm", onclick: () => { sessionStorage.setItem(NUDGE_DISMISSED_KEY, "1"); banner.remove(); } }, "Not now")
+        ])
+      ])
+    ]);
+    container.insertBefore(banner, tabs);
+  }
 
   const body = el("div", {});
   container.appendChild(body);
@@ -501,7 +519,7 @@ export function renderRoadmap(container) {
           const options = el("div", { class: "option-list" }, q.options.map((opt) =>
             el("button", { class: "option-btn", onclick: (e) => {
               const btn = e.currentTarget;
-              options.querySelectorAll(".option-btn").forEach((b) => b.classList.add("disabled"));
+              lockExercise();
               const isCorrect = opt === q.correct;
               btn.classList.add(isCorrect ? "correct" : "incorrect");
               if (!isCorrect) [...options.children].find((b) => b.textContent === q.correct)?.classList.add("correct");
@@ -509,6 +527,43 @@ export function renderRoadmap(container) {
             } }, opt)
           ));
           practiceWrap.appendChild(options);
+
+          // Optional: type the Chinese sentence instead of picking an
+          // option. Never required -- multiple choice always works on its
+          // own -- this is just there for anyone who wants extra practice
+          // typing (characters or plain pinyin, tones optional).
+          const typeToggle = el("button", { class: "btn btn-ghost btn-sm", style: "margin-top:.6rem" }, "✍️ Or type your answer instead (optional)");
+          const typeBox = el("div", { class: "hidden", style: "margin-top:.5rem" });
+          const typeInput = el("input", { type: "text", placeholder: "你好 or nihao..." });
+          typeInput.style.cssText = "width:100%;padding:.65rem .9rem;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:1rem;";
+          const typeSubmit = el("button", { class: "btn btn-primary btn-sm", style: "margin-top:.5rem" }, "Check");
+          typeBox.appendChild(typeInput);
+          typeBox.appendChild(typeSubmit);
+          typeToggle.addEventListener("click", () => { typeBox.classList.toggle("hidden"); if (!typeBox.classList.contains("hidden")) typeInput.focus(); });
+          typeInput.addEventListener("keydown", (e) => { if (e.key === "Enter") checkTyped(); });
+          typeSubmit.addEventListener("click", checkTyped);
+          practiceWrap.appendChild(typeToggle);
+          practiceWrap.appendChild(typeBox);
+
+          function lockExercise() {
+            options.querySelectorAll(".option-btn").forEach((b) => b.classList.add("disabled"));
+            typeToggle.disabled = true;
+            typeInput.disabled = true;
+            typeSubmit.disabled = true;
+          }
+
+          function checkTyped() {
+            const text = typeInput.value.trim();
+            if (!text) { toast("Type your answer first.", { type: "error" }); return; }
+            lockExercise();
+            const isCorrect = chineseMatch(text, q.zh, q.py);
+            const correctBtn = [...options.children].find((b) => b.textContent === q.correct);
+            if (correctBtn) correctBtn.classList.add("correct");
+            const feedback = el("div", { class: `feedback-block ${isCorrect ? "correct" : "incorrect"}`, style: "margin-top:.6rem" }, [
+              el("p", {}, isCorrect ? "Nice — that's right!" : "Close — the correct sentence is highlighted above.")
+            ]);
+            markResult(isCorrect, feedback);
+          }
         } else if (q.type === "drill") {
           practiceWrap.appendChild(el("div", { class: "badge badge-gold" }, "📐 Grammar drill"));
           practiceWrap.appendChild(el("p", { class: "exercise-prompt hanzi", style: "margin-top:.4rem" }, q.question));
@@ -523,37 +578,6 @@ export function renderRoadmap(container) {
             } }, opt)
           ));
           practiceWrap.appendChild(options);
-        } else {
-          // typed production: given the English meaning, produce the Chinese
-          // sentence yourself -- typed as characters (if you have a Chinese
-          // keyboard/IME) or as plain pinyin without tone marks, either works.
-          practiceWrap.appendChild(el("div", { class: "badge badge-gold" }, "✍️ Your turn"));
-          practiceWrap.appendChild(el("p", { class: "exercise-prompt", style: "margin-top:.4rem" }, q.expected));
-          practiceWrap.appendChild(el("p", { class: "text-muted" }, "Type this in Chinese -- characters or plain pinyin (tones optional) both work."));
-          const input = el("input", { type: "text", placeholder: "你好 or nihao..." });
-          input.style.cssText = "width:100%;padding:.65rem .9rem;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:1rem;";
-          const submit = el("button", { class: "btn btn-primary", style: "margin-top:.6rem", onclick: check }, "Check");
-          input.addEventListener("keydown", (e) => { if (e.key === "Enter") check(); });
-          practiceWrap.appendChild(input);
-          practiceWrap.appendChild(submit);
-          input.focus();
-
-          function check() {
-            const text = input.value.trim();
-            if (!text) { toast("Type your answer first.", { type: "error" }); return; }
-            input.disabled = true;
-            submit.disabled = true;
-            const isCorrect = chineseMatch(text, q.zh, q.py);
-            const feedback = el("div", { class: `feedback-block ${isCorrect ? "correct" : "incorrect"}`, style: "margin-top:.6rem" }, [
-              el("p", {}, isCorrect ? "Nice — that's right!" : "Close — here's the sentence:"),
-              el("div", { class: "flex justify-between items-center", style: "margin-top:.3rem" }, [
-                el("p", { class: "hanzi" }, q.zh),
-                el("button", { class: "play-btn", style: "width:30px;height:30px", onclick: () => audioEngine.speak(q.zh) }, "🔊")
-              ]),
-              el("p", { class: "text-faint" }, q.py)
-            ]);
-            markResult(isCorrect, feedback);
-          }
         }
       }
 
