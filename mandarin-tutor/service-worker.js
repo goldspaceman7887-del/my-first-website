@@ -1,4 +1,4 @@
-const CACHE_NAME = "mzh-cache-v15";
+const CACHE_NAME = "mzh-cache-v16";
 
 const PRECACHE_URLS = [
   "./",
@@ -30,21 +30,19 @@ const PRECACHE_URLS = [
   "js/data/stories.js",
   "js/data/vocabulary.js",
   "js/views/achievements.js",
-  "js/views/characters.js",
-  "js/views/charVocab.js",
   "js/views/correction.js",
   "js/views/dailyLesson.js",
   "js/views/dashboard.js",
   "js/views/dialogues.js",
   "js/views/immersion.js",
+  "js/views/learn.js",
   "js/views/mining.js",
   "js/views/review.js",
   "js/views/roadmap.js",
   "js/views/sentences.js",
   "js/views/settings.js",
   "js/views/speaking.js",
-  "js/views/story.js",
-  "js/views/vocabulary.js"
+  "js/views/story.js"
 ];
 
 self.addEventListener("install", (event) => {

@@ -10,9 +10,7 @@ import { isMastered } from "./core/srs.js";
 
 import { renderDashboard } from "./views/dashboard.js";
 import { renderRoadmap } from "./views/roadmap.js";
-import { renderCharacters } from "./views/characters.js";
-import { renderVocabulary } from "./views/vocabulary.js";
-import { renderCharVocab } from "./views/charVocab.js";
+import { renderLearn } from "./views/learn.js";
 import { renderSentences } from "./views/sentences.js";
 import { renderDialogueList, renderDialogueDetail } from "./views/dialogues.js";
 import { renderReview } from "./views/review.js";
@@ -111,9 +109,10 @@ document.getElementById("stat-due-chip").addEventListener("click", () => navigat
 // ---------- Routes ----------
 registerRoute("dashboard", renderDashboard);
 registerRoute("roadmap", renderRoadmap);
-registerRoute("characters", renderCharacters);
-registerRoute("vocabulary", renderVocabulary);
-registerRoute("char-vocab", renderCharVocab);
+registerRoute("learn", renderLearn);
+registerRoute("characters", renderLearn);
+registerRoute("vocabulary", renderLearn);
+registerRoute("char-vocab", renderLearn);
 registerRoute("sentences", renderSentences);
 registerRoute("dialogues", renderDialogueList);
 registerRoute("dialogues/:id", renderDialogueDetail);

@@ -106,7 +106,7 @@ export function renderDashboard(container) {
         el("div", { class: "card-title" }, "🈶 Known characters"),
         el("div", { class: "stat-value" }, String(known.size)),
         el("p", { class: "text-muted" }, "Self-reported at onboarding, plus anything you've mastered through review."),
-        el("a", { class: "btn btn-sm", href: "#/characters" }, "Browse characters")
+        el("a", { class: "btn btn-sm", href: "#/learn" }, "Browse characters")
       ]),
       el("div", { class: "card" }, [
         el("div", { class: "card-title" }, "📖 Learning now"),
@@ -118,7 +118,7 @@ export function renderDashboard(container) {
         el("div", { class: "card-title" }, "✅ Mastered words"),
         el("div", { class: "stat-value" }, String(words.length)),
         el("p", { class: "text-muted" }, "Words recalled correctly enough times to count as mastered."),
-        el("a", { class: "btn btn-sm", href: "#/vocabulary" }, "Browse vocabulary")
+        el("a", { class: "btn btn-sm", href: "#/learn" }, "Browse vocabulary")
       ])
     ])
   );
