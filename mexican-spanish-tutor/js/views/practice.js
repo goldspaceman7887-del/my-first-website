@@ -10,16 +10,16 @@ import { renderCorrection } from "./correction.js";
 import { renderSpeakingTest } from "./speakingTest.js";
 
 const TABS = [
+  { id: "conversation", label: "💬 Conversation", render: renderConversation },
   { id: "roleplay", label: "🎭 Roleplay", render: renderRoleplay },
   { id: "speaking-test", label: "🎓 Speaking Test", render: renderSpeakingTest },
-  { id: "conversation", label: "🤖 Conversation", render: renderConversation },
   { id: "immersion", label: "🌊 Immersion", render: renderImmersion },
   { id: "story", label: "📖 Stories", render: renderStory },
   { id: "writing", label: "✍️ Writing", render: renderCorrection }
 ];
 
 export function renderPractice(container, params) {
-  let active = TABS.some((t) => t.id === params?.tab) ? params.tab : "roleplay";
+  let active = TABS.some((t) => t.id === params?.tab) ? params.tab : "conversation";
 
   container.appendChild(
     el("div", { class: "page-header" }, [
@@ -42,12 +42,25 @@ export function renderPractice(container, params) {
     render();
   }
 
+  // A tab may return a cleanup function (the conversation tab does, to release
+  // the microphone). Dropping it would leave the mic recording after you
+  // switch tabs or navigate away.
+  let cleanup = null;
+  function runCleanup() {
+    if (typeof cleanup !== "function") return;
+    try { cleanup(); } catch (e) { console.error(e); }
+    cleanup = null;
+  }
+
   function render() {
     const tab = TABS.find((t) => t.id === active);
+    runCleanup();
     body.innerHTML = "";
-    tab.render(body);
+    const maybeCleanup = tab.render(body);
+    if (typeof maybeCleanup === "function") cleanup = maybeCleanup;
     body.querySelector(".page-header")?.remove();
   }
 
   render();
+  return runCleanup;
 }

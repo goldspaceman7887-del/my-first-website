@@ -156,7 +156,10 @@
 .chat-bubble .cb-es { font-family: var(--font-es); font-size: 1.1rem; }
 .chat-bubble .cb-en { font-size: .78rem; color: var(--text-faint); margin-top: .25rem; border-top: 1px dashed var(--border); padding-top: .25rem; }
 .chat-input-row { display: flex; gap: .5rem; margin-top: .5rem; }
-.chat-input-row input { flex: 1; font-family: var(--font-es); font-size: 1rem; }
+.chat-input-row input { flex: 1; min-width: 0; font-family: var(--font-es); font-size: 1rem; }
+/* The text field's flex:1 was squashing the mic and send buttons — the mic
+   collapsed to 22px wide on a phone, too small to hit. */
+.chat-input-row .btn { flex-shrink: 0; }
 
 /* ---------- Cultural / info notes ---------- */
 .culture-notes-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: .8rem; }
