@@ -7,6 +7,7 @@ import { store, todayISO } from "../core/storage.js";
 import { el, toast } from "../core/ui.js";
 import { audioEngine } from "../core/audio.js";
 import { addXP, registerStudyToday, updateSkillScore } from "../core/gamification.js";
+import { gradeItem, QUALITY } from "../core/srs.js";
 import { STORIES } from "../data/stories.js";
 
 export function renderStory(container) {
@@ -106,6 +107,7 @@ export function renderStory(container) {
           onclick: () => {
             if (wasNew) {
               store.state.progress.storiesCompleted.push(s.id);
+              gradeItem(`story_${s.id}`, "story", QUALITY.GOOD);
               registerStudyToday();
               updateSkillScore("reading", 3);
               addXP(12, `Story: ${s.title}`);

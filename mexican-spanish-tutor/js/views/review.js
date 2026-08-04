@@ -5,23 +5,43 @@ import { gradeItem, dueItems, overdueItems, reviewCounts, QUALITY, stepLabel } f
 import { addXP, updateSkillScore } from "../core/gamification.js";
 import { VOCABULARY } from "../data/vocabulary.js";
 import { SENTENCES } from "../data/sentences.js";
+import { DIALOGUES } from "../data/dialogues.js";
+import { STORIES } from "../data/stories.js";
+import { ROADMAP_UNITS } from "../data/roadmap.js";
 
 function resolveItem(srsItem) {
   const [type, ...rest] = srsItem.id.split("_");
   const dataId = rest.join("_");
   if (type === "word") return { type, data: VOCABULARY.find((v) => v.id === dataId) };
   if (type === "sentence") return { type, data: SENTENCES.find((s) => s.id === dataId) };
+  if (type === "dialogue") return { type, data: DIALOGUES.find((d) => d.id === dataId) };
+  if (type === "story") return { type, data: STORIES.find((s) => s.id === dataId) };
+  if (type === "roadmap") return { type, data: ROADMAP_UNITS.find((u) => u.id === dataId) };
   return { type, data: null };
 }
 
+// Dialogues, stories and roadmap units aren't flashcards — they're reminders
+// to go back and redo the thing, so show a representative line as the cue.
 function frontText(type, data) {
-  return type === "word" ? data.word : data.es;
+  if (type === "word") return data.word;
+  if (type === "dialogue") return data.lines[0].es;
+  if (type === "story") return data.paragraphs[0].es;
+  if (type === "roadmap") return data.sentences[0].es;
+  return data.es;
 }
 function backSub(type, data) {
-  return type === "word" ? `/${data.ipa}/` : "";
+  if (type === "word") return `/${data.ipa}/`;
+  if (type === "dialogue") return `Dialogue · ${data.title}`;
+  if (type === "story") return `Story · ${data.title}`;
+  if (type === "roadmap") return `Roadmap unit · ${data.title}`;
+  return "";
 }
 function backMeaning(type, data) {
-  return data.meaning || data.en;
+  if (type === "word") return data.meaning;
+  if (type === "dialogue") return data.lines[0].en;
+  if (type === "story") return data.paragraphs[0].en;
+  if (type === "roadmap") return data.sentences[0].en;
+  return data.en;
 }
 
 export function renderReview(container) {
@@ -29,14 +49,17 @@ export function renderReview(container) {
   container.appendChild(
     el("div", { class: "page-header" }, [
       el("h1", {}, "🔁 Repaso / Review"),
-      el("p", {}, "Spaced repetition across vocabulary and sentence patterns — New → 1 → 3 → 7 → 14 → 30 → 60 days.")
+      el("p", {}, "Everything you study comes back here on a spaced schedule: vocabulary, grammar patterns, dialogues, stories and roadmap units.")
     ])
   );
 
   container.appendChild(
-    el("div", { class: "grid grid-3" }, [
-      statCard("🗂️", counts.byType.word?.due || 0, "Words due"),
-      statCard("🧩", counts.byType.sentence?.due || 0, "Patterns due"),
+    el("div", { class: "stat-strip" }, [
+      statCard("🗂️", counts.byType.word?.due || 0, "Words"),
+      statCard("🧩", counts.byType.sentence?.due || 0, "Patterns"),
+      statCard("💬", counts.byType.dialogue?.due || 0, "Dialogues"),
+      statCard("📖", counts.byType.story?.due || 0, "Stories"),
+      statCard("🗺️", counts.byType.roadmap?.due || 0, "Units"),
       statCard("⏰", counts.overdue, "Overdue")
     ])
   );
@@ -137,7 +160,7 @@ export function renderReview(container) {
   showItem();
 
   function statCard(icon, value, label) {
-    return el("div", { class: "card stat-card" }, [
+    return el("div", { class: "card stat-card compact" }, [
       el("div", { class: "stat-icon" }, icon),
       el("div", { class: "stat-value" }, String(value)),
       el("div", { class: "stat-label" }, label)

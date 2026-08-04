@@ -1,0 +1,17 @@
+{
+  "name": "Spanish Tutor MX",
+  "short_name": "Spanish MX",
+  "description": "Learn modern Mexican Spanish from Novice Low to ACTFL Advanced Low — roadmap, level test, vocabulary, grammar, dialogues and speaking practice, usable fully offline.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#036340",
+  "theme_color": "#036340",
+  "lang": "en",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
