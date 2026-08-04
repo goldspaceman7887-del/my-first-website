@@ -60,9 +60,14 @@ export function renderDashboard(container) {
   const masteredWords = words.filter((w) => masteryLevel(w.id) >= 70);
   const { strengths, weaknesses } = strengthsAndWeaknesses();
   const canDoCount = (store.state.progress.canDoCompleted || []).length;
-  const completed = store.state.progress.roadmapUnitsCompleted || [];
-  const unitsDone = ROADMAP_UNITS.filter((u) => completed.includes(u.id)).length;
-  const nextUnit = ROADMAP_UNITS.find((u) => !completed.includes(u.id));
+  // Units you skipped count as done for "where am I on the path" purposes,
+  // otherwise placing out of Novice Low leaves the dashboard stuck at 0.
+  const doneIds = new Set([
+    ...(store.state.progress.roadmapUnitsCompleted || []),
+    ...(store.state.progress.roadmapUnitsSkipped || [])
+  ]);
+  const unitsDone = ROADMAP_UNITS.filter((u) => doneIds.has(u.id)).length;
+  const nextUnit = ROADMAP_UNITS.find((u) => !doneIds.has(u.id));
   const tested = (store.state.progress.levelTests || []).length > 0;
 
   container.appendChild(
@@ -135,6 +140,16 @@ export function renderDashboard(container) {
     ].filter(Boolean))
   ]);
   container.appendChild(nudge);
+
+  if ((store.state.profile.xp || 0) >= 50 && !store.state.profile.lastSavedAt) {
+    container.appendChild(
+      el("div", { class: "card", style: "margin-top:1rem;border-left:3px solid var(--gold)" }, [
+        el("div", { class: "card-title" }, "💾 Back up your progress"),
+        el("p", { class: "text-muted" }, "Your progress is saved on this device only. Take a backup so you don't lose it if you clear your browser or switch devices."),
+        el("a", { class: "btn btn-primary btn-sm", href: "#/save" }, "Back it up")
+      ])
+    );
+  }
 
   container.appendChild(
     el("div", { class: "card", style: "margin-top:1rem" }, [

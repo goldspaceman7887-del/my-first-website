@@ -16,6 +16,7 @@ import { renderLevelTest } from "./views/levelTest.js";
 import { renderReview } from "./views/review.js";
 import { renderAchievements } from "./views/achievements.js";
 import { renderSettings } from "./views/settings.js";
+import { renderSaveProgress } from "./views/saveProgress.js";
 
 // ---------- Theme ----------
 function applyTheme(theme) {
@@ -107,6 +108,7 @@ registerRoute("dialogues/:id", renderDialogueDetail);
 registerRoute("practice", renderPractice);
 registerRoute("practice/:tab", renderPractice);
 registerRoute("review", renderReview);
+registerRoute("save", renderSaveProgress);
 registerRoute("achievements", renderAchievements);
 registerRoute("settings", renderSettings);
 

@@ -29,11 +29,18 @@ jobs:
           cache: npm
           cache-dependency-path: seed-english-tokyo/web/package-lock.json
 
+      # The Next.js app is the only one needing a build. It must never be able
+      # to take the whole site down with it: if install or build fails, we warn
+      # and ship every other app rather than failing the deploy.
       - name: Install Seed English Tokyo dependencies
+        id: seed_install
+        continue-on-error: true
         working-directory: seed-english-tokyo/web
         run: npm ci
 
       - name: Build Seed English Tokyo (static export)
+        id: seed_build
+        continue-on-error: true
         working-directory: seed-english-tokyo/web
         env:
           GH_PAGES_BASE_PATH: /my-first-website/seed-english-tokyo
@@ -43,20 +50,32 @@ jobs:
         run: |
           set -e
           mkdir -p _site
+
           # Vamos (existing site) at the root: /my-first-website/
           cp -r index.html css js _site/
-          # Seed English Tokyo at a subpath: /my-first-website/seed-english-tokyo/
-          mkdir -p _site/seed-english-tokyo
-          cp -r seed-english-tokyo/web/out/. _site/seed-english-tokyo/
-          # Mandarin Tutor at a subpath: /my-first-website/mandarin-tutor/
-          mkdir -p _site/mandarin-tutor
-          cp -r mandarin-tutor/. _site/mandarin-tutor/
-          # Mexican Spanish Tutor at a subpath: /my-first-website/mexican-spanish-tutor/
-          mkdir -p _site/mexican-spanish-tutor
-          cp -r mexican-spanish-tutor/. _site/mexican-spanish-tutor/
-          # Japanese Speaking Lab at a subpath: /my-first-website/japanese-speaking/
-          mkdir -p _site/japanese-speaking
-          cp -r japanese-speaking/. _site/japanese-speaking/
+
+          # Static apps: no build step, so these always ship.
+          for app in mandarin-tutor mexican-spanish-tutor japanese-speaking; do
+            if [ -d "$app" ]; then
+              mkdir -p "_site/$app"
+              cp -r "$app/." "_site/$app/"
+              echo "packaged $app"
+            else
+              echo "::warning::$app directory missing; skipping."
+            fi
+          done
+
+          # Seed English Tokyo only if its build actually produced output.
+          if [ -d seed-english-tokyo/web/out ]; then
+            mkdir -p _site/seed-english-tokyo
+            cp -r seed-english-tokyo/web/out/. _site/seed-english-tokyo/
+            echo "packaged seed-english-tokyo"
+          else
+            echo "::warning::Seed English Tokyo produced no build output (install=${{ steps.seed_install.outcome }}, build=${{ steps.seed_build.outcome }}). Deploying the rest of the site without it."
+          fi
+
+          # A deploy with no landing page is worse than no deploy at all.
+          test -f _site/index.html
 
       - uses: actions/upload-pages-artifact@v3
         with:

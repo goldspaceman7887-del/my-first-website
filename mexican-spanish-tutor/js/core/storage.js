@@ -30,7 +30,8 @@ function defaultState() {
       selfReportedLevel: "novice-low", // ACTFL level reported at onboarding
       // Declared here so it survives reloads — deepMerge only keeps keys that
       // exist in defaultState, so anything omitted is silently dropped.
-      hearts: { current: 5, max: 5, lastRegenAt: Date.now() }
+      hearts: { current: 5, max: 5, lastRegenAt: Date.now() },
+      lastSavedAt: null // last explicit backup (download or code)
     },
     srs: {
       // itemId -> { type, repetition, easeFactor, interval, stepIndex, nextReview, lastReview, correct, incorrect, history: [] }
@@ -65,6 +66,16 @@ function defaultState() {
 
 function deepMerge(base, incoming) {
   if (typeof incoming !== "object" || incoming === null) return base;
+
+  // A default of {} means "free-form map" whose keys aren't known up front —
+  // SRS entries keyed by item id, per-word exposure counters, and so on.
+  // The loop below only walks keys present in `base`, so an empty default has
+  // nothing to walk and would silently discard everything that was saved.
+  // Keep those wholesale instead.
+  if (!Array.isArray(base) && !Array.isArray(incoming) && Object.keys(base).length === 0) {
+    return { ...incoming };
+  }
+
   const out = Array.isArray(base) ? base.slice() : { ...base };
   for (const key of Object.keys(base)) {
     if (incoming[key] === undefined) continue;
