@@ -50,8 +50,25 @@ function toggleSkip(id) {
   store.save();
 }
 
-// Mark every unit below `levelCode` as placed-out, so the path opens where the
-// learner actually is instead of making them grind Novice Low first.
+// Opens every unit up to and including `levelCode` for practice. This is the
+// point of taking the test: you get ACCESS to the material at your level, not
+// a shortcut past it. Nothing is marked as done — these are units to work
+// through, they're just no longer gated behind the ones below them.
+export function unlockThroughLevel(levelCode) {
+  const prev = store.state.profile.unlockedThroughLevel;
+  // Never walk the unlock backwards if a later test comes out lower.
+  if (prev && levelIndex(prev) >= levelIndex(levelCode)) return 0;
+  store.state.profile.unlockedThroughLevel = levelCode;
+  store.save();
+  return ROADMAP_UNITS.filter((u) => levelIndex(u.level) <= levelIndex(levelCode) && !isCompleted(u.id)).length;
+}
+
+export function unlockedThroughLevel() {
+  return store.state.profile.unlockedThroughLevel || null;
+}
+
+// Mark every unit below `levelCode` as already known, for people who'd rather
+// clear them off the path than practise them.
 export function skipToLevel(levelCode) {
   const target = levelIndex(levelCode);
   const list = skippedUnits();
@@ -63,9 +80,11 @@ export function skipToLevel(levelCode) {
   return n;
 }
 
-// Sequential unlock: the first not-yet-completed unit is playable, and
-// everything before it stays replayable.
+// A unit is playable if you earned your way to it, OR it sits at or below the
+// level you tested into. Units above your level still unlock in order.
 function isUnlocked(idx) {
+  const through = unlockedThroughLevel();
+  if (through && levelIndex(ROADMAP_UNITS[idx].level) <= levelIndex(through)) return true;
   if (idx === 0) return true;
   return isCompleted(ROADMAP_UNITS[idx - 1].id);
 }
@@ -208,30 +227,50 @@ export function renderRoadmap(container) {
       ])
     );
 
-    // If the Level Test says you're above where the path currently sits,
-    // offer to place you out of everything below it in one click.
+    // A test result should give you ACCESS to everything at your level, not
+    // just a shortcut past the easy part. Offer opening first, skipping second.
     const lastTest = (store.state.progress.levelTests || []).slice(-1)[0];
     const lastSpoken = (store.state.progress.speakingTests || []).slice(-1)[0];
     const testedCode = (lastSpoken && lastSpoken.date >= (lastTest?.date || "")) ? lastSpoken.level : lastTest?.level;
-    if (testedCode) {
-      const pending = ROADMAP_UNITS.filter((u) => levelIndex(u.level) < levelIndex(testedCode) && !isCompleted(u.id));
-      if (pending.length) {
-        const lvl = ACTFL_LEVELS.find((l) => l.code === testedCode);
-        wrap.appendChild(
-          el("div", { class: "card", style: "margin-bottom:1rem;border-left:3px solid var(--accent)" }, [
-            el("div", { class: "card-title" }, `📊 Your test says ${lvl.label}`),
-            el("p", { class: "text-muted" }, `You don't have to work up from the beginning. Skip the ${pending.length} unit(s) below ${lvl.label} and start where you actually are — you can still open any of them later.`),
+    const through = unlockedThroughLevel();
+
+    if (testedCode && (!through || levelIndex(through) < levelIndex(testedCode))) {
+      const lvl = ACTFL_LEVELS.find((l) => l.code === testedCode);
+      const willOpen = ROADMAP_UNITS.filter((u) => levelIndex(u.level) <= levelIndex(testedCode) && !isCompleted(u.id)).length;
+      wrap.appendChild(
+        el("div", { class: "card", style: "margin-bottom:1rem;border-left:3px solid var(--accent)" }, [
+          el("div", { class: "card-title" }, `📊 Your test says ${lvl.label}`),
+          el("p", { class: "text-muted" }, `Open every unit up to ${lvl.label} — that's ${willOpen} unit(s) you can jump straight into and practise, in any order. Nothing gets marked as done; you just don't have to work up to them.`),
+          el("div", { class: "btn-row" }, [
             el("button", {
               class: "btn btn-primary",
               onclick: () => {
-                const n = skipToLevel(testedCode);
-                toast(`Skipped ahead — ${n} unit(s) marked as known.`, { icon: "⏭️" });
+                const n = unlockThroughLevel(testedCode);
+                toast(`Opened ${n} unit(s) through ${lvl.label} — practise any of them.`, { icon: "🔓" });
                 render();
               }
-            }, `⏭️ Skip ahead to ${lvl.label}`)
+            }, `🔓 Open all units through ${lvl.label}`),
+            el("button", {
+              class: "btn",
+              title: "Mark the levels below yours as already known instead of practising them",
+              onclick: () => {
+                const n = skipToLevel(testedCode);
+                unlockThroughLevel(testedCode);
+                toast(n ? `Marked ${n} unit(s) as known.` : "Nothing left to mark.", { icon: "⏭️" });
+                render();
+              }
+            }, "⏭️ Just mark them known")
           ])
-        );
-      }
+        ])
+      );
+    } else if (through) {
+      const lvl = ACTFL_LEVELS.find((l) => l.code === through);
+      wrap.appendChild(
+        el("div", { class: "card", style: "margin-bottom:1rem;border-left:3px solid var(--success)" }, [
+          el("div", { class: "card-title" }, `🔓 Everything through ${lvl.label} is open`),
+          el("p", { class: "text-muted", style: "margin:0" }, "Jump into any unit at or below your level and practise it in any order. Units above it still unlock as you pass them.")
+        ])
+      );
     }
 
     const path = el("div", { class: "roadmap-path" });

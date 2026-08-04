@@ -12,7 +12,7 @@ import { audioEngine } from "../core/audio.js";
 import { addXP, registerStudyToday } from "../core/gamification.js";
 import { ACTFL_LEVELS, ROADMAP_UNITS } from "../data/roadmap.js";
 import { spanishDistractors, englishDistractors } from "../core/distractors.js";
-import { skipToLevel } from "./roadmap.js";
+import { skipToLevel, unlockThroughLevel } from "./roadmap.js";
 
 const PER_LEVEL = 3;
 const OPTIONS = 4;      // more choices = less passing by luck
@@ -212,17 +212,26 @@ export function renderLevelTest(container) {
       body.appendChild(
         el("div", { class: "card", style: "margin-top:1rem;border-left:3px solid var(--accent)" }, [
           el("div", { class: "card-title" }, "What to do next"),
-          el("p", { class: "text-muted" }, `Your level starts at "${target.title}". Skip ahead and everything below ${level.label} gets marked as known, so you don't have to work up from Novice Low — you can still open those units any time.`),
+          el("p", { class: "text-muted" }, `Open the roadmap through ${level.label} and every unit up to your level becomes available to practise in any order — starting with "${target.title}". Nothing is marked as done, so you keep the practice; you just skip the queue.`),
           el("div", { class: "btn-row" }, [
             el("button", {
               class: "btn btn-primary",
               onclick: () => {
-                const n = skipToLevel(level.code);
-                toast(n ? `Skipped ${n} unit(s) — the path now starts at ${level.label}.` : "You're already at that point on the path.", { icon: "⏭️" });
+                const n = unlockThroughLevel(level.code);
+                toast(n ? `Opened ${n} unit(s) through ${level.label}.` : `Already open through ${level.label}.`, { icon: "🔓" });
                 window.location.hash = "#/roadmap";
               }
-            }, `⏭️ Skip ahead to ${level.label}`),
-            el("a", { class: "btn", href: "#/roadmap" }, "Start from the beginning"),
+            }, `🔓 Open all units through ${level.label}`),
+            el("button", {
+              class: "btn",
+              title: "Mark the levels below yours as known instead of practising them",
+              onclick: () => {
+                unlockThroughLevel(level.code);
+                const n = skipToLevel(level.code);
+                toast(n ? `Marked ${n} unit(s) as known.` : "Nothing left to mark.", { icon: "⏭️" });
+                window.location.hash = "#/roadmap";
+              }
+            }, "⏭️ Mark lower levels known"),
             el("button", { class: "btn btn-ghost", onclick: showIntro }, "Retake test")
           ])
         ])

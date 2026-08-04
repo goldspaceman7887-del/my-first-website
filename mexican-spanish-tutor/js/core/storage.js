@@ -31,7 +31,10 @@ function defaultState() {
       // Declared here so it survives reloads — deepMerge only keeps keys that
       // exist in defaultState, so anything omitted is silently dropped.
       hearts: { current: 5, max: 5, lastRegenAt: Date.now() },
-      lastSavedAt: null // last explicit backup (download or code)
+      lastSavedAt: null, // last explicit backup (download or code)
+      // Every unit at or below this ACTFL level is open to practise, without
+      // having to earn your way up to it unit by unit.
+      unlockedThroughLevel: null
     },
     srs: {
       // itemId -> { type, repetition, easeFactor, interval, stepIndex, nextReview, lastReview, correct, incorrect, history: [] }
