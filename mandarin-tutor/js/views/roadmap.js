@@ -57,20 +57,37 @@ function unitVocab(unit) {
   return { words, chars };
 }
 
-const STOPWORDS = new Set(["a", "an", "the", "is", "are", "am", "to", "i", "you", "he", "she", "it", "we", "they", "my", "your", "his", "her", "its", "our", "their", "and", "of", "in", "on", "at", "be", "do", "does", "for", "with"]);
-
-function normalizeWords(s) {
-  return String(s || "").toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter(Boolean);
+// Strips combining tone-mark diacritics so pinyin can be compared regardless
+// of whether the learner typed tone marks (nǐ hǎo) or plain letters (ni hao).
+function stripDiacritics(s) {
+  return String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+function normalizePinyinLoose(s) {
+  return stripDiacritics(s).toLowerCase().replace(/[^a-z]/g, "");
+}
+function normalizeChinese(s) {
+  return String(s || "").replace(/[，。？！,.?!、\s]/g, "");
 }
 
-// Lenient production check: at least half of the expected sentence's
-// non-trivial content words need to show up in what the learner typed.
-function lenientMatch(input, expected) {
-  const inputWords = new Set(normalizeWords(input));
-  const expectedWords = normalizeWords(expected).filter((w) => !STOPWORDS.has(w));
-  if (expectedWords.length === 0) return inputWords.size > 0;
-  const matched = expectedWords.filter((w) => inputWords.has(w)).length;
-  return matched / expectedWords.length >= 0.5;
+// Lenient Chinese production check: accepts an exact hanzi match, a plain
+// (tone-optional) pinyin match, or a near-exact hanzi match (most of the
+// expected characters present, similar length) so small typos still pass.
+function chineseMatch(input, expectedZh, expectedPy) {
+  const raw = String(input || "").trim();
+  if (!raw) return false;
+  const normInput = normalizeChinese(raw);
+  const normExpectedZh = normalizeChinese(expectedZh);
+  if (normInput === normExpectedZh) return true;
+
+  const hasCJK = /[\u4e00-\u9fff]/.test(raw);
+  if (!hasCJK) {
+    return normalizePinyinLoose(raw) === normalizePinyinLoose(expectedPy);
+  }
+
+  const expectedChars = [...normExpectedZh];
+  const inputChars = new Set([...normInput]);
+  const matched = expectedChars.filter((c) => inputChars.has(c)).length;
+  return expectedChars.length > 0 && matched / expectedChars.length >= 0.8 && Math.abs(normInput.length - normExpectedZh.length) <= 2;
 }
 
 // 8 exercises per attempt: 4 recognition MC, 1 grammar-specific drill,
@@ -459,15 +476,13 @@ export function renderRoadmap(container) {
           ));
           practiceWrap.appendChild(options);
         } else {
-          // typed production: listen/read the Chinese, type the English meaning
+          // typed production: given the English meaning, produce the Chinese
+          // sentence yourself -- typed as characters (if you have a Chinese
+          // keyboard/IME) or as plain pinyin without tone marks, either works.
           practiceWrap.appendChild(el("div", { class: "badge badge-gold" }, "✍️ Your turn"));
-          practiceWrap.appendChild(el("div", { class: "flex justify-between items-center", style: "margin-top:.4rem" }, [
-            el("p", { class: "exercise-prompt hanzi" }, q.zh),
-            el("button", { class: "play-btn", style: "width:34px;height:34px", onclick: () => audioEngine.speak(q.zh) }, "🔊")
-          ]));
-          practiceWrap.appendChild(el("p", { class: "text-faint" }, q.py));
-          practiceWrap.appendChild(el("p", { class: "text-muted" }, "Type what this means in English."));
-          const input = el("input", { type: "text", placeholder: "Type the English meaning..." });
+          practiceWrap.appendChild(el("p", { class: "exercise-prompt", style: "margin-top:.4rem" }, q.expected));
+          practiceWrap.appendChild(el("p", { class: "text-muted" }, "Type this in Chinese -- characters or plain pinyin (tones optional) both work."));
+          const input = el("input", { type: "text", placeholder: "你好 or nihao..." });
           input.style.cssText = "width:100%;padding:.65rem .9rem;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:1rem;";
           const submit = el("button", { class: "btn btn-primary", style: "margin-top:.6rem", onclick: check }, "Check");
           input.addEventListener("keydown", (e) => { if (e.key === "Enter") check(); });
@@ -480,9 +495,14 @@ export function renderRoadmap(container) {
             if (!text) { toast("Type your answer first.", { type: "error" }); return; }
             input.disabled = true;
             submit.disabled = true;
-            const isCorrect = lenientMatch(text, q.expected);
+            const isCorrect = chineseMatch(text, q.zh, q.py);
             const feedback = el("div", { class: `feedback-block ${isCorrect ? "correct" : "incorrect"}`, style: "margin-top:.6rem" }, [
-              el("p", {}, isCorrect ? "Nice — that's right!" : `Close — expected something like: "${q.expected}"`)
+              el("p", {}, isCorrect ? "Nice — that's right!" : "Close — here's the sentence:"),
+              el("div", { class: "flex justify-between items-center", style: "margin-top:.3rem" }, [
+                el("p", { class: "hanzi" }, q.zh),
+                el("button", { class: "play-btn", style: "width:30px;height:30px", onclick: () => audioEngine.speak(q.zh) }, "🔊")
+              ]),
+              el("p", { class: "text-faint" }, q.py)
             ]);
             markResult(isCorrect, feedback);
           }
