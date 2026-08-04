@@ -9,6 +9,7 @@ import { audioEngine } from "../core/audio.js";
 import { addXP, registerStudyToday } from "../core/gamification.js";
 import { findCharacter } from "../core/lookup.js";
 import { VOCABULARY } from "../data/vocabulary.js";
+import { CHARACTERS } from "../data/characters.js";
 
 function extractSentences(text) {
   return text
@@ -136,7 +137,7 @@ export function renderMining(container) {
     if (unknownChars.length) {
       results.appendChild(el("h3", { style: "margin-top:1.25rem" }, `New characters not yet in the curriculum (${unknownChars.length})`));
       results.appendChild(el("p", { class: "hanzi text-muted" }, unknownChars.join(" ")));
-      results.appendChild(el("p", { class: "text-faint" }, "These are outside the current 110-character set — worth looking up individually, but not auto-added."));
+      results.appendChild(el("p", { class: "text-faint" }, `These are outside the current ${CHARACTERS.length}-character set — worth looking up individually, but not auto-added.`));
     }
 
     registerStudyToday();
