@@ -134,31 +134,77 @@ export function renderVocabulary(container) {
     body.appendChild(state.tab === "flashcards" ? renderFlashcards() : renderExplore());
   }
 
-  function renderFlashcards() {
-    const wrap = el("div", {});
+  function wordQueue(mode, size) {
     const due = dueItems("word").map((d) => d.id.replace("word_", ""));
     const fresh = newItems(VOCABULARY.map(srsId), "word").map((id) => id.replace("word_", ""));
-    let queue = [...new Set([...due, ...fresh])].slice(0, 20);
-    const items = queue.map((id) => VOCABULARY.find((v) => v.id === id)).filter(Boolean);
+    let ids;
+    if (mode === "new") ids = fresh;
+    else if (mode === "due") ids = due;
+    else ids = [...new Set([...due, ...fresh])];
+    return ids.slice(0, size).map((id) => VOCABULARY.find((v) => v.id === id)).filter(Boolean);
+  }
 
-    if (items.length === 0) {
-      wrap.appendChild(
-        el("div", { class: "card empty-state" }, [
-          el("div", { class: "empty-icon" }, "🎉"),
-          el("h3", {}, "All caught up!"),
-          el("p", {}, "No word reviews due right now. Browse the full list in the \"Browse\" tab.")
-        ])
-      );
-      return wrap;
+  function renderFlashcards() {
+    const wrap = el("div", {});
+    if (!state.batchMode) state.batchMode = "mixed";
+    if (!state.batchSize) state.batchSize = 10;
+
+    const batchModeRow = el("div", { class: "level-pills" }, [
+      batchModePill("due", "🎯 Reviewing due"),
+      batchModePill("new", "🆕 Learning new"),
+      batchModePill("mixed", "🔀 Mixed")
+    ]);
+    const batchSizeRow = el("div", { class: "level-pills", style: "margin-top:.4rem" }, [
+      batchSizePill(5),
+      batchSizePill(10),
+      batchSizePill(20)
+    ]);
+    wrap.appendChild(batchModeRow);
+    wrap.appendChild(batchSizeRow);
+    const deckWrap = el("div", {});
+    wrap.appendChild(deckWrap);
+
+    function batchModePill(id, label) {
+      const b = el("button", { class: `level-pill ${state.batchMode === id ? "active" : ""}`, onclick: () => { state.batchMode = id; refreshBatchPills(); renderDeck(); } }, label);
+      b.dataset.batchMode = id;
+      return b;
+    }
+    function batchSizePill(n) {
+      const b = el("button", { class: `level-pill ${state.batchSize === n ? "active" : ""}`, onclick: () => { state.batchSize = n; refreshBatchPills(); renderDeck(); } }, String(n));
+      b.dataset.batchSize = n;
+      return b;
+    }
+    function refreshBatchPills() {
+      batchModeRow.querySelectorAll(".level-pill").forEach((b) => b.classList.toggle("active", b.dataset.batchMode === state.batchMode));
+      batchSizeRow.querySelectorAll(".level-pill").forEach((b) => b.classList.toggle("active", Number(b.dataset.batchSize) === state.batchSize));
     }
 
-    let idx = 0;
-    const counter = el("p", { class: "text-muted" }, `Card 1 of ${items.length}`);
-    const stage = el("div", { class: "flashcard-stage" });
-    wrap.appendChild(counter);
-    wrap.appendChild(stage);
+    renderDeck();
+    return wrap;
 
-    function showCard() {
+    function renderDeck() {
+      deckWrap.innerHTML = "";
+      const items = wordQueue(state.batchMode, state.batchSize);
+
+      if (items.length === 0) {
+        deckWrap.appendChild(
+          el("div", { class: "card empty-state" }, [
+            el("div", { class: "empty-icon" }, "🎉"),
+            el("h3", {}, state.batchMode === "new" ? "Nothing new left to learn" : "All caught up!"),
+            el("p", {}, "No word reviews due right now. Try \"Mixed\" or \"Learning new\" above, or browse the full list in the \"Browse\" tab.")
+          ])
+        );
+        return;
+      }
+
+      let idx = 0;
+      const counter = el("p", { class: "text-muted" }, `Card 1 of ${items.length}`);
+      const stage = el("div", { class: "flashcard-stage" });
+      deckWrap.appendChild(counter);
+      deckWrap.appendChild(stage);
+      showCard();
+
+      function showCard() {
       stage.innerHTML = "";
       const v = items[idx];
       const card = el("div", { class: "flashcard" });
@@ -217,7 +263,7 @@ export function renderVocabulary(container) {
                   el("div", { class: "card empty-state pop-in" }, [
                     el("div", { class: "empty-icon" }, "✅"),
                     el("h3", {}, "Session complete!"),
-                    el("button", { class: "btn btn-primary", onclick: renderBody }, "Keep going")
+                    el("button", { class: "btn btn-primary", onclick: renderDeck }, "Keep going")
                   ])
                 );
               } else {
@@ -228,9 +274,8 @@ export function renderVocabulary(container) {
           label
         );
       }
+      }
     }
-    showCard();
-    return wrap;
   }
 
   function renderExplore() {

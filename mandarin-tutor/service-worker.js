@@ -1,4 +1,4 @@
-const CACHE_NAME = "mzh-cache-v6";
+const CACHE_NAME = "mzh-cache-v7";
 
 const PRECACHE_URLS = [
   "./",
