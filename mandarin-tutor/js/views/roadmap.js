@@ -146,8 +146,8 @@ export function renderRoadmap(container) {
           "💾 Save my progress"
         )
       ]),
-      el("p", {}, "A path from zero to ACTFL Advanced High — Novice Low through Advanced High, one unit at a time. Each unit: the grammar point first, then the individual vocabulary it uses, then 8 full sentences in context, then an 8-exercise practice round before the next one unlocks."),
-      el("p", { class: "text-faint" }, "Passing a unit also adds it to your spaced-repetition Review queue, so it comes back later instead of being seen once and forgotten. A growing foundation, not a finished multi-year curriculum yet."),
+      el("p", {}, "A path from zero to ACTFL Advanced High — Novice Low through Advanced High. Each unit: the grammar point first, then the individual vocabulary it uses, then 8 full sentences in context, then an 8-exercise practice round."),
+      el("p", { class: "text-faint" }, "Passing a unit adds it to your spaced-repetition Review queue, so it comes back later instead of being seen once and forgotten. Every unit is open, not just the next one in line — jump ahead to preview or use any unit for review anytime, no need to go strictly in order."),
       el("p", { class: "text-faint" }, "Your progress already saves automatically in this browser as you go. Tap \"Save my progress\" any time to download a backup file — keep it somewhere safe, or import it (in Settings) on another device to pick up where you left off.")
     ])
   );
@@ -252,12 +252,11 @@ export function renderRoadmap(container) {
           "button",
           {
             class: `roadmap-node ${status}`,
-            disabled: status === "locked" ? "true" : null,
-            title: wasSkipped ? "Skipped -- tap to go back and do it properly" : null,
-            onclick: () => { if (status !== "locked") showUnit(unit); }
+            title: wasSkipped ? "Skipped -- tap to go back and do it properly" : status === "locked" ? "Not reached yet in your path -- tap to preview or use for review anytime" : null,
+            onclick: () => showUnit(unit)
           },
           [
-            el("div", { class: "roadmap-node-circle" }, status === "locked" ? "🔒" : status === "completed" ? (wasSkipped ? "⏭" : "✓") : unit.icon),
+            el("div", { class: "roadmap-node-circle" }, status === "locked" ? "🔓" : status === "completed" ? (wasSkipped ? "⏭" : "✓") : unit.icon),
             el("div", { class: "roadmap-node-label" }, unit.title)
           ]
         )

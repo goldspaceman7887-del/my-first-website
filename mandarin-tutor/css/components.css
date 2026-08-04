@@ -244,8 +244,7 @@ table.data-table th { color: var(--text-muted); font-size: .78rem; text-transfor
   transition: transform .15s ease;
 }
 .roadmap-node:hover .roadmap-node-circle { transform: translateY(-2px); }
-.roadmap-node.locked { cursor: not-allowed; }
-.roadmap-node.locked .roadmap-node-circle { background: var(--surface-2); border-color: var(--border); opacity: .55; }
+.roadmap-node.locked .roadmap-node-circle { background: var(--surface-2); border-color: var(--border); opacity: .7; }
 .roadmap-node.unlocked .roadmap-node-circle { background: var(--accent-soft); border-color: var(--accent); }
 .roadmap-node.completed .roadmap-node-circle { background: var(--gold); border-color: var(--gold); color: var(--accent-ink); }
 .roadmap-node-label { font-size: .78rem; font-weight: 700; text-align: center; color: var(--text-muted); }
