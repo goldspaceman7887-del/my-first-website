@@ -123,8 +123,22 @@ setNotFound((container) => {
   );
 });
 
+// ---------- Offline / installable ----------
+function initServiceWorker() {
+  if (!("serviceWorker" in navigator)) return;
+  // Only meaningful over http(s); opening index.html from the filesystem
+  // has no scope to register against.
+  if (!location.protocol.startsWith("http")) return;
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("service-worker.js").catch((err) => {
+      console.warn("Offline mode unavailable:", err);
+    });
+  });
+}
+
 // ---------- Boot ----------
 function boot() {
+  initServiceWorker();
   initTheme();
   initNav();
   initImmersion();

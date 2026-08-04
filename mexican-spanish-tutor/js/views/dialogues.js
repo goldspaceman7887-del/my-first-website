@@ -2,6 +2,7 @@ import { store } from "../core/storage.js";
 import { el, blurActive, toast, xpToast } from "../core/ui.js";
 import { audioEngine } from "../core/audio.js";
 import { addXP, updateSkillScore } from "../core/gamification.js";
+import { gradeItem, QUALITY } from "../core/srs.js";
 import { DIALOGUES } from "../data/dialogues.js";
 
 function isDone(id) {
@@ -126,6 +127,10 @@ export function renderDialogueDetail(container, params) {
   });
 
   function finishQuiz() {
+    // Feed the dialogue into spaced repetition so it comes back around
+    // instead of being a one-and-done read.
+    const ratio = correctCount / Math.max(1, d.comprehension.length);
+    gradeItem(`dialogue_${d.id}`, "dialogue", ratio >= 1 ? QUALITY.EASY : ratio >= 0.5 ? QUALITY.GOOD : QUALITY.AGAIN);
     const wasNew = !isDone(d.id);
     if (wasNew) {
       store.state.progress.dialoguesCompleted.push(d.id);
