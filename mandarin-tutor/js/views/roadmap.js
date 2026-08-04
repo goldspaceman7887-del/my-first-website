@@ -31,7 +31,6 @@ function skippedSet() {
 // queue. Shared by the in-unit "Skip this unit" button and the on-path
 // skip-ahead node.
 function skipUnitAction(unit, onDone) {
-  if (!window.confirm(`Skip "${unit.title}" for now? It won't be added to your spaced-repetition review queue or earn XP, but the next unit will unlock. You can come back and do it properly anytime.`)) return;
   blurActive();
   const done = completedSet();
   const skipped = skippedSet();
