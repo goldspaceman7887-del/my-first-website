@@ -3,6 +3,7 @@
 // Mexican version, and a plain-English explanation. Never a flat "wrong."
 
 import { store, todayISO } from "../core/storage.js";
+import { correctionBlock } from "../core/feedback.js";
 import { el, toast } from "../core/ui.js";
 import { audioEngine } from "../core/audio.js";
 import { addXP, registerStudyToday, updateSkillScore } from "../core/gamification.js";
@@ -37,22 +38,9 @@ export function renderCorrection(container) {
         ])
       );
     } else {
-      hits.forEach((h) => {
-        results.appendChild(
-          el("div", { class: "correction-block" }, [
-            el("h4", { style: "margin:0 0 .3rem" }, "My version"),
-            el("div", { class: "co-orig es-text" }, text),
-            el("h4", { style: "margin:.6rem 0 .3rem" }, "Corrected"),
-            el("div", { class: "co-fixed es-text" }, h.correctVersion),
-            el("h4", { style: "margin:.6rem 0 .3rem" }, "Natural Mexican version"),
-            el("div", { class: "co-natural" }, h.natural),
-            el("div", { class: "co-explain", style: "margin-top:.4rem" }, h.mistakeExplained),
-            el("p", { class: "text-muted", style: "margin-top:.4rem" }, [el("strong", {}, "Rule: "), h.rule]),
-            el("div", { class: "flex gap-2 flex-wrap", style: "margin-top:.4rem" }, h.examples.map((ex) => el("span", { class: "badge badge-default" }, ex))),
-            el("button", { class: "play-btn", style: "width:34px;height:34px;margin-top:.4rem", onclick: () => audioEngine.speak(h.natural.split(" (")[0]) }, "🔊")
-          ])
-        );
-      });
+      // One block per session showing your sentence corrected, then each
+      // individual fix with its explanation.
+      results.appendChild(correctionBlock(text));
     }
 
     registerStudyToday();

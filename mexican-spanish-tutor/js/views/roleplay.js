@@ -4,6 +4,7 @@
 // then compare against a native version — corrected, never just marked wrong.
 
 import { store, todayISO } from "../core/storage.js";
+import { correctionBlock } from "../core/feedback.js";
 import { el, blurActive, toast } from "../core/ui.js";
 import { audioEngine, textSimilarity, speechRecognitionSupported, listenOnce } from "../core/audio.js";
 import { addXP, registerStudyToday, updateSkillScore } from "../core/gamification.js";
@@ -130,6 +131,9 @@ export function renderRoleplay(container) {
             el("div", { class: "co-explain" }, line.en)
           ])
         );
+        // On top of the model answer, flag anything fixable in what you wrote.
+        const notes = correctionBlock(text, { compact: true });
+        if (notes) log.appendChild(notes);
         audioEngine.speak(line.es);
         updateSkillScore("speaking", score >= 60 ? 2 : 0.5);
         turns++;

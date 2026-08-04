@@ -24,6 +24,7 @@ import { gradeItem, QUALITY, masteryLevel, isDue } from "../core/srs.js";
 import { getHearts, loseHeart, hasHearts, refillHeartsFully, minutesUntilNextHeart, MAX_HEARTS } from "../core/hearts.js";
 import { ACTFL_LEVELS, ROADMAP_UNITS, levelIndex } from "../data/roadmap.js";
 import { tappable, initTapWords } from "../core/tapword.js";
+import { correctionBlock } from "../core/feedback.js";
 
 const PASS_THRESHOLD = 7; // out of 10
 
@@ -165,6 +166,13 @@ function unitQuestions(unit, count) {
     kind: "typed", role: "typed", prompt: s.es, sub: "Type what this means in English",
     expected: s.en, speak: s.es
   });
+  // Production in Spanish — the one question type where your own Spanish gets
+  // checked and corrected.
+  const produce = (s) => ({
+    kind: "produce", role: "produce", prompt: s.en,
+    sub: "Write this in Spanish — you'll get feedback on your grammar",
+    expected: s.es, speak: s.es
+  });
 
   const listen = pool[5] || pool[0];
   const build = pool[6] || pool[1];
@@ -192,7 +200,7 @@ function unitQuestions(unit, count) {
     typed(at(7)),
     esEn(at(1)),
     enEs(at(4)),
-    typed(at(2)),
+    produce(at(5)),
     esEn(at(2))
   ];
 
@@ -386,6 +394,20 @@ function renderQuestionInto(qWrap, q, afterAnswer) {
           }
         }, "Check")
       );
+    } else if (q.kind === "produce") {
+      const input = el("input", { type: "text", placeholder: "Escríbelo en español..." });
+      input.style.cssText = "width:100%;margin-top:.7rem;padding:.65rem .9rem;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:1rem;font-family:var(--font-es);";
+      const submit = () => {
+        const given = input.value.trim();
+        const ok = lenientMatch(given, q.expected);
+        // Grammar feedback runs whether or not the answer counted as correct —
+        // a right answer can still contain a fixable mistake.
+        afterAnswer(ok, `A natural way to say it is \u201C${q.expected}\u201D.`, correctionBlock(given, { compact: true }));
+      };
+      input.addEventListener("keydown", (e) => { if (e.key === "Enter") submit(); });
+      card.appendChild(input);
+      card.appendChild(el("button", { class: "btn btn-primary", style: "margin-top:.7rem", onclick: submit }, "Check"));
+      setTimeout(() => input.focus(), 30);
     } else {
       const input = el("input", { type: "text", placeholder: "Type your answer in English..." });
       input.style.cssText = "width:100%;margin-top:.7rem;padding:.65rem .9rem;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:1rem;";
@@ -696,7 +718,7 @@ export function renderRoadmap(container) {
         renderQuestionInto(qWrap, questions[idx], afterAnswer);
       }
 
-      function afterAnswer(wasCorrect, explanation) {
+      function afterAnswer(wasCorrect, explanation, extraNode) {
         if (wasCorrect) correctCount++;
         else loseHeart();
 
@@ -715,6 +737,7 @@ export function renderRoadmap(container) {
           explanation
         ]);
         qWrap.appendChild(fb);
+        if (extraNode) qWrap.appendChild(extraNode);
         qWrap.appendChild(
           el("button", {
             class: "btn btn-primary", style: "margin-top:.7rem",
@@ -921,7 +944,7 @@ export function renderRoadmap(container) {
         renderQuestionInto(qWrap, questions[idx], afterAnswer);
       }
 
-      function afterAnswer(wasCorrect, explanation) {
+      function afterAnswer(wasCorrect, explanation, extraNode) {
         if (wasCorrect) correctCount++;
         else loseHeart();
 
@@ -940,6 +963,7 @@ export function renderRoadmap(container) {
           explanation
         ]);
         qWrap.appendChild(fb);
+        if (extraNode) qWrap.appendChild(extraNode);
         qWrap.appendChild(
           el("button", {
             class: "btn btn-primary", style: "margin-top:.7rem",

@@ -14,7 +14,7 @@ import { el, blurActive, toast } from "../core/ui.js";
 import { audioEngine, speechRecognitionSupported, startDictation } from "../core/audio.js";
 import { addXP, registerStudyToday, updateSkillScore, estimatedLevel } from "../core/gamification.js";
 import { levelIndex } from "../data/roadmap.js";
-import { checkText } from "../data/mistakePatterns.js";
+import { correctionBlock } from "../core/feedback.js";
 import { THREADS, REACTIONS, NEUTRAL_REACTIONS, PIVOTS, MEMORY_RULES, CALLBACKS } from "../data/conversationThreads.js";
 
 function pick(arr) {
@@ -174,16 +174,13 @@ export function renderConversation(container) {
     log.scrollTop = log.scrollHeight;
   }
 
+  // Corrects what you actually wrote, rather than showing a canned "natural"
+  // sentence and leaving you to spot the difference yourself.
   function briefCorrection(text) {
-    const hits = checkText(text);
-    if (!hits.length) return;
-    const h = hits[0];
-    log.appendChild(
-      el("div", { class: "correction-block" }, [
-        el("div", { class: "co-natural" }, `Más natural: ${h.natural}`),
-        el("div", { class: "co-explain" }, h.mistakeExplained)
-      ])
-    );
+    const block = correctionBlock(text, { compact: true });
+    if (!block) return;
+    log.appendChild(block);
+    log.scrollTop = log.scrollHeight;
     updateSkillScore("writing", -0.3);
   }
 

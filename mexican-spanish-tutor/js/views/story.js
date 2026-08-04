@@ -10,6 +10,7 @@
 // meaning and lean on the tap-to-define instead of the crib underneath.
 
 import { store } from "../core/storage.js";
+import { correctionBlock } from "../core/feedback.js";
 import { el, toast } from "../core/ui.js";
 import { audioEngine } from "../core/audio.js";
 import { addXP, registerStudyToday, updateSkillScore } from "../core/gamification.js";
@@ -150,7 +151,19 @@ export function renderStory(container) {
     body.appendChild(
       el("div", { class: "card" }, [
         el("p", { class: "text-muted" }, s.retelling),
-        el("textarea", { placeholder: "Vuelve a contar la historia con tus propias palabras..." })
+        (() => {
+          const ta = el("textarea", { placeholder: "Vuelve a contar la historia con tus propias palabras..." });
+          const notes = el("div", {});
+          const btn = el("button", { class: "btn btn-sm btn-primary", style: "margin-top:.5rem", onclick: () => {
+            notes.innerHTML = "";
+            const block = correctionBlock(ta.value.trim());
+            notes.appendChild(block || el("div", { class: "feedback-block correct" }, [
+              el("p", { style: "margin:0;font-weight:700" }, "No common mistakes found."),
+              el("p", { class: "text-muted", style: "margin:.2rem 0 0" }, "This checks the highest-frequency errors, so it can't promise perfection — but it's a good sign.")
+            ]));
+          } }, "Check my Spanish");
+          return el("div", {}, [ta, btn, notes]);
+        })()
       ])
     );
 

@@ -214,6 +214,27 @@
 .correction-block .co-natural { font-family: var(--font-es); font-size: 1rem; color: var(--link); margin-bottom: .35rem; }
 .correction-block .co-explain { font-size: .9rem; color: var(--text-muted); }
 
+/* Error feedback: what you wrote, what to write instead, and why. */
+.correction-block { border-left: 3px solid var(--gold); }
+.correction-block .co-head { display: flex; align-items: center; gap: .4rem; font-weight: 800; font-size: .85rem; margin-bottom: .5rem; color: var(--text); }
+.correction-block .co-fix { display: flex; flex-direction: column; gap: .3rem; margin-bottom: .6rem; }
+.correction-block .co-line { display: flex; align-items: baseline; gap: .5rem; flex-wrap: wrap; }
+.correction-block .co-tag { font-size: .68rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; flex-shrink: 0; min-width: 4.5em; }
+.correction-block .co-wrong .co-tag { color: var(--danger); }
+.correction-block .co-wrong .es-text { color: var(--text-muted); text-decoration: line-through; text-decoration-color: var(--danger); }
+.correction-block .co-right .co-tag { color: var(--success); }
+.correction-block .co-right .es-text { color: var(--success); font-weight: 700; font-size: 1.05rem; }
+.correction-block .co-item { padding-top: .5rem; border-top: 1px solid var(--border); margin-top: .5rem; }
+.correction-block .co-item:first-of-type { border-top: none; }
+.correction-block .co-swap { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; margin-bottom: .3rem; }
+.correction-block .co-arrow { color: var(--text-faint); font-weight: 800; }
+.correction-block .co-label { font-size: .72rem; font-weight: 700; color: var(--text-faint); margin-left: auto; }
+.correction-block .co-rule { font-size: .82rem; color: var(--text-faint); margin: .3rem 0 0; }
+.correction-block .co-examples { display: flex; gap: .4rem; flex-wrap: wrap; margin-top: .4rem; }
+.correction-block .co-example { font-size: .85rem; background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: .15rem .55rem; }
+.correction-block.compact .co-rule, .correction-block.compact .co-examples { display: none; }
+
+
 /* ---------- Tables ---------- */
 table.data-table { width: 100%; border-collapse: collapse; font-size: .9rem; }
 table.data-table th, table.data-table td { text-align: left; padding: .55rem .6rem; border-bottom: 1px solid var(--border); }

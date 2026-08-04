@@ -334,6 +334,140 @@ async function testTapWords(browser) {
   await ctx.close();
 }
 
+async function testCorrections(browser) {
+  group("error feedback");
+  const { page, ctx, errors } = await freshPage(browser, { mobile: true });
+
+  // The checker must correct YOUR sentence, not offer a canned one.
+  const engine = await page.evaluate(async () => {
+    const { checkSpanish } = await import("/js/data/mistakePatterns.js");
+    const cases = [
+      ["Estoy doctor", "Soy doctor"],
+      ["Soy en Puebla", "Estoy en Puebla"],
+      ["Soy 25 años", "Tengo 25 años"],
+      ["Estoy caliente", "Tengo calor"],
+      ["Trabajo por vivir", "Trabajo para vivir"],
+      ["Busco por trabajo", "Busco trabajo"],
+      ["Yo gusto los tacos", "Me gustan los tacos"],
+      ["Me gusta los tacos", "Me gustan los tacos"],
+      ["Lavo mis manos", "Me lavo las manos"],
+      ["Están muchas personas", "Hay muchas personas"],
+      ["Es mucho bueno", "Es muy bueno"],
+      ["La gente son amables", "La gente es amable"],
+      ["Quiero un otro café", "Quiero otro café"],
+      ["Es la problema", "Es el problema"],
+      ["Vi mi hermana", "Vi a mi hermana"],
+      ["Espero que vienes", "Espero que vengas"],
+      ["Realizo que es tarde", "Me doy cuenta de que es tarde"],
+      ["Nos vemos en viernes", "Nos vemos el viernes"]
+    ];
+    const wrong = [];
+    cases.forEach(([input, want]) => {
+      const hits = checkSpanish(input);
+      const got = hits.length ? hits[0].corrected : "(no correction)";
+      if (got !== want) wrong.push(`"${input}" → got "${got}", expected "${want}"`);
+    });
+    // Correct Spanish must produce no false alarms
+    const clean = ["Voy al mercado.", "Me gusta el café.", "Tengo veinte años.",
+      "Estoy en casa.", "Soy maestra.", "La gente es amable.", "Me lavo las manos."];
+    const falseAlarms = clean.filter((s) => checkSpanish(s).length);
+    // Every rule must carry an explanation and a fix
+    const { MISTAKE_PATTERNS } = await import("/js/data/mistakePatterns.js");
+    const incomplete = MISTAKE_PATTERNS.filter((p) => !p.why || !p.rule || typeof p.fix !== "function").map((p) => p.id);
+    return { rules: MISTAKE_PATTERNS.length, wrong, falseAlarms, incomplete };
+  });
+  check(`${engine.rules} rules, each with a fix and an explanation`, engine.incomplete.length === 0, engine.incomplete.join(", "));
+  check("corrects the learner's own sentence", engine.wrong.length === 0, engine.wrong.slice(0, 3).join(" | "));
+  check("no false alarms on correct Spanish", engine.falseAlarms.length === 0, engine.falseAlarms.join(" | "));
+
+  // The unit test must include a write-it-in-Spanish question that gives feedback
+  const hasProduce = await page.evaluate(async () => {
+    const { buildQuiz } = await import("/js/views/roadmap.js");
+    const { ROADMAP_UNITS } = await import("/js/data/roadmap.js");
+    let seen = 0;
+    for (let n = 0; n < 6; n++) {
+      if (buildQuiz(ROADMAP_UNITS[0]).some((q) => q.kind === "produce")) seen++;
+    }
+    return seen;
+  });
+  check("unit tests ask you to write in Spanish", hasProduce === 6, `${hasProduce}/6 quizzes`);
+
+  // Drive it: answer a produce question wrongly and expect an explained fix
+  await go(page, "#/roadmap");
+  const node = await page.$(".roadmap-node.unlocked");
+  await node.click();
+  await page.waitForTimeout(300);
+  await page.click('button:has-text("Continue")');
+  await page.waitForTimeout(200);
+  await page.click('button:has-text("Start unit test")');
+  await page.waitForTimeout(350);
+  // Answer correctly on the way there — wrong answers cost hearts and the
+  // attempt would end before reaching the Spanish question.
+  await page.evaluate(async () => {
+    const { ROADMAP_UNITS } = await import("/js/data/roadmap.js");
+    window.__UNITS = ROADMAP_UNITS;
+    const { audioEngine } = await import("/js/core/audio.js");
+    audioEngine.speak = (x) => { window.__spoken = x; };
+  });
+  let sawFeedback = false;
+  for (let i = 0; i < 12; i++) {
+    const spanishBox = await page.$('.exercise-card input[placeholder*="español"]');
+    if (spanishBox) {
+      await spanishBox.fill("Yo gusto los tacos y estoy doctor");
+      await page.click('.exercise-card button:has-text("Check")');
+      await page.waitForTimeout(450);
+      const block = await page.$(".correction-block");
+      if (block) {
+        const txt = (await block.textContent()).replace(/\s+/g, " ");
+        sawFeedback = /Try/.test(txt) && /gustar|ser vs estar/.test(txt) && /Me gustan los tacos/.test(txt);
+      }
+      break;
+    }
+    const info = await page.evaluate(() => {
+      const c = document.querySelector(".exercise-card");
+      if (!c) return null;
+      const prompt = (c.querySelector(".exercise-prompt") || {}).textContent || "";
+      const options = [...c.querySelectorAll(".option-btn")].map((o) => o.textContent.trim());
+      const words = [...c.querySelectorAll(".word-chip")].map((w) => w.textContent.trim());
+      const hasInput = Boolean(c.querySelector('input[type="text"]'));
+      let answer = null;
+      for (const u of window.__UNITS) {
+        for (const s of u.sentences) {
+          if (s.es === prompt.trim()) answer = answer ?? s.en;
+          if (s.en === prompt.trim()) answer = answer ?? s.es;
+        }
+        if (u.drill && u.drill.question === prompt.trim()) answer = answer ?? u.drill.answer;
+      }
+      if (prompt.startsWith("🔊")) answer = window.__spoken || null;
+      return { options, words, hasInput, answer };
+    });
+    if (!info) break;
+    if (info.options.length) {
+      const idx = info.options.indexOf(info.answer);
+      await page.$$eval(".option-btn", (els, k) => els[k >= 0 ? k : 0].click(), idx);
+    } else if (info.words.length) {
+      for (const w of (info.answer || "").replace(/[¿?¡!.,]/g, "").split(/\s+/)) {
+        await page.evaluate((word) => {
+          const bank = document.querySelectorAll(".word-bank")[1];
+          const chip = [...bank.querySelectorAll(".word-chip")].find((c) => c.textContent.trim() === word);
+          if (chip) chip.click();
+        }, w);
+        await page.waitForTimeout(25);
+      }
+      await page.click('.exercise-card button:has-text("Check")');
+    } else if (info.hasInput) {
+      await page.fill('.exercise-card input[type="text"]', info.answer || "x");
+      await page.click('.exercise-card button:has-text("Check")');
+    }
+    await page.waitForTimeout(260);
+    const next = await page.$('button:has-text("Next"), button:has-text("See results")');
+    if (next) { await next.click(); await page.waitForTimeout(280); }
+  }
+  check("a wrong Spanish answer gets an explained correction in the quiz", sawFeedback);
+  check("no JS errors", errors.length === 0, errors.slice(0, 3).join(" | "));
+  await ctx.close();
+}
+
 async function testStorage(browser) {
   group("storage");
   // The bug this guards: deepMerge only walked keys present in the defaults,
@@ -432,6 +566,7 @@ const GROUPS = {
   roadmap: testRoadmap,
   stories: testStories,
   "tap-a-word": testTapWords,
+  "error feedback": testCorrections,
   storage: testStorage,
   mobile: testMobile,
   offline: testOffline
