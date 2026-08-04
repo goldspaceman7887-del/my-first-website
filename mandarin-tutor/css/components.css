@@ -249,6 +249,13 @@ table.data-table th { color: var(--text-muted); font-size: .78rem; text-transfor
 .roadmap-node.completed .roadmap-node-circle { background: var(--gold); border-color: var(--gold); color: var(--accent-ink); }
 .roadmap-node-label { font-size: .78rem; font-weight: 700; text-align: center; color: var(--text-muted); }
 .roadmap-node.locked .roadmap-node-label { color: var(--text-faint); }
+.roadmap-node-cluster { display: flex; align-items: center; gap: .4rem; }
+.roadmap-skip-node {
+  width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  background: none; border: 2px dashed var(--border); color: var(--text-muted); font-size: 1.1rem; cursor: pointer;
+  transition: border-color .15s ease, color .15s ease;
+}
+.roadmap-skip-node:hover { border-color: var(--accent); color: var(--accent); }
 
 .roadmap-tier-header { width: 100%; max-width: 420px; text-align: center; margin: 1.5rem 0 .5rem; position: relative; z-index: 1; }
 .roadmap-tier-header h3 { margin-bottom: .15rem; }

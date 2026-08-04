@@ -26,6 +26,24 @@ function skippedSet() {
   return new Set(store.state.progress.roadmapUnitsSkipped || []);
 }
 
+// Marks a unit as skipped: it counts toward unlocking the next one, but
+// earns no XP and doesn't get seeded into the spaced-repetition Review
+// queue. Shared by the in-unit "Skip this unit" button and the on-path
+// skip-ahead node.
+function skipUnitAction(unit, onDone) {
+  if (!window.confirm(`Skip "${unit.title}" for now? It won't be added to your spaced-repetition review queue or earn XP, but the next unit will unlock. You can come back and do it properly anytime.`)) return;
+  blurActive();
+  const done = completedSet();
+  const skipped = skippedSet();
+  done.add(unit.id);
+  skipped.add(unit.id);
+  store.state.progress.roadmapUnitsCompleted = [...done];
+  store.state.progress.roadmapUnitsSkipped = [...skipped];
+  store.save();
+  toast("Unit skipped -- the next one is unlocked. Come back anytime from the roadmap.", { type: "info", icon: "⏭️" });
+  if (onDone) onDone();
+}
+
 function unitStatus(index, done) {
   if (done.has(ROADMAP_UNITS[index].id)) return "completed";
   if (index === 0 || done.has(ROADMAP_UNITS[index - 1].id)) return "unlocked";
@@ -247,19 +265,34 @@ export function renderRoadmap(container) {
       const status = unitStatus(i, done);
       const wasSkipped = skippedSet().has(unit.id);
       const side = i % 3 === 0 ? "" : i % 3 === 1 ? "offset-left" : "offset-right";
+      const mainNode = el(
+        "button",
+        {
+          class: `roadmap-node ${status}`,
+          title: wasSkipped ? "Skipped -- tap to go back and do it properly" : status === "locked" ? "Not reached yet in your path -- tap to preview or use for review anytime" : null,
+          onclick: () => showUnit(unit)
+        },
+        [
+          el("div", { class: "roadmap-node-circle" }, status === "locked" ? "🔓" : status === "completed" ? (wasSkipped ? "⏭" : "✓") : unit.icon),
+          el("div", { class: "roadmap-node-label" }, unit.title)
+        ]
+      );
+      const rowChildren = [mainNode];
+      if (status === "unlocked") {
+        rowChildren.unshift(
+          el(
+            "button",
+            {
+              class: "roadmap-skip-node",
+              title: `Skip "${unit.title}" and move on`,
+              onclick: () => skipUnitAction(unit, render)
+            },
+            "⏭"
+          )
+        );
+      }
       const row = el("div", { class: `roadmap-node-row ${side}` }, [
-        el(
-          "button",
-          {
-            class: `roadmap-node ${status}`,
-            title: wasSkipped ? "Skipped -- tap to go back and do it properly" : status === "locked" ? "Not reached yet in your path -- tap to preview or use for review anytime" : null,
-            onclick: () => showUnit(unit)
-          },
-          [
-            el("div", { class: "roadmap-node-circle" }, status === "locked" ? "🔓" : status === "completed" ? (wasSkipped ? "⏭" : "✓") : unit.icon),
-            el("div", { class: "roadmap-node-label" }, unit.title)
-          ]
-        )
+        el("div", { class: "roadmap-node-cluster" }, rowChildren)
       ]);
       path.appendChild(row);
     });
@@ -344,17 +377,7 @@ export function renderRoadmap(container) {
     runGrammarStep();
 
     function skipUnit() {
-      if (!window.confirm(`Skip "${unit.title}" for now? It won't be added to your spaced-repetition review queue or earn XP, but the next unit will unlock. You can come back and do it properly anytime.`)) return;
-      blurActive();
-      const done = completedSet();
-      const skipped = skippedSet();
-      done.add(unit.id);
-      skipped.add(unit.id);
-      store.state.progress.roadmapUnitsCompleted = [...done];
-      store.state.progress.roadmapUnitsSkipped = [...skipped];
-      store.save();
-      toast("Unit skipped -- the next one is unlocked. Come back anytime from the roadmap.", { type: "info", icon: "⏭️" });
-      render();
+      skipUnitAction(unit, render);
     }
 
     function stepHeader(n, total, label) {
