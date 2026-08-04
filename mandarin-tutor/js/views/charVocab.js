@@ -25,21 +25,27 @@ function shuffle(arr) {
   return a;
 }
 
-function buildQueue() {
+function buildQueue(mode, size) {
   const charDue = dueItems("character").map((d) => d.id.replace("character_", ""));
   const charFresh = newItems(CHARACTERS.map((c) => srsIdFor("character", c.id)), "character").map((id) => id.replace("character_", ""));
-  const charIds = [...new Set([...charDue, ...charFresh])].slice(0, 12);
-  const charItems = charIds.map((id) => CHARACTERS.find((c) => c.id === id)).filter(Boolean).map((data) => ({ kind: "character", data }));
-
   const wordDue = dueItems("word").map((d) => d.id.replace("word_", ""));
   const wordFresh = newItems(VOCABULARY.map((v) => srsIdFor("word", v.id)), "word").map((id) => id.replace("word_", ""));
-  const wordIds = [...new Set([...wordDue, ...wordFresh])].slice(0, 12);
-  const wordItems = wordIds.map((id) => VOCABULARY.find((v) => v.id === id)).filter(Boolean).map((data) => ({ kind: "word", data }));
 
-  return shuffle([...charItems, ...wordItems]).slice(0, 20);
+  let charIds, wordIds;
+  if (mode === "new") { charIds = charFresh; wordIds = wordFresh; }
+  else if (mode === "due") { charIds = charDue; wordIds = wordDue; }
+  else { charIds = [...new Set([...charDue, ...charFresh])]; wordIds = [...new Set([...wordDue, ...wordFresh])]; }
+
+  const half = Math.ceil(size / 2);
+  const charItems = charIds.slice(0, half).map((id) => CHARACTERS.find((c) => c.id === id)).filter(Boolean).map((data) => ({ kind: "character", data }));
+  const wordItems = wordIds.slice(0, half).map((id) => VOCABULARY.find((v) => v.id === id)).filter(Boolean).map((data) => ({ kind: "word", data }));
+
+  return shuffle([...charItems, ...wordItems]).slice(0, size);
 }
 
 export function renderCharVocab(container) {
+  const state = { batchMode: "mixed", batchSize: 10 };
+
   container.appendChild(
     el("div", { class: "page-header" }, [
       el("h1", {}, "🔀 Characters + Vocabulary"),
@@ -48,20 +54,48 @@ export function renderCharVocab(container) {
     ])
   );
 
+  const batchModeRow = el("div", { class: "level-pills" }, [
+    batchModePill("due", "🎯 Reviewing due"),
+    batchModePill("new", "🆕 Learning new"),
+    batchModePill("mixed", "🔀 Mixed")
+  ]);
+  const batchSizeRow = el("div", { class: "level-pills", style: "margin-top:.4rem" }, [
+    batchSizePill(5),
+    batchSizePill(10),
+    batchSizePill(20)
+  ]);
+  container.appendChild(batchModeRow);
+  container.appendChild(batchSizeRow);
+
+  function batchModePill(id, label) {
+    const b = el("button", { class: `level-pill ${state.batchMode === id ? "active" : ""}`, onclick: () => { state.batchMode = id; refreshBatchPills(); renderDeck(); } }, label);
+    b.dataset.batchMode = id;
+    return b;
+  }
+  function batchSizePill(n) {
+    const b = el("button", { class: `level-pill ${state.batchSize === n ? "active" : ""}`, onclick: () => { state.batchSize = n; refreshBatchPills(); renderDeck(); } }, String(n));
+    b.dataset.batchSize = n;
+    return b;
+  }
+  function refreshBatchPills() {
+    batchModeRow.querySelectorAll(".level-pill").forEach((b) => b.classList.toggle("active", b.dataset.batchMode === state.batchMode));
+    batchSizeRow.querySelectorAll(".level-pill").forEach((b) => b.classList.toggle("active", Number(b.dataset.batchSize) === state.batchSize));
+  }
+
   const body = el("div", {});
   container.appendChild(body);
   renderDeck();
 
   function renderDeck() {
     body.innerHTML = "";
-    const items = buildQueue();
+    const items = buildQueue(state.batchMode, state.batchSize);
 
     if (items.length === 0) {
       body.appendChild(
         el("div", { class: "card empty-state" }, [
           el("div", { class: "empty-icon" }, "🎉"),
-          el("h3", {}, "All caught up!"),
-          el("p", {}, "No character or vocabulary reviews due right now. Learn something new in Characters or Vocabulary, then come back here to mix them together.")
+          el("h3", {}, state.batchMode === "new" ? "Nothing new left to learn" : "All caught up!"),
+          el("p", {}, "No character or vocabulary reviews due right now. Try \"Mixed\" or \"Learning new\" above, or learn something new in Characters or Vocabulary first.")
         ])
       );
       return;
