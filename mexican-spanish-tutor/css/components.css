@@ -267,6 +267,23 @@ table.data-table th { color: var(--text-muted); font-size: .78rem; text-transfor
 .unit-tick:hover { border-color: var(--accent); color: var(--accent); }
 .unit-tick.checked { background: var(--success); border-color: var(--success); color: #fff; }
 
+/* ---------- Section checkpoint ---------- */
+.checkpoint-row { width: 100%; max-width: 420px; display: flex; justify-content: center; margin: .8rem 0 .2rem; position: relative; z-index: 1; }
+.checkpoint-node {
+  width: 100%; display: flex; align-items: center; gap: .75rem; text-align: left;
+  padding: .8rem .9rem; border-radius: var(--radius-md); cursor: pointer;
+  background: var(--surface); border: 2px dashed var(--border); color: var(--text);
+  transition: border-color .15s ease, background .15s ease;
+}
+.checkpoint-node .checkpoint-icon { font-size: 1.6rem; line-height: 1; flex-shrink: 0; }
+.checkpoint-node .checkpoint-text { display: flex; flex-direction: column; line-height: 1.3; min-width: 0; }
+.checkpoint-node .checkpoint-sub { font-size: .78rem; color: var(--text-muted); font-weight: 600; }
+/* Ready to take: solid and gold, so it reads as the goal of the section. */
+.checkpoint-node.ready { border-style: solid; border-color: var(--gold); background: color-mix(in srgb, var(--gold) 10%, var(--surface)); }
+.checkpoint-node.passed { border-style: solid; border-color: var(--success); background: var(--success-bg); }
+.checkpoint-node.passed .checkpoint-sub { color: var(--success); }
+.checkpoint-node.waiting { opacity: .75; }
+
 .roadmap-tier-header { width: 100%; max-width: 420px; text-align: center; margin: 1.5rem 0 .5rem; position: relative; z-index: 1; }
 .roadmap-tier-header h3 { margin-bottom: .15rem; }
 .roadmap-tier-header:first-child { margin-top: 0; }
