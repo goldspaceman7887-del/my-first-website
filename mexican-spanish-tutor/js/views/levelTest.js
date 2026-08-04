@@ -7,11 +7,12 @@
 // result sets your level estimate and points you at the right unit.
 
 import { store } from "../core/storage.js";
-import { el, progressBar, blurActive, confettiBurst } from "../core/ui.js";
+import { el, progressBar, blurActive, confettiBurst, toast } from "../core/ui.js";
 import { audioEngine } from "../core/audio.js";
 import { addXP, registerStudyToday } from "../core/gamification.js";
 import { ACTFL_LEVELS, ROADMAP_UNITS } from "../data/roadmap.js";
 import { spanishDistractors, englishDistractors } from "../core/distractors.js";
+import { skipToLevel } from "./roadmap.js";
 
 const PER_LEVEL = 3;
 const OPTIONS = 4;      // more choices = less passing by luck
@@ -211,10 +212,18 @@ export function renderLevelTest(container) {
       body.appendChild(
         el("div", { class: "card", style: "margin-top:1rem;border-left:3px solid var(--accent)" }, [
           el("div", { class: "card-title" }, "What to do next"),
-          el("p", { class: "text-muted" }, `Start on the roadmap at "${target.title}" — that's where your level begins.`),
+          el("p", { class: "text-muted" }, `Your level starts at "${target.title}". Skip ahead and everything below ${level.label} gets marked as known, so you don't have to work up from Novice Low — you can still open those units any time.`),
           el("div", { class: "btn-row" }, [
-            el("a", { class: "btn btn-primary", href: "#/roadmap" }, "Go to roadmap"),
-            el("button", { class: "btn", onclick: showIntro }, "Retake test")
+            el("button", {
+              class: "btn btn-primary",
+              onclick: () => {
+                const n = skipToLevel(level.code);
+                toast(n ? `Skipped ${n} unit(s) — the path now starts at ${level.label}.` : "You're already at that point on the path.", { icon: "⏭️" });
+                window.location.hash = "#/roadmap";
+              }
+            }, `⏭️ Skip ahead to ${level.label}`),
+            el("a", { class: "btn", href: "#/roadmap" }, "Start from the beginning"),
+            el("button", { class: "btn btn-ghost", onclick: showIntro }, "Retake test")
           ])
         ])
       );

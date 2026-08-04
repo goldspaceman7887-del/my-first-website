@@ -14,7 +14,7 @@ import { audioEngine } from "../core/audio.js";
 import { addXP, registerStudyToday, updateSkillScore } from "../core/gamification.js";
 import { gradeItem, QUALITY } from "../core/srs.js";
 import { getHearts, loseHeart, hasHearts, refillHeartsFully, minutesUntilNextHeart, MAX_HEARTS } from "../core/hearts.js";
-import { ACTFL_LEVELS, ROADMAP_UNITS } from "../data/roadmap.js";
+import { ACTFL_LEVELS, ROADMAP_UNITS, levelIndex } from "../data/roadmap.js";
 
 const PASS_THRESHOLD = 7; // out of 10
 
@@ -31,8 +31,36 @@ function completedUnits() {
   return store.state.progress.roadmapUnitsCompleted || (store.state.progress.roadmapUnitsCompleted = []);
 }
 
-function isCompleted(id) {
-  return completedUnits().includes(id);
+function skippedUnits() {
+  return store.state.progress.roadmapUnitsSkipped || (store.state.progress.roadmapUnitsSkipped = []);
+}
+
+// "Earned" means you passed the quiz. "Skipped" means you placed out of it via
+// the Level Test or ticked it off yourself. Both count as done for unlocking,
+// but they're drawn differently so you can see what you actually did.
+function isEarned(id) { return completedUnits().includes(id); }
+function isSkipped(id) { return skippedUnits().includes(id); }
+function isCompleted(id) { return isEarned(id) || isSkipped(id); }
+
+function toggleSkip(id) {
+  const list = skippedUnits();
+  const at = list.indexOf(id);
+  if (at === -1) list.push(id);
+  else list.splice(at, 1);
+  store.save();
+}
+
+// Mark every unit below `levelCode` as placed-out, so the path opens where the
+// learner actually is instead of making them grind Novice Low first.
+export function skipToLevel(levelCode) {
+  const target = levelIndex(levelCode);
+  const list = skippedUnits();
+  let n = 0;
+  ROADMAP_UNITS.forEach((u) => {
+    if (levelIndex(u.level) < target && !isCompleted(u.id)) { list.push(u.id); n++; }
+  });
+  store.save();
+  return n;
 }
 
 // Sequential unlock: the first not-yet-completed unit is playable, and
@@ -162,20 +190,49 @@ export function renderRoadmap(container) {
   // ---------- Path ----------
   function renderPath() {
     const wrap = el("div", {});
-    const done = completedUnits().filter((id) => ROADMAP_UNITS.some((u) => u.id === id)).length;
+    const done = ROADMAP_UNITS.filter((u) => isCompleted(u.id)).length;
+    const earnedCount = ROADMAP_UNITS.filter((u) => isEarned(u.id)).length;
 
     wrap.appendChild(
       el("div", { class: "card", style: "margin-bottom:1rem" }, [
         el("div", { class: "flex justify-between items-center", style: "flex-wrap:wrap;gap:.5rem" }, [
           el("div", {}, [
             el("div", { class: "card-title", style: "margin-bottom:.2rem" }, `${done} / ${ROADMAP_UNITS.length} units complete`),
-            el("div", { class: "text-muted", style: "font-size:.85rem" }, "Units unlock in order across all 7 ACTFL levels.")
+            el("div", { class: "text-muted", style: "font-size:.85rem" }, done > earnedCount
+              ? `${earnedCount} passed by quiz · ${done - earnedCount} skipped. Tick the box beside a unit to skip it.`
+              : "Units unlock in order. Tick the box beside a unit if you already know it.")
           ]),
           heartBar()
         ]),
         el("div", { style: "margin-top:.6rem" }, [progressBar(Math.round((done / ROADMAP_UNITS.length) * 100))])
       ])
     );
+
+    // If the Level Test says you're above where the path currently sits,
+    // offer to place you out of everything below it in one click.
+    const lastTest = (store.state.progress.levelTests || []).slice(-1)[0];
+    const lastSpoken = (store.state.progress.speakingTests || []).slice(-1)[0];
+    const testedCode = (lastSpoken && lastSpoken.date >= (lastTest?.date || "")) ? lastSpoken.level : lastTest?.level;
+    if (testedCode) {
+      const pending = ROADMAP_UNITS.filter((u) => levelIndex(u.level) < levelIndex(testedCode) && !isCompleted(u.id));
+      if (pending.length) {
+        const lvl = ACTFL_LEVELS.find((l) => l.code === testedCode);
+        wrap.appendChild(
+          el("div", { class: "card", style: "margin-bottom:1rem;border-left:3px solid var(--accent)" }, [
+            el("div", { class: "card-title" }, `📊 Your test says ${lvl.label}`),
+            el("p", { class: "text-muted" }, `You don't have to work up from the beginning. Skip the ${pending.length} unit(s) below ${lvl.label} and start where you actually are — you can still open any of them later.`),
+            el("button", {
+              class: "btn btn-primary",
+              onclick: () => {
+                const n = skipToLevel(testedCode);
+                toast(`Skipped ahead — ${n} unit(s) marked as known.`, { icon: "⏭️" });
+                render();
+              }
+            }, `⏭️ Skip ahead to ${lvl.label}`)
+          ])
+        );
+      }
+    }
 
     const path = el("div", { class: "roadmap-path" });
     let lastLevel = null;
@@ -193,9 +250,11 @@ export function renderRoadmap(container) {
         );
       }
 
-      const completed = isCompleted(u.id);
+      const earned = isEarned(u.id);
+      const skipped = isSkipped(u.id);
+      const completed = earned || skipped;
       const unlocked = isUnlocked(idx);
-      const state = completed ? "completed" : unlocked ? "unlocked" : "locked";
+      const state = earned ? "completed" : skipped ? "skipped" : unlocked ? "unlocked" : "locked";
       const offset = idx % 2 === 0 ? "offset-left" : "offset-right";
 
       const node = el("button", {
@@ -206,11 +265,24 @@ export function renderRoadmap(container) {
         title: unlocked ? u.title : "Finish the previous unit to unlock",
         onclick: () => (unlocked ? openLesson(u) : toast("Finish the previous unit first.", { icon: "🔒" }))
       }, [
-        el("div", { class: "roadmap-node-circle" }, completed ? "✓" : unlocked ? u.icon : "🔒"),
+        el("div", { class: "roadmap-node-circle" }, earned ? "✓" : skipped ? "⏭" : unlocked ? u.icon : "🔒"),
         el("div", { class: "roadmap-node-label" }, u.title)
       ]);
 
-      path.appendChild(el("div", { class: `roadmap-node-row ${offset}` }, [node]));
+      // Tick-off box: mark a unit known and move on without taking the quiz.
+      const box = el("button", {
+        class: `unit-tick ${completed ? "checked" : ""}`,
+        title: earned ? "Passed the quiz" : skipped ? "Marked as known — click to undo" : "Already know this? Tick it off to skip",
+        "aria-label": `Mark ${u.title} as known`,
+        onclick: () => {
+          blurActive();
+          if (earned) { toast("You already passed this one.", { icon: "✅" }); return; }
+          toggleSkip(u.id);
+          render();
+        }
+      }, completed ? "✓" : "");
+
+      path.appendChild(el("div", { class: `roadmap-node-row ${offset}` }, [node, box]));
     });
 
     wrap.appendChild(path);

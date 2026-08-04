@@ -53,7 +53,8 @@ function defaultState() {
       vocabExposure: {}, // wordId -> count
       activeSentenceIds: [], // sentence ids currently "being studied"
       canDoCompleted: [], // ACTFL can-do statement ids marked as achieved
-      roadmapUnitsCompleted: [] // roadmap unit ids passed, drives sequential unlock
+      roadmapUnitsCompleted: [], // roadmap unit ids passed by quiz
+      roadmapUnitsSkipped: [] // units placed out of (level test or manual tick-off)
     },
     achievements: {
       unlocked: []
