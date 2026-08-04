@@ -132,7 +132,7 @@ export function renderCharacters(container) {
 
     const modeRow = el("div", { class: "level-pills" }, [
       modePill("due", "🎯 Due for review"),
-      modePill("all", "🔀 Flip through all 110")
+      modePill("all", `🔀 Flip through all ${CHARACTERS.length}`)
     ]);
     wrap.appendChild(modeRow);
 
@@ -207,7 +207,7 @@ export function renderCharacters(container) {
           el("div", { class: "card empty-state" }, [
             el("div", { class: "empty-icon" }, "🎉"),
             el("h3", {}, state.batchMode === "new" ? "Nothing new left to learn" : "All caught up!"),
-            el("p", {}, "No character reviews due right now. Try \"Flip through all 110\" above, or browse the full list in the \"Browse\" tab.")
+            el("p", {}, `No character reviews due right now. Try "Flip through all ${CHARACTERS.length}" above, or browse the full list in the "Browse" tab.`)
           ])
         );
         return;
