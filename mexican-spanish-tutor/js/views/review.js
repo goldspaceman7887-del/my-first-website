@@ -28,19 +28,26 @@ function resolveItem(srsItem) {
   if (type === "dialogue") return { type, data: DIALOGUES.find((d) => d.id === dataId) };
   if (type === "story") return { type, data: STORIES.find((s) => s.id === dataId) };
   if (type === "roadmap") return { type, data: ROADMAP_UNITS.find((u) => u.id === dataId) };
+  // Words bookmarked from Story Mode: the gloss is the card, so it lives in
+  // progress rather than in one of the static data sets.
+  if (type === "gloss") {
+    const en = (store.state.progress.savedWords || {})[dataId];
+    return { type, data: en === undefined ? null : { word: dataId, en } };
+  }
   return { type, data: null };
 }
 
 // Dialogues, stories and roadmap units aren't flashcards — they're reminders
 // to go back and redo the thing, so show a representative line as the cue.
 function frontText(type, data) {
-  if (type === "word") return data.word;
+  if (type === "word" || type === "gloss") return data.word;
   if (type === "dialogue") return data.lines[0].es;
   if (type === "story") return data.paragraphs[0].es;
   if (type === "roadmap") return data.sentences[0].es;
   return data.es;
 }
 function backSub(type, data) {
+  if (type === "gloss") return "Saved from a story";
   if (type === "word") return `/${data.ipa}/`;
   if (type === "dialogue") return `Dialogue · ${data.title}`;
   if (type === "story") return `Story · ${data.title}`;
@@ -48,6 +55,7 @@ function backSub(type, data) {
   return "";
 }
 function backMeaning(type, data) {
+  if (type === "gloss") return data.en;
   if (type === "word") return data.meaning;
   if (type === "dialogue") return data.lines[0].en;
   if (type === "story") return data.paragraphs[0].en;
@@ -87,6 +95,11 @@ function knownPool() {
     });
   });
 
+  // Words you bookmarked while reading a story
+  Object.entries(store.state.progress.savedWords || {}).forEach(([w, en]) => {
+    out.push({ deck: "saved", srsId: `gloss_${w}`, srsType: "gloss", front: w, sub: "Saved from a story", back: en, note: "" });
+  });
+
   // Every sentence from every unit you've finished or ticked off
   ROADMAP_UNITS.filter((u) => doneUnits.has(u.id)).forEach((u) => {
     u.sentences.forEach((s) => {
@@ -104,6 +117,7 @@ function knownPool() {
   Object.values(srs).forEach((item) => {
     const { type, data } = resolveItem(item);
     if (!data || type === "word") return;
+    if (type === "gloss") return; // already added from savedWords above
     const deck = type === "dialogue" ? "dialogues" : type === "story" ? "stories" : type === "roadmap" ? "units" : "sentences";
     out.push({
       deck, srsId: item.id, srsType: type,
@@ -117,6 +131,7 @@ function knownPool() {
 const DECKS = [
   { id: "all", label: "All" },
   { id: "words", label: "Words" },
+  { id: "saved", label: "Saved" },
   { id: "sentences", label: "Sentences" },
   { id: "dialogues", label: "Dialogues" },
   { id: "stories", label: "Stories" },

@@ -1,60 +1,178 @@
-// STORY MODE — graded mini-stories built from vocabulary you've already
-// met, shown paragraph by paragraph (Spanish / English), followed by vocab
-// review, comprehension questions, speaking questions, and a retelling
-// exercise.
+// STORY MODE — graded mini-stories running the full ACTFL ladder, Novice Low
+// through Advanced Low.
+//
+// Every Spanish word is tappable: tap it and you get the English for that
+// exact form, including which verb and tense it came from. Glosses are keyed
+// by the surface form rather than the dictionary lemma, because when you're
+// reading "levantábamos" what you need is "we used to get up", not "to get up".
+//
+// The English translation of each line can be hidden, so you can read for
+// meaning and lean on the tap-to-define instead of the crib underneath.
 
-import { store, todayISO } from "../core/storage.js";
+import { store } from "../core/storage.js";
 import { el, toast } from "../core/ui.js";
 import { audioEngine } from "../core/audio.js";
 import { addXP, registerStudyToday, updateSkillScore } from "../core/gamification.js";
 import { gradeItem, QUALITY } from "../core/srs.js";
 import { STORIES } from "../data/stories.js";
+import { ACTFL_LEVELS } from "../data/roadmap.js";
+import { GLOSSARY, normalizeWord } from "../data/glossary.js";
+
+function levelInfo(code) {
+  return ACTFL_LEVELS.find((l) => l.code === code) || { short: code, label: code };
+}
+function levelVariant(code) {
+  if (code.startsWith("novice")) return "novice";
+  if (code.startsWith("intermediate")) return "intermediate";
+  return "advanced";
+}
 
 export function renderStory(container) {
+  let showEnglish = true;
+  let pop = null;
+
   container.appendChild(
     el("div", { class: "page-header" }, [
       el("h1", {}, "📖 Story Mode"),
-      el("p", {}, "Short stories built almost entirely from vocabulary you've already met — read for meaning first, then review, then retell it yourself.")
+      el("p", {}, "Stories from Novice Low all the way to Advanced Low. Tap any Spanish word to see what it means.")
     ])
+  );
+
+  // Practice strips a sub-view's .page-header, so the instruction lives here too.
+  container.appendChild(
+    el("p", { class: "text-muted", style: "font-size:.85rem;margin:.2rem 0 .6rem" },
+      "Stories run Novice Low → Advanced Low. Tap any Spanish word for its meaning.")
   );
 
   const body = el("div", {});
   container.appendChild(body);
   showList();
 
+  // ---------- Word popup ----------
+  function closePop() {
+    if (pop) { pop.remove(); pop = null; }
+    document.querySelectorAll(".word-tap.active").forEach((w) => w.classList.remove("active"));
+  }
+
+  function showGloss(wordEl, raw) {
+    closePop();
+    wordEl.classList.add("active");
+    const key = normalizeWord(raw);
+    const gloss = GLOSSARY[key];
+    pop = el("div", { class: "gloss-pop pop-in", role: "dialog", "aria-label": `Meaning of ${key}` }, [
+      el("div", { class: "flex justify-between items-center", style: "gap:.5rem" }, [
+        el("span", { class: "es-text", style: "font-size:1.25rem;font-weight:700" }, key),
+        el("div", { class: "flex", style: "gap:.35rem" }, [
+          el("button", { class: "btn btn-sm", onclick: (e) => { e.stopPropagation(); audioEngine.speak(key); } }, "🔊"),
+          el("button", { class: "btn btn-sm", onclick: (e) => { e.stopPropagation(); closePop(); }, "aria-label": "Close" }, "✕")
+        ])
+      ]),
+      el("div", { style: "margin-top:.35rem" }, gloss || "No definition for this one yet."),
+      el("button", {
+        class: "btn btn-sm btn-primary", style: "margin-top:.6rem",
+        onclick: (e) => {
+          e.stopPropagation();
+          // Store the meaning alongside the word: Review has no other way to
+          // render a bare glossary key as a card.
+          store.state.progress.savedWords[key] = gloss || "";
+          gradeItem(`gloss_${key}`, "gloss", QUALITY.GOOD);
+          store.save();
+          toast(`"${key}" guardada para repasar`, { icon: "🔖" });
+          closePop();
+        }
+      }, "🔖 Save to review")
+    ]);
+    document.body.appendChild(pop);
+  }
+
+  // Tapping anywhere else dismisses it, the way a dictionary popover should.
+  const onDocClick = (e) => {
+    if (pop && !pop.contains(e.target) && !e.target.classList.contains("word-tap")) closePop();
+  };
+  document.addEventListener("click", onDocClick);
+
+  // ---------- Tappable Spanish ----------
+  function tappable(text) {
+    const wrap = el("span", { class: "es-text tappable-line" });
+    text.split(/(\s+)/).forEach((chunk) => {
+      if (!chunk) return;
+      if (/^\s+$/.test(chunk)) { wrap.appendChild(document.createTextNode(chunk)); return; }
+      // Keep punctuation outside the button so the tap target is the word only.
+      const m = chunk.match(/^([¿¡"'(]*)(.*?)([.,;:!?")'…—]*)$/);
+      const [, pre, core, post] = m;
+      if (pre) wrap.appendChild(document.createTextNode(pre));
+      if (core) {
+        const btn = el("button", { class: "word-tap", type: "button" }, core);
+        btn.addEventListener("click", (e) => { e.stopPropagation(); showGloss(btn, core); });
+        wrap.appendChild(btn);
+      }
+      if (post) wrap.appendChild(document.createTextNode(post));
+    });
+    return wrap;
+  }
+
+  // ---------- Story list, as a ladder ----------
   function showList() {
+    closePop();
     body.innerHTML = "";
-    const grid = el("div", { class: "grid grid-auto" });
+    let lastLevel = null;
     STORIES.forEach((s) => {
+      if (s.level !== lastLevel) {
+        lastLevel = s.level;
+        const l = levelInfo(s.level);
+        body.appendChild(
+          el("div", { style: "margin:1rem 0 .4rem" }, [
+            el("span", { class: `badge badge-${levelVariant(s.level)}` }, l.short),
+            el("span", { style: "font-weight:800;margin-left:.5rem" }, l.label)
+          ])
+        );
+      }
       const done = store.state.progress.storiesCompleted.includes(s.id);
-      grid.appendChild(
-        el("div", { class: "card", style: "cursor:pointer", onclick: () => showStory(s) }, [
-          el("div", { class: "flex justify-between items-center" }, [
-            el("span", { class: "badge badge-default" }, s.level),
-            done ? el("span", { class: "badge badge-success" }, "✓ Read") : null
-          ].filter(Boolean)),
-          el("h3", { style: "margin:.5rem 0 .2rem" }, s.title),
-          el("p", { class: "text-muted" }, s.titleEs)
+      body.appendChild(
+        el("div", { class: "card card-link", style: "cursor:pointer", onclick: () => showStory(s) }, [
+          el("div", { class: "flex justify-between items-center", style: "gap:.5rem" }, [
+            el("div", {}, [
+              el("h3", { style: "margin:0 0 .15rem" }, s.title),
+              el("p", { class: "text-muted", style: "margin:0" }, s.titleEs)
+            ]),
+            done ? el("span", { class: "badge badge-success" }, "✓") : null
+          ].filter(Boolean))
         ])
       );
     });
-    body.appendChild(grid);
   }
 
+  // ---------- One story ----------
   function showStory(s) {
+    closePop();
     body.innerHTML = "";
-    body.appendChild(el("button", { class: "btn btn-sm", onclick: showList }, "← All stories"));
-    body.appendChild(el("h2", { style: "margin-top:.75rem" }, `${s.title} · ${s.titleEs}`));
+    const l = levelInfo(s.level);
+
+    const englishBtn = el("button", { class: "btn btn-sm", onclick: () => { showEnglish = !showEnglish; showStory(s); } },
+      showEnglish ? "🙈 Hide English" : "👁 Show English");
+
+    body.appendChild(
+      el("div", { class: "card", style: "margin-bottom:.6rem" }, [
+        el("span", { class: `badge badge-${levelVariant(s.level)}` }, l.short),
+        el("h2", { style: "margin:.35rem 0 .1rem" }, s.title),
+        el("p", { class: "text-muted", style: "margin:0 0 .6rem" }, s.titleEs),
+        el("div", { class: "btn-row" }, [
+          el("button", { class: "btn btn-sm", onclick: showList }, "← All stories"),
+          englishBtn,
+          el("button", { class: "btn btn-sm", onclick: () => audioEngine.speak(s.paragraphs.map((p) => p.es).join(" ")) }, "🔊 Read it all")
+        ])
+      ])
+    );
 
     s.paragraphs.forEach((p) => {
       body.appendChild(
-        el("div", { class: "card", style: "margin-top:.6rem" }, [
-          el("div", { class: "flex justify-between items-center" }, [
-            el("div", { class: "es-text", style: "font-size:1.05rem" }, p.es),
-            el("button", { class: "play-btn", style: "width:34px;height:34px", onclick: () => audioEngine.speak(p.es) }, "🔊")
+        el("div", { class: "card", style: "margin-top:.5rem" }, [
+          el("div", { class: "flex justify-between items-start", style: "gap:.5rem" }, [
+            tappable(p.es),
+            el("button", { class: "play-btn", style: "width:34px;height:34px;flex-shrink:0", onclick: () => audioEngine.speak(p.es) }, "🔊")
           ]),
-          el("div", { class: "text-muted" }, p.en)
-        ])
+          showEnglish ? el("div", { class: "text-muted", style: "margin-top:.3rem" }, p.en) : null
+        ].filter(Boolean))
       );
     });
 
@@ -81,9 +199,9 @@ export function renderStory(container) {
     const speakCard = el("div", { class: "card" });
     s.speakingQuestions.forEach((q) => {
       speakCard.appendChild(
-        el("div", { class: "flex justify-between items-center", style: "margin-bottom:.4rem" }, [
-          el("span", { class: "es-text" }, q),
-          el("button", { class: "play-btn", style: "width:34px;height:34px", onclick: () => audioEngine.speak(q) }, "🔊")
+        el("div", { class: "flex justify-between items-center", style: "margin-bottom:.4rem;gap:.5rem" }, [
+          tappable(q),
+          el("button", { class: "play-btn", style: "width:34px;height:34px;flex-shrink:0", onclick: () => audioEngine.speak(q) }, "🔊")
         ])
       );
     });
@@ -99,28 +217,30 @@ export function renderStory(container) {
 
     const wasNew = !store.state.progress.storiesCompleted.includes(s.id);
     body.appendChild(
-      el(
-        "button",
-        {
-          class: "btn btn-primary",
-          style: "margin-top:1rem",
-          onclick: () => {
-            if (wasNew) {
-              store.state.progress.storiesCompleted.push(s.id);
-              gradeItem(`story_${s.id}`, "story", QUALITY.GOOD);
-              registerStudyToday();
-              updateSkillScore("reading", 3);
-              addXP(12, `Story: ${s.title}`);
-              store.save();
-              toast("Story marked as read! +12 XP", { type: "xp", icon: "⚡" });
-            } else {
-              toast("Already marked as read — nice re-read!", { icon: "📖" });
-            }
-            showList();
+      el("button", {
+        class: "btn btn-primary",
+        style: "margin-top:1rem",
+        onclick: () => {
+          if (wasNew) {
+            store.state.progress.storiesCompleted.push(s.id);
+            gradeItem(`story_${s.id}`, "story", QUALITY.GOOD);
+            registerStudyToday();
+            updateSkillScore("reading", 3);
+            addXP(12, `Story: ${s.title}`);
+            store.save();
+            toast("Story marked as read! +12 XP", { type: "xp", icon: "⚡" });
+          } else {
+            toast("Already marked as read — nice re-read!", { icon: "📖" });
           }
-        },
-        wasNew ? "Mark as read" : "Back to stories"
-      )
+          showList();
+        }
+      }, wasNew ? "Mark as read" : "Back to stories")
     );
   }
+
+  // The popup lives on document.body, so it has to be torn down by hand.
+  return () => {
+    document.removeEventListener("click", onDocClick);
+    closePop();
+  };
 }

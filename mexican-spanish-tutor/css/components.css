@@ -121,6 +121,27 @@
 .srs-rating-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: .5rem; width: min(560px, 100%); }
 .srs-rating-row .btn { flex-direction: column; padding: .7rem .3rem; font-size: .78rem; gap: .2rem; }
 
+/* ---------- Tap-a-word (Story Mode) ---------- */
+/* These are <button>s inline inside a paragraph, so the global 44px
+   min-height for controls has to be undone or every word becomes a row. */
+.word-tap {
+  display: inline; min-height: 0; padding: 0; margin: 0;
+  background: none; border: none; border-bottom: 1px dotted var(--text-faint);
+  color: inherit; font: inherit; line-height: inherit; cursor: pointer;
+}
+.word-tap:hover { border-bottom-color: var(--accent); color: var(--accent); }
+.word-tap.active { background: var(--accent); color: var(--accent-ink); border-radius: 3px; border-bottom-color: transparent; }
+.tappable-line { line-height: 1.9; }
+
+.gloss-pop {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: calc(var(--tabbar-h, 0px) + var(--safe-bottom, 0px) + 14px);
+  z-index: 120; width: min(520px, calc(100% - 24px));
+  background: var(--bg-elevated); border: 2px solid var(--accent);
+  border-radius: var(--radius-md); box-shadow: var(--shadow-lg);
+  padding: .8rem .9rem;
+}
+
 /* ---------- Spanish text / usage notes ---------- */
 .es-text { font-family: var(--font-es); }
 .es-text-lg { font-family: var(--font-es); font-size: 2rem; font-weight: 700; line-height: 1.25; }

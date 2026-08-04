@@ -62,7 +62,8 @@ function defaultState() {
       canDoCompleted: [], // ACTFL can-do statement ids marked as achieved
       roadmapUnitsCompleted: [], // roadmap unit ids passed by quiz
       roadmapUnitsSkipped: [], // units placed out of (level test or manual tick-off)
-      checkpointsPassed: [] // ACTFL level codes whose end-of-section checkpoint you passed
+      checkpointsPassed: [], // ACTFL level codes whose end-of-section checkpoint you passed
+      savedWords: {} // word -> English gloss, bookmarked from Story Mode
     },
     achievements: {
       unlocked: []

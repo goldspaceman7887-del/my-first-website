@@ -3,7 +3,7 @@
 // vocab review, comprehension questions, speaking questions, and a
 // retelling prompt.
 
-export const STORIES = [
+const RAW_STORIES = [
   { id: "st01", title: "My Day", titleEs: "Mi día", level: "novice-mid",
     paragraphs: [
       { es: "Todos los días me despierto a las seis y media.", en: "Every day I wake up at 6:30." },
@@ -91,5 +91,69 @@ export const STORIES = [
       { q: "How did that experience affect the narrator?", a: "Le hizo entender lo duro que era el trabajo del rancho; hoy se acuerda cada vez que llueve fuerte." }
     ],
     speakingQuestions: ["Cuéntame una historia de tu niñez que te haya marcado.", "¿Hay algo del pasado que recuerdes cada vez que pasa algo específico hoy en día (como la lluvia)?", "En tu opinión, ¿por qué es importante recordar experiencias así?"],
-    retelling: "Retell this story fully in the past (mixing preterite and imperfect), then add one sentence of present-day reflection, mirroring ACTFL Advanced Low's expectation of narrating across time frames." }
+    retelling: "Retell this story fully in the past (mixing preterite and imperfect), then add one sentence of present-day reflection, mirroring ACTFL Advanced Low's expectation of narrating across time frames." },
+
+  { id: "st06", title: "Hello, I'm Ana", titleEs: "Hola, soy Ana", level: "novice-low",
+    paragraphs: [
+      { es: "Hola. Me llamo Ana.", en: "Hello. My name is Ana." },
+      { es: "Soy de México.", en: "I'm from Mexico." },
+      { es: "Tengo veinte años.", en: "I'm twenty years old." },
+      { es: "Mi color favorito es el azul.", en: "My favorite color is blue." },
+      { es: "Tengo un perro. Se llama Max.", en: "I have a dog. His name is Max." },
+      { es: "Mucho gusto.", en: "Nice to meet you." }
+    ],
+    vocabReview: [{ w: "me llamo", en: "my name is" }, { w: "soy de", en: "I'm from" }, { w: "tengo", en: "I have / I am (with age)" }, { w: "mucho gusto", en: "nice to meet you" }],
+    comprehension: [
+      { q: "What is her name?", a: "Ana." },
+      { q: "Where is she from?", a: "De México." },
+      { q: "What animal does she have?", a: "Un perro, Max." }
+    ],
+    speakingQuestions: ["¿Cómo te llamas?", "¿De dónde eres?", "¿Cuántos años tienes?"],
+    retelling: "Say the same six things about yourself, one short sentence at a time." },
+
+  { id: "st07", title: "Looking for the Bus", titleEs: "Buscando el camión", level: "intermediate-low",
+    paragraphs: [
+      { es: "El lunes pasado salí de mi casa muy tarde.", en: "Last Monday I left my house very late." },
+      { es: "Necesitaba llegar al centro antes de las nueve.", en: "I needed to get downtown before nine." },
+      { es: "Le pregunté a una señora dónde estaba la parada del camión.", en: "I asked a woman where the bus stop was." },
+      { es: "Ella me dijo que caminara dos cuadras y diera vuelta a la derecha.", en: "She told me to walk two blocks and turn right." },
+      { es: "Cuando llegué, el camión ya se había ido.", en: "When I got there, the bus had already left." },
+      { es: "Al final tomé un taxi y llegué solo diez minutos tarde.", en: "In the end I took a taxi and arrived only ten minutes late." }
+    ],
+    vocabReview: [{ w: "la parada del camión", en: "the bus stop (camión = bus in Mexico)" }, { w: "dar vuelta", en: "to turn" }, { w: "la cuadra", en: "the block" }, { w: "al final", en: "in the end" }],
+    comprehension: [
+      { q: "Why was the narrator in a hurry?", a: "Necesitaba llegar al centro antes de las nueve." },
+      { q: "What directions did the woman give?", a: "Caminar dos cuadras y dar vuelta a la derecha." },
+      { q: "How did the narrator finally get there?", a: "En taxi, diez minutos tarde." }
+    ],
+    speakingQuestions: ["Cuéntame de una vez que llegaste tarde a algo.", "¿Cómo te mueves normalmente en tu ciudad?", "¿Alguna vez le has pedido direcciones a un desconocido?"],
+    retelling: "Retell it in the past tense, and add one sentence saying what you would do differently." },
+
+  { id: "st08", title: "The Argument About the Party", titleEs: "El pleito por la fiesta", level: "intermediate-high",
+    paragraphs: [
+      { es: "Mi hermana quería hacer una fiesta enorme para el cumpleaños de mi mamá.", en: "My sister wanted to throw a huge party for my mom's birthday." },
+      { es: "Yo le dije que sería mejor algo pequeño, porque a mi mamá no le gusta ser el centro de atención.", en: "I told her something small would be better, because my mom doesn't like being the center of attention." },
+      { es: "Discutimos casi una semana entera sin ponernos de acuerdo.", en: "We argued for almost a whole week without reaching an agreement." },
+      { es: "Al final decidimos invitar solo a la familia y a cuatro amigas suyas.", en: "In the end we decided to invite only family and four of her friends." },
+      { es: "Mi mamá lloró cuando entró y vio a todos esperándola.", en: "My mom cried when she walked in and saw everyone waiting for her." },
+      { es: "Creo que si hubiéramos hecho la fiesta grande, no habría disfrutado igual.", en: "I think if we had thrown the big party, she wouldn't have enjoyed it the same way." }
+    ],
+    vocabReview: [{ w: "el pleito", en: "the argument, the quarrel (very common in Mexico)" }, { w: "ponerse de acuerdo", en: "to reach an agreement" }, { w: "el centro de atención", en: "the center of attention" }, { w: "disfrutar", en: "to enjoy" }],
+    comprehension: [
+      { q: "What did the sister want?", a: "Una fiesta enorme para el cumpleaños de su mamá." },
+      { q: "Why did the narrator disagree?", a: "Porque a su mamá no le gusta ser el centro de atención." },
+      { q: "What did they end up doing?", a: "Invitaron solo a la familia y a cuatro amigas." }
+    ],
+    speakingQuestions: ["Cuéntame de un desacuerdo que hayas tenido con alguien de tu familia.", "¿Prefieres las fiestas grandes o las reuniones pequeñas? ¿Por qué?", "¿Crees que fue la decisión correcta? Explica."],
+    retelling: "Retell the disagreement from your sister's point of view, defending her position." }
 ];
+
+// Ordered low → high so Story Mode always reads as a ladder, regardless of
+// the order stories were authored in. Stable sort keeps within-level order.
+const LEVEL_ORDER = [
+  "novice-low", "novice-mid", "novice-high",
+  "intermediate-low", "intermediate-mid", "intermediate-high", "advanced-low"
+];
+export const STORIES = RAW_STORIES
+  .slice()
+  .sort((a, b) => LEVEL_ORDER.indexOf(a.level) - LEVEL_ORDER.indexOf(b.level));
