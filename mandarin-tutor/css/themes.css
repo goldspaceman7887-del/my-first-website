@@ -12,6 +12,10 @@
   --shadow-lg: 0 16px 40px rgba(0,0,0,.16), 0 4px 12px rgba(0,0,0,.08);
   --sidebar-w: 260px;
   --topbar-h: 64px;
+  /* Actual on-screen topbar height once the iPhone notch/Dynamic Island
+     safe-area inset is added on top -- use this (not --topbar-h) for any
+     layout math that needs to sit below the topbar. */
+  --topbar-h-safe: calc(64px + env(safe-area-inset-top, 0px));
 
   --c-red: #c8102e;
   --c-gold: #d4a017;

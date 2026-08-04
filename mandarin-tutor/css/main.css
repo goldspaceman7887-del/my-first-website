@@ -1,7 +1,7 @@
 *, *::before, *::after { box-sizing: border-box; }
 html {
   -webkit-text-size-adjust: 100%;
-  scroll-padding-top: calc(var(--topbar-h) + 16px);
+  scroll-padding-top: calc(var(--topbar-h-safe) + 16px);
   font-size: 18px;
 }
 body {
@@ -23,6 +23,11 @@ button, .btn, a.btn, select, input[type="text"], input[type="search"], .option-b
   min-height: 44px;
 }
 
+/* iOS Safari auto-zooms the page when a focused input's font-size is
+   under 16px -- keep every text input/textarea/select at or above that
+   regardless of what a specific view sets, so typing never triggers it. */
+input, textarea, select { font-size: max(16px, 1rem); }
+
 .skip-link {
   position: absolute; left: -999px; top: 0; background: var(--accent); color: var(--accent-ink);
   padding: .75em 1.25em; z-index: 999; border-radius: 0 0 8px 0;
@@ -33,9 +38,9 @@ button, .btn, a.btn, select, input[type="text"], input[type="search"], .option-b
 
 /* ---------- Topbar ---------- */
 .topbar {
-  height: var(--topbar-h);
+  height: var(--topbar-h-safe);
   display: flex; align-items: center; gap: .75rem;
-  padding: 0 1rem;
+  padding: env(safe-area-inset-top, 0px) 1rem 0;
   background: var(--bg-elevated);
   border-bottom: 1px solid var(--border);
   position: sticky; top: 0; z-index: 40;
@@ -77,7 +82,7 @@ button, .btn, a.btn, select, input[type="text"], input[type="search"], .option-b
 .sidebar {
   width: var(--sidebar-w); flex-shrink: 0; background: var(--bg-elevated);
   border-right: 1px solid var(--border); display: flex; flex-direction: column;
-  position: sticky; top: var(--topbar-h); height: calc(100vh - var(--topbar-h)); overflow-y: auto;
+  position: sticky; top: var(--topbar-h-safe); height: calc(100vh - var(--topbar-h-safe)); overflow-y: auto;
 }
 .nav-list { list-style: none; margin: 0; padding: .75rem; display: flex; flex-direction: column; gap: .2rem; flex: 1; }
 .nav-list a {
@@ -94,13 +99,13 @@ button, .btn, a.btn, select, input[type="text"], input[type="search"], .option-b
 .nav-list a.active .nav-sub { color: var(--accent); opacity: .75; }
 .nav-divider { height: 1px; background: var(--border); margin: .5rem .4rem; }
 
-.sidebar-footer { padding: .9rem; border-top: 1px solid var(--border); }
+.sidebar-footer { padding: .9rem .9rem calc(.9rem + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--border); }
 .goal-widget .goal-label { font-size: .78rem; color: var(--text-muted); font-weight: 700; margin-bottom: .35rem; }
 .goal-widget .goal-text { font-size: .75rem; color: var(--text-faint); margin-top: .3rem; }
 
 .sidebar-scrim { display: none; }
 
-.view-root { flex: 1; min-width: 0; padding: 1.25rem 1.5rem 4rem; max-width: 1180px; margin: 0 auto; width: 100%; }
+.view-root { flex: 1; min-width: 0; padding: 1.25rem 1.5rem calc(4rem + env(safe-area-inset-bottom, 0px)); max-width: 1180px; margin: 0 auto; width: 100%; }
 
 /* ---------- Utility ---------- */
 .flex { display: flex; }
@@ -131,19 +136,22 @@ button, .btn, a.btn, select, input[type="text"], input[type="search"], .option-b
   .nav-toggle { display: flex; }
   .immersion-select { max-width: 40px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .sidebar {
-    position: fixed; left: 0; top: var(--topbar-h); height: calc(100vh - var(--topbar-h));
+    position: fixed; left: 0; top: var(--topbar-h-safe); height: calc(100vh - var(--topbar-h-safe));
     transform: translateX(-100%); transition: transform .25s ease; z-index: 50; box-shadow: var(--shadow-lg);
   }
   .sidebar.open { transform: translateX(0); }
   .sidebar-scrim.show {
-    display: block; position: fixed; inset: var(--topbar-h) 0 0 0; background: rgba(0,0,0,.4); z-index: 45;
+    display: block; position: fixed; inset: var(--topbar-h-safe) 0 0 0; background: rgba(0,0,0,.4); z-index: 45;
   }
-  .view-root { padding: 1rem 1rem 5rem; }
-  .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+  .view-root { padding: 1rem 1rem calc(5rem + env(safe-area-inset-bottom, 0px)); }
+  .grid-2 { grid-template-columns: 1fr; }
+  .grid-3, .grid-4 { grid-template-columns: repeat(2, 1fr); gap: .6rem; }
+  .card.stat-card { padding: .9rem; }
+  .grid-3 .stat-card .stat-value, .grid-4 .stat-card .stat-value { font-size: 1.4rem; }
   .topbar-stats { gap: .3rem; }
   .stat-chip { padding: .25rem .4rem; font-size: .74rem; }
   .brand-name { display: none; }
-  .topbar { padding: 0 .6rem; gap: .4rem; }
+  .topbar { padding-left: .6rem; padding-right: .6rem; gap: .4rem; }
 }
 
 @media (max-width: 560px) {
