@@ -22,6 +22,10 @@ function completedSet() {
   return new Set(store.state.progress.roadmapUnitsCompleted || []);
 }
 
+function skippedSet() {
+  return new Set(store.state.progress.roadmapUnitsSkipped || []);
+}
+
 function unitStatus(index, done) {
   if (done.has(ROADMAP_UNITS[index].id)) return "completed";
   if (index === 0 || done.has(ROADMAP_UNITS[index - 1].id)) return "unlocked";
@@ -174,15 +178,17 @@ export function renderRoadmap(container) {
 
   function showPath() {
     const done = completedSet();
+    const skipped = skippedSet();
     const level = currentLevel(done);
     const track = store.state.settings.roadmapTrack === "hsk" ? "hsk" : "actfl";
 
     body.appendChild(
       el("div", { class: "roadmap-progress-summary" }, [
         el("span", { class: "badge badge-gold" }, `${done.size} / ${ROADMAP_UNITS.length} units complete`),
+        skipped.size > 0 ? el("span", { class: "badge badge-default" }, `⏭ ${skipped.size} skipped`) : null,
         el("span", { class: "badge badge-level" }, track === "hsk" ? `Current tier: HSK ${hskForLevel(level.code)}` : `Current tier: ${level.label}`),
         el("div", { style: "flex:1" }, [progressBar(Math.round((done.size / ROADMAP_UNITS.length) * 100))])
-      ])
+      ].filter(Boolean))
     );
 
     const trackRow = el("div", { class: "level-pills" }, [
@@ -239,6 +245,7 @@ export function renderRoadmap(container) {
         );
       }
       const status = unitStatus(i, done);
+      const wasSkipped = skippedSet().has(unit.id);
       const side = i % 3 === 0 ? "" : i % 3 === 1 ? "offset-left" : "offset-right";
       const row = el("div", { class: `roadmap-node-row ${side}` }, [
         el(
@@ -246,10 +253,11 @@ export function renderRoadmap(container) {
           {
             class: `roadmap-node ${status}`,
             disabled: status === "locked" ? "true" : null,
+            title: wasSkipped ? "Skipped -- tap to go back and do it properly" : null,
             onclick: () => { if (status !== "locked") showUnit(unit); }
           },
           [
-            el("div", { class: "roadmap-node-circle" }, status === "locked" ? "🔒" : status === "completed" ? "✓" : unit.icon),
+            el("div", { class: "roadmap-node-circle" }, status === "locked" ? "🔒" : status === "completed" ? (wasSkipped ? "⏭" : "✓") : unit.icon),
             el("div", { class: "roadmap-node-label" }, unit.title)
           ]
         )
@@ -326,10 +334,29 @@ export function renderRoadmap(container) {
 
   function showUnit(unit) {
     body.innerHTML = "";
-    body.appendChild(el("button", { class: "btn btn-sm", onclick: render }, "← Roadmap"));
+    body.appendChild(
+      el("div", { class: "flex justify-between items-center flex-wrap gap-2" }, [
+        el("button", { class: "btn btn-sm", onclick: render }, "← Roadmap"),
+        el("button", { class: "btn btn-sm btn-ghost", onclick: skipUnit }, "⏭ Skip this unit for now")
+      ])
+    );
     body.appendChild(el("span", { class: "badge badge-level", style: "margin-top:.75rem;display:inline-block" }, ACTFL_LEVELS[levelIndex(unit.level)].label));
     body.appendChild(el("h2", { style: "margin-top:.4rem" }, `${unit.icon} ${unit.title} · ${unit.titleZh}`));
     runGrammarStep();
+
+    function skipUnit() {
+      if (!window.confirm(`Skip "${unit.title}" for now? It won't be added to your spaced-repetition review queue or earn XP, but the next unit will unlock. You can come back and do it properly anytime.`)) return;
+      blurActive();
+      const done = completedSet();
+      const skipped = skippedSet();
+      done.add(unit.id);
+      skipped.add(unit.id);
+      store.state.progress.roadmapUnitsCompleted = [...done];
+      store.state.progress.roadmapUnitsSkipped = [...skipped];
+      store.save();
+      toast("Unit skipped -- the next one is unlocked. Come back anytime from the roadmap.", { type: "info", icon: "⏭️" });
+      render();
+    }
 
     function stepHeader(n, total, label) {
       return el("p", { class: "text-faint" }, `Step ${n} of ${total} · ${label}`);
@@ -520,9 +547,17 @@ export function renderRoadmap(container) {
           ])
         );
         if (passed) {
-          const wasNew = !completedSet().has(unit.id);
+          const wasOnlySkipped = skippedSet().has(unit.id);
+          const wasNew = !completedSet().has(unit.id) || wasOnlySkipped;
           if (wasNew) {
-            store.state.progress.roadmapUnitsCompleted = [...completedSet(), unit.id];
+            const done = completedSet();
+            done.add(unit.id);
+            store.state.progress.roadmapUnitsCompleted = [...done];
+            if (wasOnlySkipped) {
+              const skipped = skippedSet();
+              skipped.delete(unit.id);
+              store.state.progress.roadmapUnitsSkipped = [...skipped];
+            }
             registerStudyToday();
             addXP(15, `Roadmap unit: ${unit.title}`);
             seedRoadmapReview(unit);

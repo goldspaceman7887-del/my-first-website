@@ -48,7 +48,8 @@ function defaultState() {
       charExposure: {}, // charId -> count
       vocabExposure: {}, // wordId -> count
       activeSentenceIds: [], // sentence ids currently "being studied"
-      roadmapUnitsCompleted: [], // roadmap unit ids completed, in the Duolingo-style path
+      roadmapUnitsCompleted: [], // roadmap unit ids completed (or skipped), in the Duolingo-style path
+      roadmapUnitsSkipped: [], // subset of roadmapUnitsCompleted that were skipped rather than actually finished
       charFlipIndex: 0, // resume position in the "flip through all characters" practice deck
       canDoChecked: [] // ids of self-assessed "I can..." statements the learner has checked off
     },
