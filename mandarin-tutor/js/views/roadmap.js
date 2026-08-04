@@ -9,11 +9,12 @@
 // forgotten.
 
 import { store, todayISO } from "../core/storage.js";
-import { el, blurActive, toast, progressBar } from "../core/ui.js";
+import { el, blurActive, toast, progressBar, downloadJSON } from "../core/ui.js";
 import { audioEngine } from "../core/audio.js";
 import { addXP, registerStudyToday } from "../core/gamification.js";
 import { gradeItem, QUALITY } from "../core/srs.js";
-import { ROADMAP_UNITS, ACTFL_LEVELS, levelIndex } from "../data/roadmap.js";
+import { ROADMAP_UNITS, ACTFL_LEVELS, levelIndex, HSK_LEVELS, hskForLevel, hskInfo } from "../data/roadmap.js";
+import { CAN_DO_STATEMENTS } from "../data/canDo.js";
 import { VOCABULARY } from "../data/vocabulary.js";
 import { findCharacter } from "../core/lookup.js";
 
@@ -56,20 +57,37 @@ function unitVocab(unit) {
   return { words, chars };
 }
 
-const STOPWORDS = new Set(["a", "an", "the", "is", "are", "am", "to", "i", "you", "he", "she", "it", "we", "they", "my", "your", "his", "her", "its", "our", "their", "and", "of", "in", "on", "at", "be", "do", "does", "for", "with"]);
-
-function normalizeWords(s) {
-  return String(s || "").toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter(Boolean);
+// Strips combining tone-mark diacritics so pinyin can be compared regardless
+// of whether the learner typed tone marks (nǐ hǎo) or plain letters (ni hao).
+function stripDiacritics(s) {
+  return String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+function normalizePinyinLoose(s) {
+  return stripDiacritics(s).toLowerCase().replace(/[^a-z]/g, "");
+}
+function normalizeChinese(s) {
+  return String(s || "").replace(/[，。？！,.?!、\s]/g, "");
 }
 
-// Lenient production check: at least half of the expected sentence's
-// non-trivial content words need to show up in what the learner typed.
-function lenientMatch(input, expected) {
-  const inputWords = new Set(normalizeWords(input));
-  const expectedWords = normalizeWords(expected).filter((w) => !STOPWORDS.has(w));
-  if (expectedWords.length === 0) return inputWords.size > 0;
-  const matched = expectedWords.filter((w) => inputWords.has(w)).length;
-  return matched / expectedWords.length >= 0.5;
+// Lenient Chinese production check: accepts an exact hanzi match, a plain
+// (tone-optional) pinyin match, or a near-exact hanzi match (most of the
+// expected characters present, similar length) so small typos still pass.
+function chineseMatch(input, expectedZh, expectedPy) {
+  const raw = String(input || "").trim();
+  if (!raw) return false;
+  const normInput = normalizeChinese(raw);
+  const normExpectedZh = normalizeChinese(expectedZh);
+  if (normInput === normExpectedZh) return true;
+
+  const hasCJK = /[\u4e00-\u9fff]/.test(raw);
+  if (!hasCJK) {
+    return normalizePinyinLoose(raw) === normalizePinyinLoose(expectedPy);
+  }
+
+  const expectedChars = [...normExpectedZh];
+  const inputChars = new Set([...normInput]);
+  const matched = expectedChars.filter((c) => inputChars.has(c)).length;
+  return expectedChars.length > 0 && matched / expectedChars.length >= 0.8 && Math.abs(normInput.length - normExpectedZh.length) <= 2;
 }
 
 // 8 exercises per attempt: 4 recognition MC, 1 grammar-specific drill,
@@ -105,35 +123,112 @@ function seedRoadmapReview(unit) {
 }
 
 export function renderRoadmap(container) {
+  const state = { view: "path" };
+
   container.appendChild(
     el("div", { class: "page-header" }, [
-      el("h1", {}, "🗺️ Roadmap"),
+      el("div", { class: "flex justify-between items-center flex-wrap gap-2" }, [
+        el("h1", {}, "🗺️ Roadmap"),
+        el(
+          "button",
+          {
+            class: "btn btn-sm",
+            title: "Download a backup of your progress",
+            onclick: () => {
+              downloadJSON("mandarin-tutor-progress.json", store.exportJSON());
+              toast("Progress saved to a file on your device.", { type: "success", icon: "💾" });
+            }
+          },
+          "💾 Save my progress"
+        )
+      ]),
       el("p", {}, "A path from zero to ACTFL Advanced High — Novice Low through Advanced High, one unit at a time. Each unit: the grammar point first, then the individual vocabulary it uses, then 8 full sentences in context, then an 8-exercise practice round before the next one unlocks."),
-      el("p", { class: "text-faint" }, "Passing a unit also adds it to your spaced-repetition Review queue, so it comes back later instead of being seen once and forgotten. A growing foundation, not a finished multi-year curriculum yet.")
+      el("p", { class: "text-faint" }, "Passing a unit also adds it to your spaced-repetition Review queue, so it comes back later instead of being seen once and forgotten. A growing foundation, not a finished multi-year curriculum yet."),
+      el("p", { class: "text-faint" }, "Your progress already saves automatically in this browser as you go. Tap \"Save my progress\" any time to download a backup file — keep it somewhere safe, or import it (in Settings) on another device to pick up where you left off.")
     ])
   );
 
+  const tabs = el("div", { class: "tabs" }, [tabBtn("path", "🗺️ Path"), tabBtn("candos", "✅ Can-Do Checklist")]);
+  container.appendChild(tabs);
+
   const body = el("div", {});
   container.appendChild(body);
-  showPath();
+
+  function tabBtn(id, label) {
+    const b = el("button", { class: `tab-btn ${state.view === id ? "active" : ""}`, onclick: () => setView(id) }, label);
+    b.dataset.viewId = id;
+    return b;
+  }
+  function setView(id) {
+    state.view = id;
+    tabs.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("active", b.dataset.viewId === id));
+    render();
+  }
+  function render() {
+    body.innerHTML = "";
+    if (state.view === "candos") showCanDo();
+    else showPath();
+  }
+
+  render();
 
   function showPath() {
-    body.innerHTML = "";
     const done = completedSet();
     const level = currentLevel(done);
+    const track = store.state.settings.roadmapTrack === "hsk" ? "hsk" : "actfl";
 
     body.appendChild(
       el("div", { class: "roadmap-progress-summary" }, [
         el("span", { class: "badge badge-gold" }, `${done.size} / ${ROADMAP_UNITS.length} units complete`),
-        el("span", { class: "badge badge-level" }, `Current tier: ${level.label}`),
+        el("span", { class: "badge badge-level" }, track === "hsk" ? `Current tier: HSK ${hskForLevel(level.code)}` : `Current tier: ${level.label}`),
         el("div", { style: "flex:1" }, [progressBar(Math.round((done.size / ROADMAP_UNITS.length) * 100))])
       ])
     );
 
+    const trackRow = el("div", { class: "level-pills" }, [
+      trackPill("actfl", "ACTFL levels"),
+      trackPill("hsk", "HSK 1–6")
+    ]);
+    body.appendChild(trackRow);
+    body.appendChild(
+      el(
+        "p",
+        { class: "text-faint", style: "margin-top:.4rem" },
+        track === "hsk"
+          ? "HSK bands here are an approximate correlation based on the grammar each unit teaches — there's no single official ACTFL↔HSK crosswalk, so treat this as a helpful guide rather than an exact equivalence."
+          : "Switch to HSK 1–6 if you're studying toward the HSK exam — the same units and progression, just grouped by HSK band instead of ACTFL sub-level."
+      )
+    );
+
+    function trackPill(id, label) {
+      const b = el(
+        "button",
+        {
+          class: `level-pill ${track === id ? "active" : ""}`,
+          onclick: () => { store.set("settings.roadmapTrack", id); render(); }
+        },
+        label
+      );
+      return b;
+    }
+
     const path = el("div", { class: "roadmap-path" });
     let lastLevel = null;
+    let lastHsk = null;
     ROADMAP_UNITS.forEach((unit, i) => {
-      if (unit.level !== lastLevel) {
+      if (track === "hsk") {
+        const hsk = hskForLevel(unit.level);
+        if (hsk !== lastHsk) {
+          lastHsk = hsk;
+          const info = hskInfo(hsk);
+          path.appendChild(
+            el("div", { class: "roadmap-tier-header" }, [
+              el("h3", {}, info.label),
+              el("p", { class: "text-faint" }, info.blurb)
+            ])
+          );
+        }
+      } else if (unit.level !== lastLevel) {
         lastLevel = unit.level;
         const tier = ACTFL_LEVELS[levelIndex(unit.level)];
         path.appendChild(
@@ -164,9 +259,74 @@ export function renderRoadmap(container) {
     body.appendChild(path);
   }
 
+  function showCanDo() {
+    const checked = new Set(store.state.progress.canDoChecked || []);
+    const track = store.state.settings.roadmapTrack === "hsk" ? "hsk" : "actfl";
+    const totalStatements = ACTFL_LEVELS.reduce((sum, l) => sum + CAN_DO_STATEMENTS[l.code].length, 0);
+
+    const overallBadge = el("span", { class: "badge badge-gold" }, `${checked.size} / ${totalStatements} checked off`);
+    const overallBar = progressBar(Math.round((checked.size / totalStatements) * 100));
+    body.appendChild(
+      el("div", { class: "roadmap-progress-summary" }, [overallBadge, el("div", { style: "flex:1" }, [overallBar])])
+    );
+    body.appendChild(
+      el("p", { class: "text-faint" }, "Self-assessment, not a test: check off a statement once you feel you can actually do it in a real conversation, not just recognize it on a flashcard. Written for this course, not copied from any official ACTFL document.")
+    );
+
+    function refreshOverall() {
+      const n = (store.state.progress.canDoChecked || []).length;
+      overallBadge.textContent = `${n} / ${totalStatements} checked off`;
+      overallBar.querySelector(".progress-bar-fill").style.width = `${Math.round((n / totalStatements) * 100)}%`;
+    }
+
+    ACTFL_LEVELS.forEach((tier) => {
+      const statements = CAN_DO_STATEMENTS[tier.code] || [];
+      const levelDone = statements.filter((s) => checked.has(s.id)).length;
+      const heading = track === "hsk" ? `${tier.label} · HSK ${hskForLevel(tier.code)}` : tier.label;
+
+      const levelBadge = el("span", { class: "badge badge-default" }, `${levelDone} / ${statements.length}`);
+      function refreshLevelBadge() {
+        const n = statements.filter((s) => (store.state.progress.canDoChecked || []).includes(s.id)).length;
+        levelBadge.textContent = `${n} / ${statements.length}`;
+      }
+
+      const card = el("div", { class: "card", style: "margin-top:1rem" });
+      card.appendChild(
+        el("div", { class: "flex justify-between items-center flex-wrap gap-2" }, [
+          el("h3", { class: "card-title" }, heading),
+          levelBadge
+        ])
+      );
+      card.appendChild(el("p", { class: "text-faint", style: "margin-top:.2rem" }, tier.blurb));
+
+      statements.forEach((s) => {
+        const isChecked = checked.has(s.id);
+        const row = el("label", { class: "candoItem", style: "display:flex;align-items:flex-start;gap:.6rem;margin-top:.6rem;cursor:pointer" });
+        const box = el("input", { type: "checkbox" });
+        box.checked = isChecked;
+        box.addEventListener("change", () => {
+          const set = new Set(store.state.progress.canDoChecked || []);
+          if (box.checked) set.add(s.id);
+          else set.delete(s.id);
+          store.state.progress.canDoChecked = [...set];
+          store.save();
+          row.classList.toggle("is-checked", box.checked);
+          refreshLevelBadge();
+          refreshOverall();
+        });
+        row.classList.toggle("is-checked", isChecked);
+        row.appendChild(box);
+        row.appendChild(el("span", {}, s.text));
+        card.appendChild(row);
+      });
+
+      body.appendChild(card);
+    });
+  }
+
   function showUnit(unit) {
     body.innerHTML = "";
-    body.appendChild(el("button", { class: "btn btn-sm", onclick: showPath }, "← Roadmap"));
+    body.appendChild(el("button", { class: "btn btn-sm", onclick: render }, "← Roadmap"));
     body.appendChild(el("span", { class: "badge badge-level", style: "margin-top:.75rem;display:inline-block" }, ACTFL_LEVELS[levelIndex(unit.level)].label));
     body.appendChild(el("h2", { style: "margin-top:.4rem" }, `${unit.icon} ${unit.title} · ${unit.titleZh}`));
     runGrammarStep();
@@ -316,15 +476,13 @@ export function renderRoadmap(container) {
           ));
           practiceWrap.appendChild(options);
         } else {
-          // typed production: listen/read the Chinese, type the English meaning
+          // typed production: given the English meaning, produce the Chinese
+          // sentence yourself -- typed as characters (if you have a Chinese
+          // keyboard/IME) or as plain pinyin without tone marks, either works.
           practiceWrap.appendChild(el("div", { class: "badge badge-gold" }, "✍️ Your turn"));
-          practiceWrap.appendChild(el("div", { class: "flex justify-between items-center", style: "margin-top:.4rem" }, [
-            el("p", { class: "exercise-prompt hanzi" }, q.zh),
-            el("button", { class: "play-btn", style: "width:34px;height:34px", onclick: () => audioEngine.speak(q.zh) }, "🔊")
-          ]));
-          practiceWrap.appendChild(el("p", { class: "text-faint" }, q.py));
-          practiceWrap.appendChild(el("p", { class: "text-muted" }, "Type what this means in English."));
-          const input = el("input", { type: "text", placeholder: "Type the English meaning..." });
+          practiceWrap.appendChild(el("p", { class: "exercise-prompt", style: "margin-top:.4rem" }, q.expected));
+          practiceWrap.appendChild(el("p", { class: "text-muted" }, "Type this in Chinese -- characters or plain pinyin (tones optional) both work."));
+          const input = el("input", { type: "text", placeholder: "你好 or nihao..." });
           input.style.cssText = "width:100%;padding:.65rem .9rem;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:1rem;";
           const submit = el("button", { class: "btn btn-primary", style: "margin-top:.6rem", onclick: check }, "Check");
           input.addEventListener("keydown", (e) => { if (e.key === "Enter") check(); });
@@ -337,9 +495,14 @@ export function renderRoadmap(container) {
             if (!text) { toast("Type your answer first.", { type: "error" }); return; }
             input.disabled = true;
             submit.disabled = true;
-            const isCorrect = lenientMatch(text, q.expected);
+            const isCorrect = chineseMatch(text, q.zh, q.py);
             const feedback = el("div", { class: `feedback-block ${isCorrect ? "correct" : "incorrect"}`, style: "margin-top:.6rem" }, [
-              el("p", {}, isCorrect ? "Nice — that's right!" : `Close — expected something like: "${q.expected}"`)
+              el("p", {}, isCorrect ? "Nice — that's right!" : "Close — here's the sentence:"),
+              el("div", { class: "flex justify-between items-center", style: "margin-top:.3rem" }, [
+                el("p", { class: "hanzi" }, q.zh),
+                el("button", { class: "play-btn", style: "width:30px;height:30px", onclick: () => audioEngine.speak(q.zh) }, "🔊")
+              ]),
+              el("p", { class: "text-faint" }, q.py)
             ]);
             markResult(isCorrect, feedback);
           }
@@ -366,7 +529,7 @@ export function renderRoadmap(container) {
             store.save();
             toast("Unit complete! +15 XP · added to your Review queue", { type: "xp", icon: "⚡" });
           }
-          practiceWrap.appendChild(el("button", { class: "btn btn-primary", style: "margin-top:.75rem", onclick: showPath }, "Back to roadmap"));
+          practiceWrap.appendChild(el("button", { class: "btn btn-primary", style: "margin-top:.75rem", onclick: render }, "Back to roadmap"));
         } else {
           practiceWrap.appendChild(
             el("div", { class: "btn-row", style: "margin-top:.75rem" }, [

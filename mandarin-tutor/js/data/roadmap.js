@@ -24,6 +24,40 @@ export function levelIndex(code) {
   return ACTFL_LEVELS.findIndex((l) => l.code === code);
 }
 
+// Approximate ACTFL <-> HSK correlation. There is no official crosswalk
+// between the two scales -- this mapping groups each ACTFL sub-level under
+// the classic HSK 1-6 band whose grammar scope it's closest to, based on
+// what's actually taught in each unit below. Treat it as a rough guide for
+// HSK-oriented learners, not an authoritative equivalence.
+export const HSK_LEVELS = [
+  { level: 1, label: "HSK 1", blurb: "Greetings, identity, family, numbers, dates, and basic daily-life sentences." },
+  { level: 2, label: "HSK 2", blurb: "Making plans, simple past/duration with 了, permission, everyday questions." },
+  { level: 3, label: "HSK 3", blurb: "Locations, directions, weather, health, and giving advice with more connectors." },
+  { level: 4, label: "HSK 4", blurb: "Past experience, opinions, contrast (虽然...但是...), and the 被 passive." },
+  { level: 5, label: "HSK 5", blurb: "Narration, argument structure, and hypothetical (假如/要是...的话) sentences." },
+  { level: 6, label: "HSK 6", blurb: "Abstract, professional, and formal register: concession, nuanced comparison." }
+];
+
+const ACTFL_TO_HSK = {
+  "novice-low": 1,
+  "novice-mid": 1,
+  "novice-high": 2,
+  "intermediate-low": 2,
+  "intermediate-mid": 3,
+  "intermediate-high": 4,
+  "advanced-low": 5,
+  "advanced-mid": 5,
+  "advanced-high": 6
+};
+
+export function hskForLevel(actflCode) {
+  return ACTFL_TO_HSK[actflCode] || 1;
+}
+
+export function hskInfo(hskLevel) {
+  return HSK_LEVELS.find((h) => h.level === hskLevel) || HSK_LEVELS[0];
+}
+
 export const ROADMAP_UNITS = [
   { id: "r01", title: "Greetings & Introductions", titleZh: "问候和自我介绍", level: "novice-low", icon: "👋",
     sentences: [

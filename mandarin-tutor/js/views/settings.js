@@ -1,5 +1,5 @@
 import { store } from "../core/storage.js";
-import { el, toast } from "../core/ui.js";
+import { el, toast, downloadJSON } from "../core/ui.js";
 import { audioEngine } from "../core/audio.js";
 
 function field(labelText, inputEl) {
@@ -74,7 +74,10 @@ export function renderSettings(container) {
   });
   card.appendChild(field("Theme", themeSelect));
 
-  const dataCard = el("div", { class: "card", style: "margin-top:1rem" }, [el("h3", { class: "card-title" }, "Your data")]);
+  const dataCard = el("div", { class: "card", style: "margin-top:1rem" }, [
+    el("h3", { class: "card-title" }, "Your data"),
+    el("p", { class: "text-muted" }, "Your progress is saved automatically in this browser as you go — no action needed. To back it up or move it to another device or browser, download a save file below and import it there.")
+  ]);
   container.appendChild(dataCard);
 
   dataCard.appendChild(
@@ -82,15 +85,7 @@ export function renderSettings(container) {
       "button",
       {
         class: "btn",
-        onclick: () => {
-          const blob = new Blob([store.exportJSON()], { type: "application/json" });
-          const url = URL.createObjectURL(blob);
-          const a = el("a", { href: url, download: "mandarin-tutor-progress.json" });
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
-          URL.revokeObjectURL(url);
-        }
+        onclick: () => downloadJSON("mandarin-tutor-progress.json", store.exportJSON())
       },
       "⬇️ Export progress"
     )
