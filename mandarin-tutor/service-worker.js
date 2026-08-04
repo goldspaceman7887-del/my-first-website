@@ -1,4 +1,4 @@
-const CACHE_NAME = "mzh-cache-v12";
+const CACHE_NAME = "mzh-cache-v13";
 
 const PRECACHE_URLS = [
   "./",
@@ -63,6 +63,9 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+// Every lookup below is scoped to the current CACHE_NAME (via caches.open,
+// never the global caches.match) so a stale entry sitting in an older,
+// not-yet-deleted cache can never shadow this version's content.
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") return;
@@ -70,7 +73,7 @@ self.addEventListener("fetch", (event) => {
   // Navigations: prefer fresh HTML when online, fall back to the cached shell offline.
   if (req.mode === "navigate") {
     event.respondWith(
-      fetch(req).catch(() => caches.match("index.html"))
+      fetch(req).catch(() => caches.open(CACHE_NAME).then((cache) => cache.match("index.html")))
     );
     return;
   }
@@ -78,17 +81,18 @@ self.addEventListener("fetch", (event) => {
   // Everything else: cache-first (this app has no external API calls), with
   // a background network fetch to keep the cache warm for same-origin assets.
   event.respondWith(
-    caches.match(req).then((cached) => {
-      if (cached) return cached;
-      return fetch(req)
-        .then((res) => {
-          if (res && res.ok && req.url.startsWith(self.location.origin)) {
-            const copy = res.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
-          }
-          return res;
-        })
-        .catch(() => caches.match("index.html"));
-    })
+    caches.open(CACHE_NAME).then((cache) =>
+      cache.match(req).then((cached) => {
+        if (cached) return cached;
+        return fetch(req)
+          .then((res) => {
+            if (res && res.ok && req.url.startsWith(self.location.origin)) {
+              cache.put(req, res.clone());
+            }
+            return res;
+          })
+          .catch(() => cache.match("index.html"));
+      })
+    )
   );
 });
