@@ -136,6 +136,7 @@ registerRoute("dialogues/:id", renderDialogueDetail);
 registerRoute("practice", renderPractice);
 registerRoute("practice/:tab", renderPractice);
 registerRoute("review", renderReview);
+registerRoute("review/:tab", renderReview);
 registerRoute("save", renderSaveProgress);
 registerRoute("achievements", renderAchievements);
 registerRoute("settings", renderSettings);

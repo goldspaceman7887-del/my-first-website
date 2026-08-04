@@ -61,6 +61,21 @@ export function gradeItem(itemId, type, quality) {
   return item;
 }
 
+// Grading something you chose to revisit early, rather than something the
+// schedule served you. Getting it right must never pull the due date closer —
+// that would punish you for staying on top of your vocabulary. Getting it
+// wrong is real evidence you've forgotten it, so that reschedules as normal.
+export function gradeAhead(itemId, type, quality) {
+  const existing = store.state.srs[itemId];
+  const priorNext = existing ? existing.nextReview : null;
+  gradeItem(itemId, type, quality);
+  const item = store.state.srs[itemId];
+  if (quality >= 3 && priorNext !== null && item.nextReview < priorNext) {
+    item.nextReview = priorNext;
+  }
+  return item;
+}
+
 export function getItem(itemId) {
   return store.state.srs[itemId] || null;
 }
