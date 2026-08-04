@@ -23,6 +23,7 @@ import { addXP, registerStudyToday, updateSkillScore } from "../core/gamificatio
 import { gradeItem, QUALITY, masteryLevel, isDue } from "../core/srs.js";
 import { getHearts, loseHeart, hasHearts, refillHeartsFully, minutesUntilNextHeart, MAX_HEARTS } from "../core/hearts.js";
 import { ACTFL_LEVELS, ROADMAP_UNITS, levelIndex } from "../data/roadmap.js";
+import { tappable, initTapWords } from "../core/tapword.js";
 
 const PASS_THRESHOLD = 7; // out of 10
 
@@ -414,6 +415,7 @@ export function buildQuiz(unit) {
 }
 
 export function renderRoadmap(container) {
+  const teardownTapWords = initTapWords();
   let tab = "path";
 
   container.appendChild(
@@ -831,8 +833,9 @@ export function renderRoadmap(container) {
         card.appendChild(
           el("div", { style: "padding:.55rem 0;border-bottom:1px solid var(--border)" }, [
             el("div", { class: "flex justify-between items-center", style: "gap:.5rem" }, [
-              el("span", { class: "es-text", style: "font-size:1.05rem" }, s.es),
-              el("button", { class: "play-btn", style: "width:34px;height:34px", onclick: () => audioEngine.speak(s.es) }, "🔊")
+              // Tap any word for its meaning, same as in Story Mode.
+              tappable(s.es, "unit-sentence"),
+              el("button", { class: "play-btn", style: "width:34px;height:34px;flex-shrink:0", onclick: () => audioEngine.speak(s.es) }, "🔊")
             ]),
             el("div", { class: "text-muted", style: "font-size:.9rem" }, s.en)
           ])
@@ -1044,4 +1047,7 @@ export function renderRoadmap(container) {
   }
 
   render();
+  // The gloss popup is appended to document.body, so it must be removed when
+  // you navigate away from the roadmap.
+  return teardownTapWords;
 }

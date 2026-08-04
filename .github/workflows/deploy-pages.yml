@@ -18,7 +18,26 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Gate the deploy on the Spanish tutor's regression suite. A broken build
+  # reaching Pages is worse than a slightly slower deploy — the app is shared
+  # with real learners and stores their progress locally.
+  test-spanish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: mexican-spanish-tutor
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - run: npm test
+
   build:
+    needs: test-spanish
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

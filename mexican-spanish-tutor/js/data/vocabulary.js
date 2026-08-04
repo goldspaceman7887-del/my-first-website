@@ -1,4 +1,15 @@
-// ~100 high-frequency Mexican Spanish words/expressions across the tutor
+// VOCABULARY — 1,000 Mexican Spanish words and expressions.
+//
+// Two tiers, deliberately. The 70 DEEP entries below carry the full treatment:
+// usage essay, collocations, a mini-dialogue, a speaking prompt and a review
+// question. They are the highest-value expressions, where the nuance is worth
+// the space.
+//
+// The other 930 live in vocabularyCore.js in a compact shape and are expanded
+// here. Their pronunciation is generated from the spelling by spanishIPA,
+// which is validated against all 70 hand-written transcriptions below.
+//
+// The original 70 high-frequency words/expressions across the tutor
 // spec's FREQUENCY PRIORITY order: greetings, questions, family, food,
 // shopping, directions, daily routines, work, friends, travel, opinions.
 // Each entry follows the VOCABULARY FORMAT + "WHEN I GIVE YOU A WORD" shape:
@@ -6,9 +17,12 @@
 // example sentences, a mini-dialogue, a speaking prompt, and a review
 // question. register is one of "formal" | "informal" | "slang".
 
-export const VOCABULARY = [
+import { CORE_VOCAB } from "./vocabularyCore.js";
+import { spanishIPA } from "./spanishIPA.js";
+
+const DEEP = [
   // ---------- Greetings ----------
-  { id: "v001", word: "¿Qué onda?", ipa: "ke ˈon.da", meaning: "What's up?", category: "greetings", register: "slang",
+  { id: "v001", word: "¿Qué onda?", ipa: "ˈke ˈon.da", meaning: "What's up?", category: "greetings", register: "slang",
     usageNote: "Extremely common casual greeting in Mexico among friends and peers. Not used with strangers, elders, or in formal settings.",
     collocations: [{ w: "¿Qué onda, güey?", en: "What's up, dude?" }, { w: "¿Qué onda con eso?", en: "What's the deal with that?" }],
     sentences: [{ es: "¿Qué onda, cómo te fue?", en: "What's up, how'd it go?" }, { es: "¿Qué onda con la fiesta del sábado?", en: "What's the deal with Saturday's party?" }],
@@ -80,7 +94,7 @@ export const VOCABULARY = [
     reviewQ: { prompt: "Why is 'ahorita' famous among Spanish learners?", answer: "It can mean anything from 'right now' to 'eventually, maybe' — pure vibes-based timing." } },
 
   // ---------- Questions ----------
-  { id: "v011", word: "¿Cómo te llamas?", ipa: "ˈko.mo te ˈʎa.mas", meaning: "What's your name?", category: "questions", register: "informal",
+  { id: "v011", word: "¿Cómo te llamas?", ipa: "ˈko.mo te ˈʝa.mas", meaning: "What's your name?", category: "questions", register: "informal",
     usageNote: "Use ¿cómo se llama usted? with strangers/elders.",
     collocations: [{ w: "Me llamo...", en: "My name is..." }],
     sentences: [{ es: "¿Cómo te llamas? — Me llamo Pablo.", en: "What's your name? — My name is Pablo." }, { es: "¿Cómo se llama usted?", en: "What's your name? (formal)" }],
@@ -94,7 +108,7 @@ export const VOCABULARY = [
     dialogue: [{ spk: "A", es: "¿De dónde eres?", en: "Where are you from?" }, { spk: "B", es: "Soy de Puebla, ¿y tú?", en: "I'm from Puebla, and you?" }],
     speakingPrompt: "Ask someone where they're from and tell them where you're from.",
     reviewQ: { prompt: "Translate: 'I'm from the United States.'", answer: "Soy de Estados Unidos." } },
-  { id: "v013", word: "¿Qué hora es?", ipa: "ke ˈo.ɾa es", meaning: "What time is it?", category: "questions", register: "informal",
+  { id: "v013", word: "¿Qué hora es?", ipa: "ˈke ˈo.ɾa es", meaning: "What time is it?", category: "questions", register: "informal",
     usageNote: "Very common daily-life question.",
     collocations: [{ w: "Son las tres", en: "It's three o'clock" }, { w: "Es la una", en: "It's one o'clock" }],
     sentences: [{ es: "¿Qué hora es? — Son las cinco.", en: "What time is it? — It's five o'clock." }, { es: "¿Tienes hora?", en: "Do you have the time? (casual alt.)" }],
@@ -115,14 +129,14 @@ export const VOCABULARY = [
     dialogue: [{ spk: "A", es: "No voy a ir a la fiesta.", en: "I'm not going to the party." }, { spk: "B", es: "¿Por qué no?", en: "Why not?" }],
     speakingPrompt: "Ask a friend why they missed class yesterday.",
     reviewQ: { prompt: "What's the difference between por qué and porque?", answer: "Por qué = 'why' (question); porque = 'because' (answer)." } },
-  { id: "v016", word: "¿Qué edad tienes?", ipa: "ke e.ˈðað ˈtje.nes", meaning: "How old are you?", category: "questions", register: "informal",
+  { id: "v016", word: "¿Qué edad tienes?", ipa: "ˈke e.ˈðað ˈtje.nes", meaning: "How old are you?", category: "questions", register: "informal",
     usageNote: "Also very common: ¿cuántos años tienes?",
     collocations: [{ w: "Tengo ... años", en: "I am ... years old" }],
     sentences: [{ es: "¿Cuántos años tienes?", en: "How old are you?" }, { es: "Tengo veintiocho años.", en: "I'm 28 years old." }],
     dialogue: [{ spk: "A", es: "¿Qué edad tiene tu hermano?", en: "How old is your brother?" }, { spk: "B", es: "Tiene diecinueve.", en: "He's 19." }],
     speakingPrompt: "Ask someone's age and state your own age.",
     reviewQ: { prompt: "Why does Spanish use 'tener' (to have) for age instead of 'ser' (to be)?", answer: "It's an idiom — literally 'I have 28 years,' unlike English 'I am 28.'" } },
-  { id: "v017", word: "¿Qué tal?", ipa: "ke tal", meaning: "How's it going?", category: "questions", register: "informal",
+  { id: "v017", word: "¿Qué tal?", ipa: "ˈke tal", meaning: "How's it going?", category: "questions", register: "informal",
     usageNote: "Shorter, more casual version of ¿cómo estás?",
     collocations: [{ w: "¿Qué tal todo?", en: "How's everything?" }, { w: "¿Qué tal la escuela?", en: "How's school?" }],
     sentences: [{ es: "¿Qué tal tu viaje?", en: "How was your trip?" }, { es: "¿Qué tal, cómo va todo?", en: "Hey, how's everything going?" }],
@@ -282,7 +296,7 @@ export const VOCABULARY = [
     dialogue: [{ spk: "A", es: "¿Cómo va a pagar?", en: "How will you be paying?" }, { spk: "B", es: "En efectivo, por favor.", en: "In cash, please." }],
     speakingPrompt: "Ask a shop whether it accepts cards before you order.",
     reviewQ: { prompt: "Why should you often ask '¿aceptan tarjeta?' in Mexico?", answer: "Because many small businesses/markets are cash-only." } },
-  { id: "v039", word: "llevar", ipa: "ʎe.ˈβaɾ", meaning: "to take / to buy (colloquial)", category: "shopping", register: "informal",
+  { id: "v039", word: "llevar", ipa: "ʝe.ˈβaɾ", meaning: "to take / to buy (colloquial)", category: "shopping", register: "informal",
     usageNote: "Commonly used when deciding to purchase something: 'me lo llevo' = I'll take it.",
     collocations: [{ w: "me lo llevo", en: "I'll take it" }, { w: "¿se lo lleva?", en: "will you be taking it?" }],
     sentences: [{ es: "Me llevo estos dos, por favor.", en: "I'll take these two, please." }, { es: "¿Se los lleva o se los envuelvo?", en: "Are you taking them, or should I wrap them?" }],
@@ -372,7 +386,7 @@ export const VOCABULARY = [
     reviewQ: { prompt: "Conjugate 'acostarse' for 'yo' — note the stem change.", answer: "Me acuesto." } },
 
   // ---------- Work ----------
-  { id: "v051", word: "¿A qué te dedicas?", ipa: "a ke te de.ˈði.kas", meaning: "What do you do for work?", category: "work", register: "informal",
+  { id: "v051", word: "¿A qué te dedicas?", ipa: "a ˈke te de.ˈði.kas", meaning: "What do you do for work?", category: "work", register: "informal",
     usageNote: "The natural, most common way to ask someone's profession — more common than '¿cuál es tu trabajo?'.",
     collocations: [{ w: "me dedico a...", en: "I work in / I do..." }],
     sentences: [{ es: "¿A qué te dedicas?", en: "What do you do for a living?" }, { es: "Me dedico a la contabilidad.", en: "I work in accounting." }],
@@ -416,7 +430,7 @@ export const VOCABULARY = [
     dialogue: [{ spk: "A", es: "¿Quién es ese cuate?", en: "Who's that guy (buddy)?" }, { spk: "B", es: "Es mi amigo de la infancia.", en: "He's my childhood friend." }],
     speakingPrompt: "Describe your best friend and how you met.",
     reviewQ: { prompt: "What does 'cuate' mean in Mexican slang?", answer: "Buddy/pal (friend)." } },
-  { id: "v057", word: "llevarse bien", ipa: "ʎe.ˈβaɾ.se bjen", meaning: "to get along well", category: "friends", register: "informal",
+  { id: "v057", word: "llevarse bien", ipa: "ʝe.ˈβaɾ.se bjen", meaning: "to get along well", category: "friends", register: "informal",
     usageNote: "Reflexive; llevarse mal = to not get along.",
     collocations: [{ w: "nos llevamos súper bien", en: "we get along super well" }, { w: "llevarse mal con alguien", en: "to not get along with someone" }],
     sentences: [{ es: "Me llevo muy bien con mis compañeros de trabajo.", en: "I get along really well with my coworkers." }, { es: "Al principio no nos llevábamos bien.", en: "At first we didn't get along." }],
@@ -519,3 +533,26 @@ export const VOCABULARY = [
     speakingPrompt: "Explain that a topic is more complicated than it first appears.",
     reviewQ: { prompt: "Translate: 'more complicated than it seems at first glance'", answer: "Más complicado de lo que parece a primera vista." } }
 ];
+
+// Compact entries get the same shape as the deep ones so every consumer — the
+// Learn view, Review, the SRS — can treat them identically. Fields nobody
+// authored come back empty rather than undefined, which is what the detail
+// view guards on.
+function expand(e) {
+  return {
+    id: e.id,
+    word: e.w,
+    ipa: spanishIPA(e.w),
+    meaning: e.en,
+    category: e.cat,
+    register: e.reg || "neutral",
+    usageNote: e.note || "",
+    collocations: [],
+    sentences: e.ex ? [{ es: e.ex[0], en: e.ex[1] }] : [],
+    dialogue: [],
+    speakingPrompt: "",
+    reviewQ: null
+  };
+}
+
+export const VOCABULARY = [...DEEP, ...CORE_VOCAB.map(expand)];

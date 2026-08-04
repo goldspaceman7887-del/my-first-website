@@ -27,29 +27,42 @@ function wordDetail(v) {
   );
   wrap.appendChild(el("div", { class: "ipa-lg" }, `/${v.ipa}/`));
   wrap.appendChild(el("p", {}, [el("strong", {}, v.meaning), " ", registerBadge(v.register)]));
-  wrap.appendChild(el("div", { class: "usage-note" }, v.usageNote));
+  // Only the 70 deep entries carry every section. The other 930 are
+  // dictionary-style, so each block appears only if that word actually has
+  // one — an empty "Mini-dialogue" heading is worse than no heading.
+  if (v.usageNote) wrap.appendChild(el("div", { class: "usage-note" }, v.usageNote));
 
-  wrap.appendChild(el("h4", { style: "margin-top:1rem" }, "Common expressions"));
-  wrap.appendChild(el("div", {}, v.collocations.map((c) => el("p", {}, [el("span", { class: "es-text" }, c.w), el("span", { class: "text-muted" }, ` — ${c.en}`)]))));
+  if (v.collocations && v.collocations.length) {
+    wrap.appendChild(el("h4", { style: "margin-top:1rem" }, "Common expressions"));
+    wrap.appendChild(el("div", {}, v.collocations.map((c) => el("p", {}, [el("span", { class: "es-text" }, c.w), el("span", { class: "text-muted" }, ` — ${c.en}`)]))));
+  }
 
-  wrap.appendChild(el("h4", { style: "margin-top:1rem" }, "Example sentences"));
-  wrap.appendChild(
-    el("div", {}, v.sentences.map((s) => el("p", {}, [el("span", { class: "es-text" }, s.es), el("br"), el("span", { class: "text-muted" }, s.en)])))
-  );
+  if (v.sentences && v.sentences.length) {
+    wrap.appendChild(el("h4", { style: "margin-top:1rem" }, v.sentences.length > 1 ? "Example sentences" : "Example"));
+    wrap.appendChild(
+      el("div", {}, v.sentences.map((s) => el("p", {}, [el("span", { class: "es-text" }, s.es), el("br"), el("span", { class: "text-muted" }, s.en)])))
+    );
+  }
 
-  wrap.appendChild(el("h4", { style: "margin-top:1rem" }, "Mini-dialogue"));
-  wrap.appendChild(el("div", {}, v.dialogue.map((l) => el("p", {}, [el("strong", {}, `${l.spk}: `), el("span", { class: "es-text" }, l.es), el("span", { class: "text-muted" }, ` (${l.en})`)]))));
+  if (v.dialogue && v.dialogue.length) {
+    wrap.appendChild(el("h4", { style: "margin-top:1rem" }, "Mini-dialogue"));
+    wrap.appendChild(el("div", {}, v.dialogue.map((l) => el("p", {}, [el("strong", {}, `${l.spk}: `), el("span", { class: "es-text" }, l.es), el("span", { class: "text-muted" }, ` (${l.en})`)]))));
+  }
 
-  wrap.appendChild(el("h4", { style: "margin-top:1rem" }, "Speaking practice"));
-  wrap.appendChild(el("p", { class: "text-muted" }, v.speakingPrompt));
+  if (v.speakingPrompt) {
+    wrap.appendChild(el("h4", { style: "margin-top:1rem" }, "Speaking practice"));
+    wrap.appendChild(el("p", { class: "text-muted" }, v.speakingPrompt));
+  }
 
-  wrap.appendChild(el("h4", { style: "margin-top:1rem" }, "Review question"));
-  const revealBtn = el("button", { class: "btn btn-sm" }, "Reveal answer");
-  const answer = el("p", { class: "text-muted hidden" }, v.reviewQ.answer);
-  revealBtn.addEventListener("click", () => { answer.classList.toggle("hidden"); });
-  wrap.appendChild(el("p", {}, v.reviewQ.prompt));
-  wrap.appendChild(revealBtn);
-  wrap.appendChild(answer);
+  if (v.reviewQ && v.reviewQ.prompt) {
+    wrap.appendChild(el("h4", { style: "margin-top:1rem" }, "Review question"));
+    const revealBtn = el("button", { class: "btn btn-sm" }, "Reveal answer");
+    const answer = el("p", { class: "text-muted hidden" }, v.reviewQ.answer);
+    revealBtn.addEventListener("click", () => { answer.classList.toggle("hidden"); });
+    wrap.appendChild(el("p", {}, v.reviewQ.prompt));
+    wrap.appendChild(revealBtn);
+    wrap.appendChild(answer);
+  }
 
   return wrap;
 }
