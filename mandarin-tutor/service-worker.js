@@ -1,4 +1,4 @@
-const CACHE_NAME = "mzh-cache-v5";
+const CACHE_NAME = "mzh-cache-v6";
 
 const PRECACHE_URLS = [
   "./",
@@ -31,6 +31,7 @@ const PRECACHE_URLS = [
   "js/data/vocabulary.js",
   "js/views/achievements.js",
   "js/views/characters.js",
+  "js/views/charVocab.js",
   "js/views/correction.js",
   "js/views/dailyLesson.js",
   "js/views/dashboard.js",
