@@ -130,7 +130,7 @@ export function renderDashboard(container) {
     el("p", { class: "text-muted" }, !tested
       ? "Take the two-minute Level Test so the roadmap starts in the right place."
       : nextUnit
-        ? `${nextUnit.icon} ${nextUnit.subtitle} — 8 sentences, a grammar note, then a 10-question quiz.`
+        ? `${nextUnit.icon} ${nextUnit.subtitle} — 8 sentences, a grammar note, then a 10-question unit test.`
         : "You've finished every unit. Keep sharp with Review and Practice."),
     el("div", { class: "btn-row", style: "margin-top:.5rem" }, [
       !tested ? el("a", { class: "btn btn-primary", href: "#/level-test" }, "📊 Take the Level Test") : null,

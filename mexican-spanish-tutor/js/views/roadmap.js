@@ -1,9 +1,13 @@
 // ROADMAP — a Duolingo-style path across all 7 ACTFL levels this app
 // targets. Units unlock in order. Every unit, at every level, runs the same
-// loop: learn 8 sentences → read the grammar note → take a 10-question quiz
-// played with hearts (stakes). Wrong answers cost a heart; running out ends
-// the attempt early and you retry. Passing marks the unit complete, awards
-// XP, and unlocks the next node.
+// loop: learn 8 sentences → read the grammar note → take a 10-question unit
+// test played with hearts (stakes). Wrong answers cost a heart; running out
+// ends the attempt early and you retry. Passing marks the unit complete,
+// awards XP, and unlocks the next node.
+//
+// The unit test is cumulative: three of its ten questions come from units you
+// already passed, so grammar and vocabulary keep circling back instead of
+// being tested once and forgotten.
 //
 // The second tab is the ACTFL Can-Do checklist, which feeds the level
 // estimate on the dashboard.
@@ -12,11 +16,22 @@ import { store } from "../core/storage.js";
 import { el, progressBar, blurActive, toast, confettiBurst } from "../core/ui.js";
 import { audioEngine } from "../core/audio.js";
 import { addXP, registerStudyToday, updateSkillScore } from "../core/gamification.js";
-import { gradeItem, QUALITY } from "../core/srs.js";
+import { gradeItem, QUALITY, masteryLevel, isDue } from "../core/srs.js";
 import { getHearts, loseHeart, hasHearts, refillHeartsFully, minutesUntilNextHeart, MAX_HEARTS } from "../core/hearts.js";
 import { ACTFL_LEVELS, ROADMAP_UNITS, levelIndex } from "../data/roadmap.js";
 
 const PASS_THRESHOLD = 7; // out of 10
+
+// Every unit ends in a 10-question unit test. Three of those ten come from
+// units you already passed, so grammar and vocabulary keep coming back around
+// instead of being tested once and dropped. Interleaving old material with new
+// is also what makes it stick — testing a unit purely on itself lets you pass
+// on short-term memory alone.
+const REVIEW_PER_TEST = 3;
+// Earlier units are weighted toward the ones you saw recently and the ones the
+// SRS says are shaky, so review stays useful instead of drifting back to
+// "hola" forever once you're at Advanced Low.
+const RECENT_WINDOW = 8;
 
 function shuffle(arr) {
   const a = arr.slice();
@@ -115,52 +130,134 @@ function lenientMatch(input, expected) {
   return want.filter((w) => given.has(w)).length / want.length >= 0.5;
 }
 
-// Builds exactly 10 questions for any unit, mixing recognition, listening,
-// grammar, and production. Distractors are pulled from other units at the
-// same level so the wrong answers stay plausible.
-export function buildQuiz(unit) {
+// Wrong answers are pulled from other units at the same level so they stay
+// plausible — a Novice decoy next to an Advanced sentence gives the answer away.
+function decoyPool(unit) {
   const sameLevel = ROADMAP_UNITS.filter((u) => u.level === unit.level && u.id !== unit.id);
-  const foreignPool = shuffle(sameLevel.flatMap((u) => u.sentences)).slice(0, 30);
+  return shuffle(sameLevel.flatMap((u) => u.sentences)).slice(0, 30);
+}
+
+function decoysFor(unit, correct, n, key) {
+  return shuffle([...unit.sentences.filter((s) => s.es !== correct.es), ...decoyPool(unit)])
+    .slice(0, n)
+    .map((s) => s[key]);
+}
+
+// Questions drawn from the current unit, in priority order: if review questions
+// take some of the ten slots, the ones dropped are the duplicated kinds at the
+// end, never the listening, grammar, or word-order question.
+function unitQuestions(unit, count) {
   const pool = shuffle(unit.sentences);
-  const qs = [];
-
-  const distractorsEn = (correct, n) =>
-    shuffle([...unit.sentences.filter((s) => s.es !== correct.es), ...foreignPool]).slice(0, n).map((s) => s.en);
-  const distractorsEs = (correct, n) =>
-    shuffle([...unit.sentences.filter((s) => s.es !== correct.es), ...foreignPool]).slice(0, n).map((s) => s.es);
-
-  // 3 × recognition: Spanish → English
-  pool.slice(0, 3).forEach((s) => {
-    qs.push({ kind: "mc", prompt: s.es, sub: "What does this mean?", correct: s.en, options: shuffle([s.en, ...distractorsEn(s, 2)]), speak: s.es });
+  const esEn = (s) => ({
+    kind: "mc", role: "mc-es-en", prompt: s.es, sub: "What does this mean?",
+    correct: s.en, options: shuffle([s.en, ...decoysFor(unit, s, 2, "en")]), speak: s.es
+  });
+  const enEs = (s) => ({
+    kind: "mc", role: "mc-en-es", prompt: s.en, sub: "Choose the Spanish",
+    correct: s.es, options: shuffle([s.es, ...decoysFor(unit, s, 2, "es")]), spanishOptions: true
+  });
+  const typed = (s) => ({
+    kind: "typed", role: "typed", prompt: s.es, sub: "Type what this means in English",
+    expected: s.en, speak: s.es
   });
 
-  // 2 × production recognition: English → Spanish
-  pool.slice(3, 5).forEach((s) => {
-    qs.push({ kind: "mc", prompt: s.en, sub: "Choose the Spanish", correct: s.es, options: shuffle([s.es, ...distractorsEs(s, 2)]), spanishOptions: true });
-  });
-
-  // 1 × listening
   const listen = pool[5] || pool[0];
-  qs.push({ kind: "listen", prompt: "🔊 Listen and choose what you heard", correct: listen.es, options: shuffle([listen.es, ...distractorsEs(listen, 2)]), speak: listen.es, spanishOptions: true });
-
-  // 1 × grammar drill from the unit's own grammar point
-  if (unit.drill) {
-    qs.push({ kind: "mc", prompt: unit.drill.question, sub: `Grammar: ${unit.grammar.title}`, correct: unit.drill.answer, options: shuffle(unit.drill.options), spanishOptions: true });
-  }
-
-  // 1 × word order (build the sentence from a word bank)
   const build = pool[6] || pool[1];
-  qs.push({ kind: "build", prompt: build.en, correct: build.es, words: shuffle(build.es.replace(/[¿?¡!.,]/g, "").split(/\s+/)), speak: build.es });
+  const at = (i) => pool[i % pool.length];
 
-  // Remaining slots: typed free recall
-  const typedPool = [pool[7], pool[2], pool[0]].filter(Boolean);
-  let ti = 0;
-  while (qs.length < 10) {
-    const s = typedPool[ti % typedPool.length];
-    ti++;
-    qs.push({ kind: "typed", prompt: s.es, sub: "Type what this means in English", expected: s.en, speak: s.es });
-  }
+  const ordered = [
+    esEn(at(0)),
+    enEs(at(3)),
+    {
+      kind: "listen", role: "listen", prompt: "🔊 Listen and choose what you heard",
+      correct: listen.es, options: shuffle([listen.es, ...decoysFor(unit, listen, 2, "es")]),
+      speak: listen.es, spanishOptions: true
+    },
+    unit.drill
+      ? {
+          kind: "mc", role: "grammar", prompt: unit.drill.question,
+          sub: `Grammar: ${unit.grammar.title}`, correct: unit.drill.answer,
+          options: shuffle(unit.drill.options), spanishOptions: true
+        }
+      : esEn(at(4)),
+    {
+      kind: "build", role: "build", prompt: build.en, correct: build.es,
+      words: shuffle(build.es.replace(/[¿?¡!.,]/g, "").split(/\s+/)), speak: build.es
+    },
+    typed(at(7)),
+    esEn(at(1)),
+    enEs(at(4)),
+    typed(at(2)),
+    esEn(at(2))
+  ];
 
+  return ordered.slice(0, count);
+}
+
+// Which earlier units to bring back. Recent units and ones the SRS rates as
+// weak or due score highest; the random term keeps repeat attempts from
+// serving the identical three every time.
+function pickReviewUnits(unit, n) {
+  const idx = ROADMAP_UNITS.findIndex((u) => u.id === unit.id);
+  if (idx <= 0) return [];
+  const prior = ROADMAP_UNITS.slice(0, idx);
+  return prior
+    .map((u, i) => {
+      const id = `roadmap_${u.id}`;
+      const weakness = (100 - masteryLevel(id)) / 100;
+      const recent = i >= idx - RECENT_WINDOW ? 0.5 : 0;
+      const due = isDue(id) ? 0.5 : 0;
+      return { u, score: weakness + recent + due + Math.random() * 0.4 };
+    })
+    .sort((a, b) => b.score - a.score)
+    .slice(0, n)
+    .map((s) => s.u);
+}
+
+// One grammar question, one meaning question, one typed recall — so both
+// halves of an old unit come back, not just its vocabulary.
+function reviewQuestions(unit, n) {
+  const sources = pickReviewUnits(unit, n);
+  if (!sources.length) return [];
+
+  // The grammar slot needs a unit that actually has a drill.
+  const withDrill = sources.findIndex((u) => u.drill);
+  if (withDrill > 0) sources.unshift(sources.splice(withDrill, 1)[0]);
+
+  return sources.map((src, i) => {
+    const tag = { review: true, reviewUnitId: src.id, reviewUnitTitle: src.title };
+    const s = shuffle(src.sentences)[0];
+
+    if (i === 0 && src.drill) {
+      return {
+        kind: "mc", role: "review-grammar", prompt: src.drill.question,
+        sub: `Grammar: ${src.grammar.title}`, correct: src.drill.answer,
+        options: shuffle(src.drill.options), spanishOptions: true, ...tag
+      };
+    }
+    if (i === 1) {
+      return {
+        kind: "mc", role: "review-mc", prompt: s.es, sub: "What does this mean?",
+        correct: s.en, options: shuffle([s.en, ...decoysFor(src, s, 2, "en")]), speak: s.es, ...tag
+      };
+    }
+    return {
+      kind: "typed", role: "review-typed", prompt: s.es,
+      sub: "Type what this means in English", expected: s.en, speak: s.es, ...tag
+    };
+  });
+}
+
+// Builds exactly 10 questions: the current unit plus up to three drawn from
+// units already passed. Review questions never come first — the test opens on
+// what you just learned — and are spaced out rather than clumped at the end.
+export function buildQuiz(unit) {
+  const reviews = reviewQuestions(unit, REVIEW_PER_TEST);
+  const qs = unitQuestions(unit, 10 - reviews.length);
+  const positions = [2, 5, 8];
+  reviews.forEach((rq, i) => {
+    qs.splice(Math.min(positions[i] ?? qs.length, qs.length), 0, rq);
+  });
   return qs.slice(0, 10);
 }
 
@@ -170,7 +267,7 @@ export function renderRoadmap(container) {
   container.appendChild(
     el("div", { class: "page-header" }, [
       el("h1", {}, "🗺️ Roadmap"),
-      el("p", {}, "Your path from Novice Low to Advanced Low. Every unit ends in a 10-question quiz played with hearts — get 7 right to pass and unlock the next one.")
+      el("p", {}, "Your path from Novice Low to Advanced Low. Every unit ends in a 10-question unit test played with hearts — get 7 right to pass. Three of the ten come from units you already passed, so grammar and vocabulary keep coming back.")
     ])
   );
 
@@ -218,7 +315,7 @@ export function renderRoadmap(container) {
           el("div", {}, [
             el("div", { class: "card-title", style: "margin-bottom:.2rem" }, `${done} / ${ROADMAP_UNITS.length} units complete`),
             el("div", { class: "text-muted", style: "font-size:.85rem" }, done > earnedCount
-              ? `${earnedCount} passed by quiz · ${done - earnedCount} skipped. Tick the box beside a unit to skip it.`
+              ? `${earnedCount} passed by test · ${done - earnedCount} skipped. Tick the box beside a unit to skip it.`
               : "Units unlock in order. Tick the box beside a unit if you already know it.")
           ]),
           heartBar()
@@ -311,7 +408,7 @@ export function renderRoadmap(container) {
       // Tick-off box: mark a unit known and move on without taking the quiz.
       const box = el("button", {
         class: `unit-tick ${completed ? "checked" : ""}`,
-        title: earned ? "Passed the quiz" : skipped ? "Marked as known — click to undo" : "Already know this? Tick it off to skip",
+        title: earned ? "Passed the unit test" : skipped ? "Marked as known — click to undo" : "Already know this? Tick it off to skip",
         "aria-label": `Mark ${u.title} as known`,
         onclick: () => {
           blurActive();
@@ -397,7 +494,7 @@ export function renderRoadmap(container) {
         ]),
         el("div", { class: "btn-row", style: "margin-top:1rem" }, [
           el("button", { class: "btn", onclick: showLearn }, "← Review sentences"),
-          el("button", { class: "btn btn-primary", onclick: startQuiz }, "Start quiz (10 questions) →")
+          el("button", { class: "btn btn-primary", onclick: startQuiz }, "Start unit test (10 questions) →")
         ])
       ]);
       stage.appendChild(card);
@@ -451,6 +548,15 @@ export function renderRoadmap(container) {
       function afterAnswer(wasCorrect, explanation) {
         if (wasCorrect) correctCount++;
         else loseHeart();
+
+        // Review questions feed the earlier unit's own SRS entry, so a unit you
+        // keep missing here comes back sooner — both in later tests and in the
+        // Review tab.
+        const asked = questions[idx];
+        if (asked && asked.review && asked.reviewUnitId) {
+          gradeItem(`roadmap_${asked.reviewUnitId}`, "roadmap", wasCorrect ? QUALITY.GOOD : QUALITY.AGAIN);
+          store.save();
+        }
         refreshHead();
 
         const fb = el("div", { class: `feedback-block ${wasCorrect ? "correct" : "incorrect"}`, style: "margin-top:.8rem" }, [
@@ -470,6 +576,15 @@ export function renderRoadmap(container) {
       function renderQuestion(q) {
         qWrap.innerHTML = "";
         const card = el("div", { class: "card exercise-card" });
+
+        // Say where an unfamiliar question came from, so an old sentence
+        // doesn't read as a bug.
+        if (q.review) {
+          card.appendChild(
+            el("span", { class: "badge badge-level", style: "margin-bottom:.5rem" },
+              `🔁 Repaso · ${q.reviewUnitTitle}`)
+          );
+        }
 
         const promptRow = el("div", { class: "flex justify-between items-center", style: "gap:.5rem" }, [
           el("p", { class: "exercise-prompt", style: "margin:0" }, q.kind === "listen" ? q.prompt : q.prompt),
@@ -569,7 +684,7 @@ export function renderRoadmap(container) {
               firstTime ? el("p", { class: "text-muted" }, "Next unit unlocked.") : null,
               el("div", { class: "btn-row", style: "justify-content:center" }, [
                 el("button", { class: "btn btn-primary", onclick: render }, "Back to path"),
-                el("button", { class: "btn", onclick: startQuiz }, "Retry quiz")
+                el("button", { class: "btn", onclick: startQuiz }, "Retry unit test")
               ])
             ].filter(Boolean))
           );
