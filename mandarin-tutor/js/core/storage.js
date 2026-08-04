@@ -2,6 +2,7 @@
 // Single JSON blob keeps writes atomic and simple to version/migrate.
 
 const STORAGE_KEY = "mzh_state_v1";
+const BACKUP_KEY = "mzh_state_v1_backup";
 const SCHEMA_VERSION = 1;
 
 function defaultState() {
@@ -19,7 +20,8 @@ function defaultState() {
       showPinyin: true,
       showToneColors: true,
       onboardingSeen: false,
-      roadmapTrack: "actfl" // "actfl" | "hsk" -- which scale the Roadmap path groups units by
+      roadmapTrack: "actfl", // "actfl" | "hsk" -- which scale the Roadmap path groups units by
+      lastBackupAt: null // timestamp of the last manual "Save my progress" download
     },
     profile: {
       name: "",
@@ -96,14 +98,41 @@ class Store {
         }
       });
     }
+    if (typeof document !== "undefined") {
+      // iOS Safari suspends JS almost immediately when the app is
+      // backgrounded (home button, app switcher, swiping away) and does
+      // NOT reliably fire beforeunload there -- a pending debounced save()
+      // can be silently dropped, which is how progress goes missing.
+      // visibilitychange (and pagehide as a second safety net) are the
+      // events mobile Safari actually fires reliably before suspending,
+      // so flush immediately on either.
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "hidden") this.saveNow();
+      });
+    }
+    if (typeof window !== "undefined") {
+      window.addEventListener("pagehide", () => this.saveNow());
+    }
   }
 
   _load() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return defaultState();
-      const parsed = JSON.parse(raw);
-      return deepMerge(defaultState(), parsed);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        return deepMerge(defaultState(), parsed);
+      }
+      // Primary key is empty -- try the shadow backup before assuming this
+      // is really a first visit. Guards against the primary key getting
+      // wiped/corrupted while the backup (written alongside it on every
+      // save) survives.
+      const backup = localStorage.getItem(BACKUP_KEY);
+      if (backup) {
+        const parsed = JSON.parse(backup);
+        console.warn("Primary progress key was empty; restored from local backup.");
+        return deepMerge(defaultState(), parsed);
+      }
+      return defaultState();
     } catch (e) {
       console.warn("Failed to load saved progress, starting fresh.", e);
       return defaultState();
@@ -112,7 +141,9 @@ class Store {
 
   _persist() {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+      const json = JSON.stringify(this.state);
+      localStorage.setItem(STORAGE_KEY, json);
+      localStorage.setItem(BACKUP_KEY, json);
     } catch (e) {
       console.warn("Failed to persist state (storage full or blocked).", e);
     }
