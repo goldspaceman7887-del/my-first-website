@@ -16,7 +16,7 @@ import { addXP, registerStudyToday, updateSkillScore } from "../core/gamificatio
 import { gradeItem, QUALITY } from "../core/srs.js";
 import { STORIES } from "../data/stories.js";
 import { ACTFL_LEVELS } from "../data/roadmap.js";
-import { GLOSSARY, normalizeWord } from "../data/glossary.js";
+import { tappable, initTapWords, closeGloss } from "../core/tapword.js";
 
 function levelInfo(code) {
   return ACTFL_LEVELS.find((l) => l.code === code) || { short: code, label: code };
@@ -48,72 +48,11 @@ export function renderStory(container) {
   container.appendChild(body);
   showList();
 
-  // ---------- Word popup ----------
-  function closePop() {
-    if (pop) { pop.remove(); pop = null; }
-    document.querySelectorAll(".word-tap.active").forEach((w) => w.classList.remove("active"));
-  }
-
-  function showGloss(wordEl, raw) {
-    closePop();
-    wordEl.classList.add("active");
-    const key = normalizeWord(raw);
-    const gloss = GLOSSARY[key];
-    pop = el("div", { class: "gloss-pop pop-in", role: "dialog", "aria-label": `Meaning of ${key}` }, [
-      el("div", { class: "flex justify-between items-center", style: "gap:.5rem" }, [
-        el("span", { class: "es-text", style: "font-size:1.25rem;font-weight:700" }, key),
-        el("div", { class: "flex", style: "gap:.35rem" }, [
-          el("button", { class: "btn btn-sm", onclick: (e) => { e.stopPropagation(); audioEngine.speak(key); } }, "🔊"),
-          el("button", { class: "btn btn-sm", onclick: (e) => { e.stopPropagation(); closePop(); }, "aria-label": "Close" }, "✕")
-        ])
-      ]),
-      el("div", { style: "margin-top:.35rem" }, gloss || "No definition for this one yet."),
-      el("button", {
-        class: "btn btn-sm btn-primary", style: "margin-top:.6rem",
-        onclick: (e) => {
-          e.stopPropagation();
-          // Store the meaning alongside the word: Review has no other way to
-          // render a bare glossary key as a card.
-          store.state.progress.savedWords[key] = gloss || "";
-          gradeItem(`gloss_${key}`, "gloss", QUALITY.GOOD);
-          store.save();
-          toast(`"${key}" guardada para repasar`, { icon: "🔖" });
-          closePop();
-        }
-      }, "🔖 Save to review")
-    ]);
-    document.body.appendChild(pop);
-  }
-
-  // Tapping anywhere else dismisses it, the way a dictionary popover should.
-  const onDocClick = (e) => {
-    if (pop && !pop.contains(e.target) && !e.target.classList.contains("word-tap")) closePop();
-  };
-  document.addEventListener("click", onDocClick);
-
-  // ---------- Tappable Spanish ----------
-  function tappable(text) {
-    const wrap = el("span", { class: "es-text tappable-line" });
-    text.split(/(\s+)/).forEach((chunk) => {
-      if (!chunk) return;
-      if (/^\s+$/.test(chunk)) { wrap.appendChild(document.createTextNode(chunk)); return; }
-      // Keep punctuation outside the button so the tap target is the word only.
-      const m = chunk.match(/^([¿¡"'(]*)(.*?)([.,;:!?")'…—]*)$/);
-      const [, pre, core, post] = m;
-      if (pre) wrap.appendChild(document.createTextNode(pre));
-      if (core) {
-        const btn = el("button", { class: "word-tap", type: "button" }, core);
-        btn.addEventListener("click", (e) => { e.stopPropagation(); showGloss(btn, core); });
-        wrap.appendChild(btn);
-      }
-      if (post) wrap.appendChild(document.createTextNode(post));
-    });
-    return wrap;
-  }
+  const teardownTapWords = initTapWords();
 
   // ---------- Story list, as a ladder ----------
   function showList() {
-    closePop();
+    closeGloss();
     body.innerHTML = "";
     let lastLevel = null;
     STORIES.forEach((s) => {
@@ -144,7 +83,7 @@ export function renderStory(container) {
 
   // ---------- One story ----------
   function showStory(s) {
-    closePop();
+    closeGloss();
     body.innerHTML = "";
     const l = levelInfo(s.level);
 
@@ -238,9 +177,5 @@ export function renderStory(container) {
     );
   }
 
-  // The popup lives on document.body, so it has to be torn down by hand.
-  return () => {
-    document.removeEventListener("click", onDocClick);
-    closePop();
-  };
+  return teardownTapWords;
 }

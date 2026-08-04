@@ -265,6 +265,75 @@ async function testStories(browser) {
   await ctx.close();
 }
 
+async function testTapWords(browser) {
+  group("tap-a-word");
+  const { page, ctx, errors } = await freshPage(browser, { mobile: true });
+
+  // Every word the app renders as tappable content must be definable.
+  const cover = await page.evaluate(async () => {
+    const { ROADMAP_UNITS } = await import("/js/data/roadmap.js");
+    const { DIALOGUES } = await import("/js/data/dialogues.js");
+    const { STORIES } = await import("/js/data/stories.js");
+    const { lookupWord, normalizeWord } = await import("/js/data/glossary.js");
+    const toks = new Set();
+    const add = (s) => String(s).split(/\s+/).forEach((c) => {
+      const m = c.match(/^([¿¡"'(]*)(.*?)([.,;:!?")'…—]*)$/);
+      const k = normalizeWord(m[2]);
+      if (k) toks.add(k);
+    });
+    ROADMAP_UNITS.forEach((u) => u.sentences.forEach((s) => add(s.es)));
+    DIALOGUES.forEach((d) => d.lines.forEach((l) => add(l.es)));
+    STORIES.forEach((s) => { s.paragraphs.forEach((pp) => add(pp.es)); (s.speakingQuestions || []).forEach(add); });
+    const missing = [...toks].filter((k) => !lookupWord(k));
+    return { total: toks.size, missing };
+  });
+  check(`all ${cover.total} words across roadmap, dialogues and stories are definable`,
+    cover.missing.length === 0, cover.missing.slice(0, 10).join(", "));
+
+  // A roadmap unit's sentences must be tappable
+  await go(page, "#/roadmap");
+  const node = await page.$(".roadmap-node.unlocked");
+  if (node) {
+    await node.click();
+    await page.waitForTimeout(350);
+    const n = await page.$$eval(".word-tap", (els) => els.length);
+    check("roadmap unit sentences are tappable", n > 20, `${n} tappable words`);
+    if (n) {
+      await page.$$eval(".word-tap", (els) => els[0].click());
+      await page.waitForTimeout(250);
+      check("tapping a roadmap word opens its definition", Boolean(await page.$(".gloss-pop")));
+    }
+  } else {
+    check("roadmap unit reachable", false, "no unlocked node");
+  }
+
+  // Leaving the view must remove the popup — it lives on document.body
+  await go(page, "#/dashboard");
+  await page.waitForTimeout(300);
+  check("popup removed when leaving the roadmap", !(await page.$(".gloss-pop")));
+
+  // Dialogue lines must be tappable too
+  await go(page, "#/learn/dialogues");
+  const dlg = await page.$(".card-link, .card");
+  if (dlg) {
+    await dlg.click();
+    await page.waitForTimeout(400);
+    const n = await page.$$eval(".word-tap", (els) => els.length);
+    check("dialogue lines are tappable", n > 10, `${n} tappable words`);
+  }
+
+  // Undefined words must not be underlined at all
+  const falsePromise = await page.evaluate(async () => {
+    const { lookupWord, normalizeWord } = await import("/js/data/glossary.js");
+    return [...document.querySelectorAll(".word-tap")]
+      .map((w) => normalizeWord(w.textContent))
+      .filter((k) => !lookupWord(k));
+  });
+  check("no word is underlined without a definition", falsePromise.length === 0, falsePromise.join(", "));
+  check("no JS errors", errors.length === 0, errors.slice(0, 3).join(" | "));
+  await ctx.close();
+}
+
 async function testStorage(browser) {
   group("storage");
   // The bug this guards: deepMerge only walked keys present in the defaults,
@@ -362,6 +431,7 @@ const GROUPS = {
   pronunciation: testPronunciation,
   roadmap: testRoadmap,
   stories: testStories,
+  "tap-a-word": testTapWords,
   storage: testStorage,
   mobile: testMobile,
   offline: testOffline

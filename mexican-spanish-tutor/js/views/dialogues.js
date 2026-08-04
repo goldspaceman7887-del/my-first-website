@@ -1,6 +1,7 @@
 import { store } from "../core/storage.js";
 import { el, blurActive, toast, xpToast } from "../core/ui.js";
 import { audioEngine } from "../core/audio.js";
+import { tappable, initTapWords } from "../core/tapword.js";
 import { addXP, updateSkillScore } from "../core/gamification.js";
 import { gradeItem, QUALITY } from "../core/srs.js";
 import { DIALOGUES } from "../data/dialogues.js";
@@ -34,6 +35,7 @@ export function renderDialogueList(container) {
 }
 
 export function renderDialogueDetail(container, params) {
+  const teardownTapWords = initTapWords();
   const d = DIALOGUES.find((x) => x.id === params.id);
   if (!d) {
     container.appendChild(el("div", { class: "card empty-state" }, [el("h3", {}, "Dialogue not found"), el("a", { class: "btn", href: "#/learn/dialogues" }, "Back to dialogues")]));
@@ -62,7 +64,8 @@ export function renderDialogueDetail(container, params) {
       el("div", { class: "dialogue-line" }, [
         el("span", { class: "speaker-tag" }, l.spk),
         el("div", { class: "line-content" }, [
-          el("div", { class: "line-es es-text" }, l.es),
+          // Tap any word in a dialogue line for its meaning.
+          el("div", { class: "line-es" }, [tappable(l.es)]),
           el("div", { class: "line-en" }, l.en)
         ]),
         el("div", { class: "line-controls" }, [el("button", { class: "play-btn", onclick: () => audioEngine.speak(l.es) }, "🔊")])
@@ -143,4 +146,5 @@ export function renderDialogueDetail(container, params) {
     }
     toast(`Comprensión: ${correctCount}/${d.comprehension.length} correctas`, { icon: "✅" });
   }
+  return teardownTapWords;
 }
