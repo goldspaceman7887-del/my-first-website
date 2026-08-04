@@ -80,24 +80,30 @@ self.addEventListener("fetch", (event) => {
   // Navigations: prefer fresh HTML when online so updates land, fall back to
   // the cached shell when offline.
   if (req.mode === "navigate") {
-    event.respondWith(fetch(req).catch(() => caches.match("index.html")));
+    event.respondWith(
+      fetch(req).catch(() => caches.open(CACHE_NAME).then((cache) => cache.match("index.html")))
+    );
     return;
   }
 
   // Assets: serve from cache immediately, then refresh the copy in the
   // background so the next load has the newer file.
+  //
+  // Every read goes through caches.open(CACHE_NAME) rather than the global
+  // caches.match(), which searches *every* cache on the origin and can hand
+  // back a file from an older, not-yet-deleted version — bumping CACHE_NAME
+  // wouldn't help.
   event.respondWith(
-    caches.match(req).then((cached) => {
-      const network = fetch(req)
-        .then((res) => {
-          if (res && res.ok) {
-            const copy = res.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
-          }
-          return res;
-        })
-        .catch(() => cached);
-      return cached || network;
-    })
+    caches.open(CACHE_NAME).then((cache) =>
+      cache.match(req).then((cached) => {
+        const network = fetch(req)
+          .then((res) => {
+            if (res && res.ok) cache.put(req, res.clone());
+            return res;
+          })
+          .catch(() => cached);
+        return cached || network;
+      })
+    )
   );
 });

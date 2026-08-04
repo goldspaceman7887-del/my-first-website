@@ -157,10 +157,27 @@ function initServiceWorker() {
   // Only meaningful over http(s); opening index.html from the filesystem
   // has no scope to register against.
   if (!location.protocol.startsWith("http")) return;
+  // A cached app that never notices a deploy is worse than no cache at all —
+  // someone opening a shared link would keep seeing the old build. Reload once
+  // when a new worker takes over so the fresh CSS/JS actually apply.
+  // On a first-ever visit the worker claims the page and controllerchange
+  // fires too; reloading then would be a pointless flash, so only react when
+  // one worker is genuinely replacing another.
+  const hadController = Boolean(navigator.serviceWorker.controller);
+  let reloading = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (!hadController || reloading) return;
+    reloading = true;
+    window.location.reload();
+  });
+
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("service-worker.js").catch((err) => {
-      console.warn("Offline mode unavailable:", err);
-    });
+    navigator.serviceWorker
+      .register("service-worker.js")
+      .then((reg) => reg.update())
+      .catch((err) => {
+        console.warn("Offline mode unavailable:", err);
+      });
   });
 }
 
