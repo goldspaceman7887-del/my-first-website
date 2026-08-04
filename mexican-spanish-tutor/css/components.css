@@ -3,7 +3,11 @@
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md);
   padding: 1.25rem; box-shadow: var(--shadow-sm);
 }
+/* Spacing for cards stacked in normal flow. Inside a grid the gap already
+   handles it, and this margin instead knocked every card after the first
+   out of line with its row. */
 .card + .card { margin-top: 1rem; }
+.grid > .card + .card, .stat-strip .card + .card { margin-top: 0; }
 .card-title { font-size: 1.05rem; font-weight: 800; margin-bottom: .5rem; }
 .card-link {
   display: block; text-decoration: none; color: inherit;

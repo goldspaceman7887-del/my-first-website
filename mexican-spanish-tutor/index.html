@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>Spanish Tutor MX — Mexican Spanish, Novice to ACTFL Advanced Low</title>
 <meta name="description" content="Learn modern Mexican Spanish from Novice Low to ACTFL Advanced Low: a Duolingo-style roadmap with hearts and quizzes, a level test, vocabulary, grammar, dialogues, speaking practice, and spaced repetition — all in the browser." />
 <meta name="color-scheme" content="light dark" />
@@ -89,6 +89,15 @@
     <main id="view-root" class="view-root" tabindex="-1"></main>
   </div>
 </div>
+
+
+  <nav class="tabbar" id="tabbar" aria-label="Primary">
+    <a href="#/dashboard" data-nav-link><span class="tb-icon">🏠</span><span class="tb-label">Home</span></a>
+    <a href="#/roadmap" data-nav-link><span class="tb-icon">🗺️</span><span class="tb-label">Path</span></a>
+    <a href="#/learn" data-nav-link><span class="tb-icon">📚</span><span class="tb-label">Learn</span></a>
+    <a href="#/practice" data-nav-link><span class="tb-icon">🎯</span><span class="tb-label">Practice</span></a>
+    <button type="button" id="tabbar-more" aria-label="More sections" aria-controls="sidebar" aria-expanded="false"><span class="tb-icon">⋯</span><span class="tb-label">More</span></button>
+  </nav>
 
 <div id="toast-container" class="toast-container"></div>
 
