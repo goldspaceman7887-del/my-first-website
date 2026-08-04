@@ -9,6 +9,10 @@
 // already passed, so grammar and vocabulary keep circling back instead of
 // being tested once and forgotten.
 //
+// At the end of each ACTFL section sits a checkpoint — 15 questions across
+// every unit in that section at once. It confirms the level rather than
+// gating it: the next level is already reachable by finishing units.
+//
 // The second tab is the ACTFL Can-Do checklist, which feeds the level
 // estimate on the dashboard.
 
@@ -248,6 +252,154 @@ function reviewQuestions(unit, n) {
   });
 }
 
+// ---------- Section checkpoints ----------
+// At the end of each ACTFL section (all the Novice Mid units, all the Novice
+// High units, and so on) sits a checkpoint that tests the whole section at
+// once. Individual unit tests only ever catch you while the material is fresh;
+// this is the one that asks whether the section actually stuck.
+//
+// It never blocks the path — you reach the next level by finishing units, as
+// before. The checkpoint is evidence, not a gate.
+const CHECKPOINT_QUESTIONS = 15;
+const CHECKPOINT_PASS = 11; // out of 15
+
+export function unitsInLevel(levelCode) {
+  return ROADMAP_UNITS.filter((u) => u.level === levelCode);
+}
+
+export function checkpointsPassed() {
+  return store.state.progress.checkpointsPassed || (store.state.progress.checkpointsPassed = []);
+}
+
+export function isCheckpointPassed(levelCode) {
+  return checkpointsPassed().includes(levelCode);
+}
+
+// Available once every unit in the section is done — passed or ticked off.
+// Testing a section you haven't worked through yet would just be noise.
+export function isCheckpointReady(levelCode) {
+  const units = unitsInLevel(levelCode);
+  return units.length > 0 && units.every((u) => isCompleted(u.id));
+}
+
+function unitWeakness(unit) {
+  const id = `roadmap_${unit.id}`;
+  return (100 - masteryLevel(id)) / 100 + (isDue(id) ? 0.5 : 0);
+}
+
+// 15 questions spread across every unit in the section. Units are ordered
+// weakest-first so the ones you're shakiest on are drawn from first and pick
+// up the extra slots when the count doesn't divide evenly.
+export function buildCheckpoint(levelCode) {
+  const units = unitsInLevel(levelCode);
+  if (!units.length) return [];
+
+  const ordered = units.slice().sort((a, b) => unitWeakness(b) - unitWeakness(a));
+  // A full spread per unit, so rotating the take-index gives varied kinds
+  // rather than fifteen of the same recognition question.
+  const perUnit = ordered.map((u) => unitQuestions(u, 10));
+
+  const picked = [];
+  let round = 0;
+  while (picked.length < CHECKPOINT_QUESTIONS && round < 10) {
+    for (let k = 0; k < ordered.length && picked.length < CHECKPOINT_QUESTIONS; k++) {
+      const list = perUnit[k];
+      const q = list[(round + k) % list.length];
+      picked.push({ ...q, sourceUnitId: ordered[k].id, sourceUnitTitle: ordered[k].title });
+    }
+    round++;
+  }
+  return shuffle(picked).slice(0, CHECKPOINT_QUESTIONS);
+}
+
+// Renders one question card and reports the outcome. Shared by the per-unit
+// test and the section checkpoint so both behave identically.
+function renderQuestionInto(qWrap, q, afterAnswer) {
+    qWrap.innerHTML = "";
+    const card = el("div", { class: "card exercise-card" });
+
+    // Say where an unfamiliar question came from, so an old sentence
+    // doesn't read as a bug.
+    if (q.review) {
+      card.appendChild(
+        el("span", { class: "badge badge-level", style: "margin-bottom:.5rem" },
+          `🔁 Repaso · ${q.reviewUnitTitle}`)
+      );
+    }
+
+    const promptRow = el("div", { class: "flex justify-between items-center", style: "gap:.5rem" }, [
+      el("p", { class: "exercise-prompt", style: "margin:0" }, q.kind === "listen" ? q.prompt : q.prompt),
+      q.speak ? el("button", { class: "play-btn", onclick: () => audioEngine.speak(q.speak) }, "🔊") : null
+    ].filter(Boolean));
+    card.appendChild(promptRow);
+    if (q.sub) card.appendChild(el("p", { class: "text-muted", style: "margin:.2rem 0 0;font-size:.85rem" }, q.sub));
+    if (q.kind === "listen") audioEngine.speak(q.speak);
+
+    if (q.kind === "mc" || q.kind === "listen") {
+      const list = el("div", { class: "option-list", style: "margin-top:.7rem" });
+      q.options.forEach((opt) => {
+        const btn = el("button", { class: `option-btn ${q.spanishOptions ? "es-text" : ""}` }, opt);
+        btn.addEventListener("click", () => {
+          list.querySelectorAll(".option-btn").forEach((b) => b.classList.add("disabled"));
+          const ok = opt === q.correct;
+          btn.classList.add(ok ? "correct" : "incorrect");
+          if (!ok) {
+            [...list.children].find((b) => b.textContent === q.correct)?.classList.add("correct");
+          }
+          afterAnswer(ok, ok ? "" : `The answer is “${q.correct}”.`);
+        });
+        list.appendChild(btn);
+      });
+      card.appendChild(list);
+    } else if (q.kind === "build") {
+      const answer = el("div", { class: "word-bank", style: "margin-top:.7rem" });
+      const bank = el("div", { class: "word-bank", style: "margin-top:.5rem;border-style:solid" });
+      const picked = [];
+      q.words.forEach((w) => {
+        const chip = el("button", { class: "word-chip" }, w);
+        chip.addEventListener("click", () => {
+          picked.push(w);
+          chip.remove();
+          const placed = el("button", { class: "word-chip" }, w);
+          placed.addEventListener("click", () => {
+            const i = picked.indexOf(w);
+            if (i > -1) picked.splice(i, 1);
+            placed.remove();
+            bank.appendChild(chip);
+          });
+          answer.appendChild(placed);
+        });
+        bank.appendChild(chip);
+      });
+      card.appendChild(el("p", { class: "text-muted", style: "margin:.5rem 0 0;font-size:.85rem" }, "Tap the words in order to build the Spanish sentence."));
+      card.appendChild(answer);
+      card.appendChild(bank);
+      card.appendChild(
+        el("button", {
+          class: "btn btn-primary", style: "margin-top:.7rem",
+          onclick: () => {
+            const given = picked.join(" ").toLowerCase();
+            const want = q.correct.replace(/[¿?¡!.,]/g, "").toLowerCase();
+            const ok = given === want;
+            afterAnswer(ok, ok ? "" : `The answer is “${q.correct}”.`);
+          }
+        }, "Check")
+      );
+    } else {
+      const input = el("input", { type: "text", placeholder: "Type your answer in English..." });
+      input.style.cssText = "width:100%;margin-top:.7rem;padding:.65rem .9rem;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:1rem;";
+      const submit = () => {
+        const ok = lenientMatch(input.value, q.expected);
+        afterAnswer(ok, ok ? "" : `Expected something like “${q.expected}”.`);
+      };
+      input.addEventListener("keydown", (e) => { if (e.key === "Enter") submit(); });
+      card.appendChild(input);
+      card.appendChild(el("button", { class: "btn btn-primary", style: "margin-top:.7rem", onclick: submit }, "Check"));
+      setTimeout(() => input.focus(), 30);
+    }
+
+    qWrap.appendChild(card);
+}
 // Builds exactly 10 questions: the current unit plus up to three drawn from
 // units already passed. Review questions never come first — the test opens on
 // what you just learned — and are spaced out rather than clumped at the end.
@@ -267,7 +419,7 @@ export function renderRoadmap(container) {
   container.appendChild(
     el("div", { class: "page-header" }, [
       el("h1", {}, "🗺️ Roadmap"),
-      el("p", {}, "Your path from Novice Low to Advanced Low. Every unit ends in a 10-question unit test played with hearts — get 7 right to pass. Three of the ten come from units you already passed, so grammar and vocabulary keep coming back.")
+      el("p", {}, "Your path from Novice Low to Advanced Low. Every unit ends in a 10-question unit test — three of those ten come from units you already passed, so grammar and vocabulary keep coming back. At the end of each ACTFL section there's a 15-question checkpoint covering the whole section.")
     ])
   );
 
@@ -419,10 +571,231 @@ export function renderRoadmap(container) {
       }, completed ? "✓" : "");
 
       path.appendChild(el("div", { class: `roadmap-node-row ${offset}` }, [node, box]));
+
+      // End of a section? Drop the checkpoint in before the next tier header.
+      const next = ROADMAP_UNITS[idx + 1];
+      if (!next || next.level !== u.level) path.appendChild(checkpointRow(u.level));
     });
 
     wrap.appendChild(path);
     return wrap;
+  }
+
+  // The end-of-section marker on the path. Deliberately not a gate: when it
+  // isn't ready yet it still says what's left rather than just refusing.
+  function checkpointRow(levelCode) {
+    const l = ACTFL_LEVELS.find((x) => x.code === levelCode);
+    const passed = isCheckpointPassed(levelCode);
+    const ready = isCheckpointReady(levelCode);
+    const units = unitsInLevel(levelCode);
+    const remaining = units.filter((u) => !isCompleted(u.id)).length;
+    const state = passed ? "passed" : ready ? "ready" : "waiting";
+
+    const btn = el("button", {
+      class: `checkpoint-node ${state}`,
+      onclick: () => {
+        if (ready || passed) return openCheckpoint(levelCode);
+        toast(`${remaining} more ${remaining === 1 ? "unit" : "units"} in ${l.label} first.`, { icon: "🏁" });
+      }
+    }, [
+      el("span", { class: "checkpoint-icon" }, passed ? "🏆" : ready ? "🏁" : "🔒"),
+      el("span", { class: "checkpoint-text" }, [
+        el("strong", {}, `${l.label} checkpoint`),
+        el("span", { class: "checkpoint-sub" },
+          passed
+            ? "Passed — level confirmed. Tap to retake."
+            : ready
+              ? `${CHECKPOINT_QUESTIONS} questions across all ${units.length} units`
+              : `${remaining} more ${remaining === 1 ? "unit" : "units"} to go`)
+      ])
+    ]);
+
+    return el("div", { class: "checkpoint-row" }, [btn]);
+  }
+
+  // ---------- Section checkpoint ----------
+  function openCheckpoint(levelCode) {
+    const l = ACTFL_LEVELS.find((x) => x.code === levelCode);
+    body.innerHTML = "";
+
+    body.appendChild(
+      el("div", { class: "card", style: "margin-bottom:.75rem" }, [
+        el("div", { class: "flex justify-between items-center", style: "flex-wrap:wrap;gap:.5rem" }, [
+          el("div", {}, [
+            el("span", { class: `badge badge-${levelVariant(levelCode)}` }, l.short),
+            el("h2", { style: "margin:.35rem 0 0" }, `🏁 ${l.label} checkpoint`),
+            el("p", { class: "text-muted", style: "margin:0" }, `Everything from the ${unitsInLevel(levelCode).length} units in this section.`)
+          ]),
+          heartBar()
+        ]),
+        el("button", { class: "btn btn-sm", style: "margin-top:.6rem", onclick: render }, "← Back to path")
+      ])
+    );
+
+    const stage = el("div", {});
+    body.appendChild(stage);
+    showIntro();
+
+    function showIntro() {
+      stage.innerHTML = "";
+      stage.appendChild(
+        el("div", { class: "card" }, [
+          el("h3", { class: "card-title" }, "What this is"),
+          el("p", {}, `Your unit tests checked each unit while it was fresh. This one asks whether ${l.label} actually stuck — ${CHECKPOINT_QUESTIONS} questions pulled from every unit in the section at once, weighted toward whatever you've been shakiest on.`),
+          el("p", { class: "text-muted" }, `Get ${CHECKPOINT_PASS} of ${CHECKPOINT_QUESTIONS} to pass. This doesn't block anything — the next level is already open. Fail it and you'll get a list of the units worth redoing.`),
+          el("button", { class: "btn btn-primary", style: "margin-top:.6rem", onclick: startCheckpoint }, `Start checkpoint (${CHECKPOINT_QUESTIONS} questions) →`)
+        ])
+      );
+    }
+
+    function startCheckpoint() {
+      if (!hasHearts()) {
+        stage.innerHTML = "";
+        stage.appendChild(
+          el("div", { class: "card empty-state" }, [
+            el("div", { class: "empty-icon" }, "💔"),
+            el("h3", {}, "You're out of hearts"),
+            el("p", {}, `The next one arrives in about ${minutesUntilNextHeart()} minutes.`),
+            el("div", { class: "btn-row", style: "justify-content:center" }, [
+              el("button", { class: "btn", onclick: render }, "Back to path"),
+              el("button", { class: "btn btn-primary", onclick: () => { refillHeartsFully(); toast("Hearts refilled.", { icon: "❤️" }); startCheckpoint(); } }, "Refill now (free)")
+            ])
+          ])
+        );
+        return;
+      }
+
+      const questions = buildCheckpoint(levelCode);
+      let idx = 0;
+      let correctCount = 0;
+      const missedUnits = new Map(); // unit id -> times missed
+
+      stage.innerHTML = "";
+      const head = el("div", { class: "card", style: "margin-bottom:.75rem" });
+      const bar = el("div", {});
+      const heartSlot = el("div", {});
+      head.appendChild(el("div", { class: "flex justify-between items-center", style: "flex-wrap:wrap;gap:.5rem" }, [bar, heartSlot]));
+      stage.appendChild(head);
+      const qWrap = el("div", {});
+      stage.appendChild(qWrap);
+
+      function refreshHead() {
+        bar.innerHTML = "";
+        bar.appendChild(el("span", { class: "text-muted", style: "font-weight:700" },
+          `Question ${Math.min(idx + 1, questions.length)} of ${questions.length}`));
+        heartSlot.innerHTML = "";
+        heartSlot.appendChild(heartBar());
+      }
+
+      function nextQuestion() {
+        if (!hasHearts()) return finish(true);
+        if (idx >= questions.length) return finish(false);
+        refreshHead();
+        renderQuestionInto(qWrap, questions[idx], afterAnswer);
+      }
+
+      function afterAnswer(wasCorrect, explanation) {
+        if (wasCorrect) correctCount++;
+        else loseHeart();
+
+        // Every question belongs to a unit, so a checkpoint doubles as a
+        // spaced-repetition pass over the whole section.
+        const asked = questions[idx];
+        if (asked && asked.sourceUnitId) {
+          gradeItem(`roadmap_${asked.sourceUnitId}`, "roadmap", wasCorrect ? QUALITY.GOOD : QUALITY.AGAIN);
+          if (!wasCorrect) missedUnits.set(asked.sourceUnitId, (missedUnits.get(asked.sourceUnitId) || 0) + 1);
+          store.save();
+        }
+        refreshHead();
+
+        const fb = el("div", { class: `feedback-block ${wasCorrect ? "correct" : "incorrect"}`, style: "margin-top:.8rem" }, [
+          el("strong", {}, wasCorrect ? "¡Correcto! " : "Not quite — "),
+          explanation
+        ]);
+        qWrap.appendChild(fb);
+        qWrap.appendChild(
+          el("button", {
+            class: "btn btn-primary", style: "margin-top:.7rem",
+            onclick: () => { idx++; blurActive(); nextQuestion(); }
+          }, idx >= questions.length - 1 ? "See results →" : "Next →")
+        );
+        fb.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+
+      function finish(ranOutOfHearts) {
+        refreshHead();
+        qWrap.innerHTML = "";
+        const passed = !ranOutOfHearts && correctCount >= CHECKPOINT_PASS;
+
+        if (passed) {
+          const firstTime = !isCheckpointPassed(levelCode);
+          if (firstTime) checkpointsPassed().push(levelCode);
+
+          // Passing is direct evidence of the level: tick the section's ACTFL
+          // Can-Do statements and hold the estimate at or above it.
+          const checked = store.state.progress.canDoCompleted || (store.state.progress.canDoCompleted = []);
+          l.canDo.forEach((_, i) => {
+            const id = `${levelCode}__${i}`;
+            if (!checked.includes(id)) checked.push(id);
+          });
+          const prev = store.state.profile.confirmedLevel;
+          if (!prev || levelIndex(prev) < levelIndex(levelCode)) {
+            store.state.profile.confirmedLevel = levelCode;
+          }
+
+          registerStudyToday();
+          updateSkillScore("grammar", 4);
+          updateSkillScore("vocabulary", 4);
+          const xp = 50 + correctCount;
+          addXP(xp, `${l.label} checkpoint`);
+          store.save();
+          confettiBurst();
+
+          qWrap.appendChild(
+            el("div", { class: "card empty-state pop-in" }, [
+              el("div", { class: "empty-icon" }, "🏆"),
+              el("h3", {}, `${l.label} confirmed`),
+              el("p", {}, `${correctCount} / ${questions.length} correct · +${xp} XP`),
+              el("p", { class: "text-muted" }, `Your ${l.canDo.length} ${l.label} Can-Do statements are ticked off, and your level estimate won't read below ${l.short} from here.`),
+              el("div", { class: "btn-row", style: "justify-content:center" }, [
+                el("button", { class: "btn btn-primary", onclick: render }, "Back to path")
+              ])
+            ])
+          );
+        } else {
+          // Name the units that actually cost points — a bare score doesn't
+          // tell you what to do next.
+          const worst = [...missedUnits.entries()]
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 4)
+            .map(([id]) => ROADMAP_UNITS.find((u) => u.id === id))
+            .filter(Boolean);
+
+          qWrap.appendChild(
+            el("div", { class: "card empty-state pop-in" }, [
+              el("div", { class: "empty-icon" }, ranOutOfHearts ? "💔" : "📚"),
+              el("h3", {}, ranOutOfHearts ? "Out of hearts" : "Not this time"),
+              el("p", {}, ranOutOfHearts
+                ? `You ran out of hearts at ${correctCount} correct.`
+                : `You got ${correctCount} / ${questions.length}. You need ${CHECKPOINT_PASS} to pass.`),
+              worst.length
+                ? el("div", { style: "margin:.6rem 0" }, [
+                    el("p", { style: "font-weight:700;margin:0 0 .4rem" }, "Worth redoing first:"),
+                    el("div", { class: "btn-row", style: "justify-content:center" },
+                      worst.map((u) => el("button", { class: "btn btn-sm", onclick: () => openLesson(u) }, `${u.icon} ${u.title}`)))
+                  ])
+                : null,
+              el("div", { class: "btn-row", style: "justify-content:center;margin-top:.5rem" }, [
+                el("button", { class: "btn btn-primary", onclick: render }, "Back to path"),
+                el("button", { class: "btn", onclick: startCheckpoint }, "Try again")
+              ])
+            ].filter(Boolean))
+          );
+        }
+      }
+
+      nextQuestion();
+    }
   }
 
   // ---------- Lesson (learn → grammar → quiz) ----------
@@ -542,7 +915,7 @@ export function renderRoadmap(container) {
         if (!hasHearts()) return finish(true);
         if (idx >= questions.length) return finish(false);
         refreshHead();
-        renderQuestion(questions[idx]);
+        renderQuestionInto(qWrap, questions[idx], afterAnswer);
       }
 
       function afterAnswer(wasCorrect, explanation) {
@@ -573,92 +946,6 @@ export function renderRoadmap(container) {
         fb.scrollIntoView({ behavior: "smooth", block: "nearest" });
       }
 
-      function renderQuestion(q) {
-        qWrap.innerHTML = "";
-        const card = el("div", { class: "card exercise-card" });
-
-        // Say where an unfamiliar question came from, so an old sentence
-        // doesn't read as a bug.
-        if (q.review) {
-          card.appendChild(
-            el("span", { class: "badge badge-level", style: "margin-bottom:.5rem" },
-              `🔁 Repaso · ${q.reviewUnitTitle}`)
-          );
-        }
-
-        const promptRow = el("div", { class: "flex justify-between items-center", style: "gap:.5rem" }, [
-          el("p", { class: "exercise-prompt", style: "margin:0" }, q.kind === "listen" ? q.prompt : q.prompt),
-          q.speak ? el("button", { class: "play-btn", onclick: () => audioEngine.speak(q.speak) }, "🔊") : null
-        ].filter(Boolean));
-        card.appendChild(promptRow);
-        if (q.sub) card.appendChild(el("p", { class: "text-muted", style: "margin:.2rem 0 0;font-size:.85rem" }, q.sub));
-        if (q.kind === "listen") audioEngine.speak(q.speak);
-
-        if (q.kind === "mc" || q.kind === "listen") {
-          const list = el("div", { class: "option-list", style: "margin-top:.7rem" });
-          q.options.forEach((opt) => {
-            const btn = el("button", { class: `option-btn ${q.spanishOptions ? "es-text" : ""}` }, opt);
-            btn.addEventListener("click", () => {
-              list.querySelectorAll(".option-btn").forEach((b) => b.classList.add("disabled"));
-              const ok = opt === q.correct;
-              btn.classList.add(ok ? "correct" : "incorrect");
-              if (!ok) {
-                [...list.children].find((b) => b.textContent === q.correct)?.classList.add("correct");
-              }
-              afterAnswer(ok, ok ? "" : `The answer is “${q.correct}”.`);
-            });
-            list.appendChild(btn);
-          });
-          card.appendChild(list);
-        } else if (q.kind === "build") {
-          const answer = el("div", { class: "word-bank", style: "margin-top:.7rem" });
-          const bank = el("div", { class: "word-bank", style: "margin-top:.5rem;border-style:solid" });
-          const picked = [];
-          q.words.forEach((w) => {
-            const chip = el("button", { class: "word-chip" }, w);
-            chip.addEventListener("click", () => {
-              picked.push(w);
-              chip.remove();
-              const placed = el("button", { class: "word-chip" }, w);
-              placed.addEventListener("click", () => {
-                const i = picked.indexOf(w);
-                if (i > -1) picked.splice(i, 1);
-                placed.remove();
-                bank.appendChild(chip);
-              });
-              answer.appendChild(placed);
-            });
-            bank.appendChild(chip);
-          });
-          card.appendChild(el("p", { class: "text-muted", style: "margin:.5rem 0 0;font-size:.85rem" }, "Tap the words in order to build the Spanish sentence."));
-          card.appendChild(answer);
-          card.appendChild(bank);
-          card.appendChild(
-            el("button", {
-              class: "btn btn-primary", style: "margin-top:.7rem",
-              onclick: () => {
-                const given = picked.join(" ").toLowerCase();
-                const want = q.correct.replace(/[¿?¡!.,]/g, "").toLowerCase();
-                const ok = given === want;
-                afterAnswer(ok, ok ? "" : `The answer is “${q.correct}”.`);
-              }
-            }, "Check")
-          );
-        } else {
-          const input = el("input", { type: "text", placeholder: "Type your answer in English..." });
-          input.style.cssText = "width:100%;margin-top:.7rem;padding:.65rem .9rem;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:1rem;";
-          const submit = () => {
-            const ok = lenientMatch(input.value, q.expected);
-            afterAnswer(ok, ok ? "" : `Expected something like “${q.expected}”.`);
-          };
-          input.addEventListener("keydown", (e) => { if (e.key === "Enter") submit(); });
-          card.appendChild(input);
-          card.appendChild(el("button", { class: "btn btn-primary", style: "margin-top:.7rem", onclick: submit }, "Check"));
-          setTimeout(() => input.focus(), 30);
-        }
-
-        qWrap.appendChild(card);
-      }
 
       function finish(ranOutOfHearts) {
         refreshHead();

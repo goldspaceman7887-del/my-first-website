@@ -34,7 +34,10 @@ function defaultState() {
       lastSavedAt: null, // last explicit backup (download or code)
       // Every unit at or below this ACTFL level is open to practise, without
       // having to earn your way up to it unit by unit.
-      unlockedThroughLevel: null
+      unlockedThroughLevel: null,
+      // Highest ACTFL level whose end-of-section checkpoint you passed. The
+      // level estimate never reports below this.
+      confirmedLevel: null
     },
     srs: {
       // itemId -> { type, repetition, easeFactor, interval, stepIndex, nextReview, lastReview, correct, incorrect, history: [] }
@@ -58,7 +61,8 @@ function defaultState() {
       activeSentenceIds: [], // sentence ids currently "being studied"
       canDoCompleted: [], // ACTFL can-do statement ids marked as achieved
       roadmapUnitsCompleted: [], // roadmap unit ids passed by quiz
-      roadmapUnitsSkipped: [] // units placed out of (level test or manual tick-off)
+      roadmapUnitsSkipped: [], // units placed out of (level test or manual tick-off)
+      checkpointsPassed: [] // ACTFL level codes whose end-of-section checkpoint you passed
     },
     achievements: {
       unlocked: []

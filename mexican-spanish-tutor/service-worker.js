@@ -5,7 +5,7 @@
 //
 // Bump CACHE_NAME on every deploy so returning users get the new build
 // instead of being pinned to a stale cache forever.
-const CACHE_NAME = "mxes-cache-v3";
+const CACHE_NAME = "mxes-cache-v4";
 
 const PRECACHE_URLS = [
   "./",

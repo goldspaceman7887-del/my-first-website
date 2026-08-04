@@ -36,7 +36,11 @@ export function estimatedLevel() {
   // Roughly 4 can-do statements checked off nudges the estimate up one level,
   // but never past what XP alone would already justify by more than one tier.
   const canDoBoost = Math.min(1, Math.floor(canDoCount / 8));
-  const idx = Math.min(ACTFL_LEVELS.length - 1, xpLevelIdx + (canDoCount >= 4 ? canDoBoost : 0));
+  let idx = Math.min(ACTFL_LEVELS.length - 1, xpLevelIdx + (canDoCount >= 4 ? canDoBoost : 0));
+  // Passing a section checkpoint is direct evidence of that level, so the
+  // estimate never reads below it — XP alone shouldn't drag it back down.
+  const confirmed = store.state.profile.confirmedLevel;
+  if (confirmed) idx = Math.max(idx, levelIndex(confirmed));
   return ACTFL_LEVELS[idx];
 }
 
