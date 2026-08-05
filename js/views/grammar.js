@@ -7,7 +7,31 @@ import { runLesson } from "../core/lessonPlayer.js";
 import { getHearts, hasHearts, minutesUntilNextHeart } from "../core/hearts.js";
 import { correctionBlock } from "../core/feedback.js";
 import { tappable, initTapWords } from "../core/tapword.js";
+import { audioEngine } from "../core/audio.js";
 import { GRAMMAR } from "../data/grammar.js";
+
+// Pulls the Spanish quote out of a "Spain examples" string like
+// `"Con eñe, no con ene." — said to clarify...`, so the audio button reads
+// just the sentence and not the English commentary that follows it.
+function leadingQuote(s) {
+  const m = String(s || "").match(/^["“]([^"”]+)["”]/);
+  return m ? m[1] : null;
+}
+
+// One small, unmistakable "listen again" button, used everywhere a Spanish
+// sentence appears on this page — tap it as many times as you like.
+function playBtn(text, { slow } = {}) {
+  return el(
+    "button",
+    {
+      class: "play-btn",
+      "aria-label": "Escuchar · Listen",
+      title: "Escuchar de nuevo · Listen again",
+      onclick: () => audioEngine.speak(text, slow && slow() ? { rate: store.state.settings.slowVoiceRate } : {})
+    },
+    "🔊"
+  );
+}
 
 const SPANISH_STOPWORDS = new Set([
   "de", "la", "el", "en", "y", "a", "que", "los", "las", "un", "una", "unos", "unas", "es", "se", "no", "por", "con",
@@ -161,6 +185,38 @@ function renderConceptDetail(container, id) {
 
   function renderLearn() {
     const wrap = el("div", { class: "flex-col gap-2" });
+
+    // One clear control for everyone, not a speed dial: tap once for slow,
+    // and every 🔊 button on the page (including "listen to it all") speaks
+    // slowly from then on, until you tap it again.
+    let slow = false;
+    const slowBtn = el(
+      "button",
+      { class: "btn btn-sm", onclick: () => { slow = !slow; slowBtn.classList.toggle("active", slow); slowBtn.textContent = slow ? "🐢 Hablando despacio · ON" : "🐢 Hablar más despacio"; } },
+      "🐢 Hablar más despacio"
+    );
+    const playAllBtn = el(
+      "button",
+      {
+        class: "btn btn-sm",
+        onclick: async () => {
+          playAllBtn.disabled = true;
+          const rate = slow ? store.state.settings.slowVoiceRate : undefined;
+          for (const s of g.exampleSentences) {
+            await audioEngine.speak(s.es, rate ? { rate } : {});
+          }
+          playAllBtn.disabled = false;
+        }
+      },
+      "▶️ Escuchar todos los ejemplos"
+    );
+    wrap.appendChild(
+      el("div", { class: "card", style: "text-align:center" }, [
+        el("p", { class: "text-muted", style: "margin:0 0 .6rem" }, "Toca 🔊 en cualquier frase para escucharla — puedes repetirla las veces que quieras."),
+        el("div", { class: "btn-row", style: "justify-content:center" }, [playAllBtn, slowBtn])
+      ])
+    );
+
     wrap.appendChild(explainCard("Explicación sencilla", g.simpleExplanation));
     wrap.appendChild(explainCard("Explicación detallada", g.detailedExplanation));
     wrap.appendChild(explainCard("Comparación con el inglés", g.englishComparison));
@@ -173,7 +229,17 @@ function renderConceptDetail(container, id) {
     wrap.appendChild(
       el("div", { class: "card" }, [
         el("div", { class: "card-title" }, "🇪🇸 Ejemplos de España"),
-        el("ul", {}, g.spainExamples.map((m) => el("li", {}, m)))
+        el(
+          "ul",
+          { style: "list-style:none;margin:0;padding:0" },
+          g.spainExamples.map((m) => {
+            const quote = leadingQuote(m);
+            return el("li", { style: "display:flex;align-items:flex-start;gap:.5rem;padding:.4rem 0;border-bottom:1px solid var(--border)" }, [
+              quote ? playBtn(quote, { slow: () => slow }) : null,
+              el("span", {}, m)
+            ].filter(Boolean));
+          })
+        )
       ])
     );
     wrap.appendChild(
@@ -183,11 +249,17 @@ function renderConceptDetail(container, id) {
           "table",
           { class: "data-table" },
           [
-            el("thead", {}, el("tr", {}, [el("th", {}, "Español"), el("th", {}, "Inglés")])),
+            el("thead", {}, el("tr", {}, [el("th", {}, ""), el("th", {}, "Español"), el("th", {}, "Inglés")])),
             el(
               "tbody",
               {},
-              g.exampleSentences.map((s) => el("tr", {}, [el("td", { class: "tappable-line" }, [tappable(s.es)]), el("td", {}, s.en)]))
+              g.exampleSentences.map((s) =>
+                el("tr", {}, [
+                  el("td", { style: "width:2.5rem" }, [playBtn(s.es, { slow: () => slow })]),
+                  el("td", { class: "tappable-line" }, [tappable(s.es)]),
+                  el("td", {}, s.en)
+                ])
+              )
             )
           ]
         )

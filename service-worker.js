@@ -13,7 +13,7 @@
 // ever answers for paths that are actually part of THIS app (the precache
 // list, or the exact site root) — everything else falls through untouched,
 // exactly as if this service worker didn't exist.
-const CACHE_NAME = "vamos-cache-v4";
+const CACHE_NAME = "vamos-cache-v5";
 
 const PRECACHE_URLS = [
   "./",
@@ -67,6 +67,7 @@ const PRECACHE_URLS = [
   "js/views/reading.js",
   "js/views/review.js",
   "js/views/roadmap.js",
+  "js/views/phrases.js",
   "js/views/roleplay.js",
   "js/views/settings.js",
   "js/views/speaking.js",
