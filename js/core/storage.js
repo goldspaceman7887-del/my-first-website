@@ -29,7 +29,8 @@ function defaultState() {
       studyDates: [], // history of days studied, for heatmap
       totalStudyMinutes: 0,
       createdAt: Date.now(),
-      hearts: { current: 5, max: 5, lastRegenAt: Date.now() }
+      hearts: { current: 5, max: 5, lastRegenAt: Date.now() },
+      lastSavedAt: null
     },
     srs: {
       // itemId -> { type, repetition, easeFactor, interval, stepIndex, nextReview, lastReview, correct, incorrect, history: [] }
@@ -43,7 +44,8 @@ function defaultState() {
       writingSubmissions: [], // { id, promptId, text, wordCount, date, selfCheck }
       cultureCompleted: [],
       cultureQuizScores: {}, // culId -> { attempts, best }
-      vocabExposure: {} // vocId -> count
+      vocabExposure: {}, // vocId -> count
+      savedWords: {} // glossary key -> meaning, saved via tap-any-word
     },
     scores: {
       speaking: 0,

@@ -21,6 +21,12 @@
   --c-green: #2a9d8f;
   --c-blue: #4d96ff;
   --c-purple: #8e6ee0;
+  --c-marigold: #ff9f1c;
+
+  /* ACTFL tier accent colors, used for badges across Roadmap/Level Test */
+  --actfl-novice: #1cb0f6;
+  --actfl-intermediate: #ce82ff;
+  --actfl-advanced: #ff9600;
 
   /* Duolingo-style brand palette (constant across themes) */
   --duo-green: #58cc02;

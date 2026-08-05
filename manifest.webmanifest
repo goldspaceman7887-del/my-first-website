@@ -1,0 +1,17 @@
+{
+  "name": "Vamos — Español de España",
+  "short_name": "Vamos",
+  "description": "Learn Peninsular (Spain) Spanish from zero to ACTFL Advanced Low — roadmap, vocabulary, grammar, dialogues, and speaking practice, usable fully offline.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#58cc02",
+  "theme_color": "#58cc02",
+  "lang": "es",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

@@ -2,6 +2,7 @@ import { store } from "../core/storage.js";
 import { el, toast } from "../core/ui.js";
 import { audioEngine } from "../core/audio.js";
 import { showOnboarding } from "../core/onboarding.js";
+import { describeLastSaved, downloadBackup, makeCode, restoreFromCode, restoreFromJSON } from "../core/backup.js";
 
 export function renderSettings(container) {
   container.appendChild(
@@ -132,27 +133,27 @@ export function renderSettings(container) {
     ])
   );
 
-  // Data management
+  // Data management / backup
+  const savedLine = el("p", { class: "text-muted" }, `Last saved: ${describeLastSaved()} · Última copia: ${describeLastSaved()}`);
+  const codeBox = el("textarea", { readonly: "readonly", rows: "4", style: "width:100%;font-family:monospace;font-size:.78rem;margin-top:.6rem", placeholder: "Tu código de copia de seguridad aparecerá aquí..." });
+  const restoreInput = el("textarea", { rows: "4", style: "width:100%;font-family:monospace;font-size:.78rem;margin-top:.6rem", placeholder: "Pega aquí tu código VAMOS1:... para restaurar" });
   container.appendChild(
     el("div", { class: "card" }, [
-      el("div", { class: "card-title" }, "Datos y privacidad"),
-      el("p", { class: "text-muted" }, "Todo tu progreso se guarda solo en este navegador (localStorage) — no se envía a ningún servidor."),
-      el("div", { class: "btn-row" }, [
+      el("div", { class: "card-title" }, "💾 Datos y copia de seguridad · Data & backup"),
+      el("p", { class: "text-muted" }, "Everything saves automatically on this device only — nothing is sent to a server. Use these to move your progress to another device or as extra insurance."),
+      savedLine,
+      el("div", { class: "btn-row", style: "margin-top:.5rem" }, [
         el(
           "button",
           {
-            class: "btn",
+            class: "btn btn-primary",
             onclick: () => {
-              const blob = new Blob([store.exportJSON()], { type: "application/json" });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url;
-              a.download = "vamos-progreso.json";
-              a.click();
-              URL.revokeObjectURL(url);
+              downloadBackup();
+              savedLine.textContent = `Last saved: ${describeLastSaved()} · Última copia: ${describeLastSaved()}`;
+              toast("Backup downloaded", { icon: "⬇️" });
             }
           },
-          "⬇️ Exportar progreso"
+          "⬇️ Download backup file"
         ),
         el(
           "button",
@@ -167,13 +168,13 @@ export function renderSettings(container) {
                 if (!file) return;
                 const reader = new FileReader();
                 reader.onload = () => {
-                  try {
-                    store.importJSON(reader.result);
+                  const result = restoreFromJSON(reader.result);
+                  if (result.ok) {
                     toast("Progreso importado.", { icon: "✅" });
                     window.location.hash = "#/dashboard";
                     window.location.reload();
-                  } catch (e) {
-                    toast("Archivo inválido.", { icon: "⚠️" });
+                  } else {
+                    toast(result.error, { icon: "⚠️" });
                   }
                 };
                 reader.readAsText(file);
@@ -181,8 +182,49 @@ export function renderSettings(container) {
               inputFile.click();
             }
           },
-          "⬆️ Importar progreso"
+          "⬆️ Import backup file"
+        )
+      ]),
+      el("div", { class: "field", style: "margin-top:1rem" }, [
+        el("label", {}, "📋 Copy a backup code (paste it on another device)"),
+        el(
+          "button",
+          {
+            class: "btn btn-sm",
+            onclick: () => {
+              codeBox.value = makeCode();
+              codeBox.select();
+              savedLine.textContent = `Last saved: ${describeLastSaved()} · Última copia: ${describeLastSaved()}`;
+              toast("Code generated — copy it now", { icon: "📋" });
+            }
+          },
+          "Generate code"
         ),
+        codeBox
+      ]),
+      el("div", { class: "field", style: "margin-top:1rem" }, [
+        el("label", {}, "🔁 Restore from a backup code"),
+        restoreInput,
+        el(
+          "button",
+          {
+            class: "btn btn-sm",
+            style: "margin-top:.4rem",
+            onclick: () => {
+              const result = restoreFromCode(restoreInput.value);
+              if (result.ok) {
+                toast("Progress restored!", { icon: "✅" });
+                window.location.hash = "#/dashboard";
+                window.location.reload();
+              } else {
+                toast(result.error, { icon: "⚠️" });
+              }
+            }
+          },
+          "Restore"
+        )
+      ]),
+      el("div", { class: "btn-row", style: "margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--border)" }, [
         el(
           "button",
           {
