@@ -13,7 +13,7 @@
 // ever answers for paths that are actually part of THIS app (the precache
 // list, or the exact site root) — everything else falls through untouched,
 // exactly as if this service worker didn't exist.
-const CACHE_NAME = "vamos-cache-v1";
+const CACHE_NAME = "vamos-cache-v2";
 
 const PRECACHE_URLS = [
   "./",
@@ -41,6 +41,7 @@ const PRECACHE_URLS = [
   "js/core/storage.js",
   "js/core/tapword.js",
   "js/core/ui.js",
+  "js/data/conversationThreads.js",
   "js/data/culture.js",
   "js/data/curriculum.js",
   "js/data/dialogues-advanced.js",
@@ -50,18 +51,27 @@ const PRECACHE_URLS = [
   "js/data/grammar.js",
   "js/data/mistakePatterns.js",
   "js/data/reading.js",
+  "js/data/roadmapPath.js",
+  "js/data/stories.js",
   "js/data/vocabulary.js",
   "js/data/writing.js",
   "js/views/achievements.js",
+  "js/views/conversation.js",
   "js/views/culture.js",
   "js/views/dashboard.js",
   "js/views/dialogues.js",
   "js/views/grammar.js",
+  "js/views/immersion.js",
+  "js/views/levelTest.js",
   "js/views/listening.js",
   "js/views/reading.js",
   "js/views/review.js",
+  "js/views/roadmap.js",
+  "js/views/roleplay.js",
   "js/views/settings.js",
   "js/views/speaking.js",
+  "js/views/speakingTest.js",
+  "js/views/story.js",
   "js/views/tutor.js",
   "js/views/vocabulary.js",
   "js/views/writing.js"

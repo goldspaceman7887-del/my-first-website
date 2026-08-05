@@ -19,6 +19,13 @@ import { renderReview } from "./views/review.js";
 import { renderTutor } from "./views/tutor.js";
 import { renderAchievements } from "./views/achievements.js";
 import { renderSettings } from "./views/settings.js";
+import { renderRoadmap } from "./views/roadmap.js";
+import { renderLevelTest } from "./views/levelTest.js";
+import { renderSpeakingTest } from "./views/speakingTest.js";
+import { renderStoryList, renderStoryDetail } from "./views/story.js";
+import { renderRoleplay } from "./views/roleplay.js";
+import { renderConversation } from "./views/conversation.js";
+import { renderImmersion } from "./views/immersion.js";
 
 // ---------- Theme ----------
 function applyTheme(theme) {
@@ -121,6 +128,14 @@ registerRoute("review", renderReview);
 registerRoute("tutor", renderTutor);
 registerRoute("achievements", renderAchievements);
 registerRoute("settings", renderSettings);
+registerRoute("roadmap", renderRoadmap);
+registerRoute("level-test", renderLevelTest);
+registerRoute("speaking-test", renderSpeakingTest);
+registerRoute("story", renderStoryList);
+registerRoute("story/:id", renderStoryDetail);
+registerRoute("roleplay", renderRoleplay);
+registerRoute("conversation", renderConversation);
+registerRoute("immersion-chat", renderImmersion);
 
 setNotFound((container) => {
   container.appendChild(
