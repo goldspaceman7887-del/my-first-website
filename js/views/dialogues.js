@@ -3,6 +3,7 @@ import { el, esc, toast, blurActive } from "../core/ui.js";
 import { audioEngine, textSimilarity, speechRecognitionSupported, listenOnce } from "../core/audio.js";
 import { gradeItem, QUALITY } from "../core/srs.js";
 import { addXP, updateSkillScore } from "../core/gamification.js";
+import { tappable, initTapWords } from "../core/tapword.js";
 import { DIALOGUES_BEGINNER_INTERMEDIATE } from "../data/dialogues-beginner-intermediate.js";
 import { DIALOGUES_ADVANCED } from "../data/dialogues-advanced.js";
 
@@ -180,7 +181,7 @@ export function renderDialogueDetail(container, params) {
         el("div", { class: `dialogue-line ${isMe ? "me" : ""}` }, [
           el("div", { class: "speaker-tag" }, line.speaker),
           el("div", { class: "line-content" }, [
-            el("div", { class: "line-es" }, line.es),
+            el("div", { class: "line-es" }, [tappable(line.es)]),
             showTranslations ? el("div", { class: "line-en" }, line.en) : null
           ].filter(Boolean)),
           el("div", { class: "line-controls" }, [
@@ -433,4 +434,6 @@ export function renderDialogueDetail(container, params) {
     sec[d.id][section] = true;
     store.save();
   }
+
+  return initTapWords();
 }

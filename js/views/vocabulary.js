@@ -5,6 +5,7 @@ import { gradeItem, masteryLevel, QUALITY, newItems, dueItems } from "../core/sr
 import { addXP, updateSkillScore } from "../core/gamification.js";
 import { runLesson } from "../core/lessonPlayer.js";
 import { getHearts, hasHearts, minutesUntilNextHeart } from "../core/hearts.js";
+import { correctionBlock } from "../core/feedback.js";
 import { VOCABULARY } from "../data/vocabulary.js";
 
 function srsId(v) {
@@ -472,6 +473,7 @@ export function renderVocabulary(container) {
       const practiceInput = el("input", { type: "text", class: "exercise-input", placeholder: `Write a sentence using "${v.es}"...` });
       practiceInput.style.cssText = "width:100%;padding:.7rem .9rem;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-family:var(--font-es);font-size:1rem;";
       const practiceFeedback = el("div", { class: "feedback-block hidden" });
+      const practiceCorrection = el("div", { style: "margin-top:.5rem" });
       const practiceCheck = el(
         "button",
         {
@@ -493,12 +495,15 @@ export function renderVocabulary(container) {
               ? `Try to actually include "${v.es}" in your sentence.`
               : "Try a slightly longer sentence — subject + verb + something else.";
             if (good) addXP(3, `Frase propia: ${v.es}`);
+            practiceCorrection.innerHTML = "";
+            const block = correctionBlock(text, { compact: true });
+            if (block) practiceCorrection.appendChild(block);
           }
         },
         "Check / Comprobar"
       );
       practiceInput.addEventListener("keydown", (e) => { if (e.key === "Enter") practiceCheck.click(); });
-      const practiceBox = el("div", { class: "card hidden", style: "margin-top:.5rem" }, [practiceInput, practiceCheck, practiceFeedback]);
+      const practiceBox = el("div", { class: "card hidden", style: "margin-top:.5rem" }, [practiceInput, practiceCheck, practiceFeedback, practiceCorrection]);
       practiceWrap.appendChild(practiceToggle);
       practiceWrap.appendChild(practiceBox);
       stage.appendChild(practiceWrap);

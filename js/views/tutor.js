@@ -3,7 +3,14 @@ import { audioEngine } from "../core/audio.js";
 import { gradeItem, QUALITY } from "../core/srs.js";
 import { addXP, updateSkillScore } from "../core/gamification.js";
 import { GRAMMAR } from "../data/grammar.js";
-import { checkText } from "../data/mistakePatterns.js";
+import { checkSpanish } from "../data/mistakePatterns.js";
+import { correctionBlock, inlineCorrection } from "../core/feedback.js";
+
+function scheduleReview(hits) {
+  hits.forEach((hit) => {
+    if (hit.relatedGrammarId) gradeItem(`gram_${hit.relatedGrammarId}`, "grammar", QUALITY.AGAIN);
+  });
+}
 
 const SCENARIOS = [
   {
@@ -35,21 +42,6 @@ const SCENARIOS = [
     ]
   }
 ];
-
-function fiveStepFeedback(hit) {
-  return el("div", { class: "card", style: "border-left:3px solid var(--danger)" }, [
-    el("div", { class: "card-title", style: "color:var(--danger)" }, "1. Error detectado"),
-    el("p", {}, hit.mistakeExplained),
-    el("div", { class: "card-title" }, "2. Versión correcta"),
-    el("p", { style: "font-family:var(--font-es)" }, hit.correctVersion),
-    el("div", { class: "card-title" }, "3. La regla"),
-    el("p", {}, hit.rule),
-    el("div", { class: "card-title" }, "4. Tres ejemplos"),
-    el("ul", {}, hit.examples.map((e) => el("li", { style: "font-family:var(--font-es)" }, e))),
-    el("div", { class: "card-title" }, "5. Repaso programado"),
-    el("p", { class: "text-muted" }, "Este concepto se ha añadido a tu repetición espaciada (SRS) para reforzarlo automáticamente.")
-  ]);
-}
 
 export function renderTutor(container) {
   container.appendChild(
@@ -135,18 +127,18 @@ export function renderTutor(container) {
           style: "margin-top:.6rem",
           onclick: () => {
             blurActive();
-            const hits = checkText(textarea.value);
+            const hits = checkSpanish(textarea.value);
             resultsWrap.innerHTML = "";
-            if (!hits.length) {
+            const block = correctionBlock(textarea.value);
+            if (!block) {
               resultsWrap.appendChild(
                 el("div", { class: "feedback-block correct" }, "No he detectado ninguno de los errores comunes que reconozco. ¡Sigue así! (Esto no garantiza que la frase sea 100% perfecta — es un corrector de patrones frecuentes, no una IA completa.)")
               );
               return;
             }
-            hits.forEach((hit) => {
-              resultsWrap.appendChild(fiveStepFeedback(hit));
-              gradeItem(`gram_${hit.relatedGrammarId}`, "grammar", QUALITY.AGAIN);
-            });
+            resultsWrap.appendChild(block);
+            resultsWrap.appendChild(el("p", { class: "text-faint", style: "margin-top:.5rem" }, "Estos puntos se han añadido a tu repetición espaciada (SRS) para reforzarlos automáticamente."));
+            scheduleReview(hits);
             addXP(5, "Corrector de frases");
             updateSkillScore("grammar", 0.5);
           }
@@ -194,11 +186,10 @@ export function renderTutor(container) {
         if (!text) return;
         userSay(text);
         input.value = "";
-        const hits = checkText(text);
-        hits.forEach((hit) => {
-          log.appendChild(fiveStepFeedback(hit));
-          gradeItem(`gram_${hit.relatedGrammarId}`, "grammar", QUALITY.AGAIN);
-        });
+        const hits = checkSpanish(text);
+        const inline = inlineCorrection(text);
+        if (inline) log.appendChild(inline);
+        scheduleReview(hits);
         addXP(4, "Conversación guiada");
         updateSkillScore("speaking", 1);
         step++;

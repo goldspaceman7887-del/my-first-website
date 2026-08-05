@@ -29,7 +29,11 @@ function defaultState() {
       studyDates: [], // history of days studied, for heatmap
       totalStudyMinutes: 0,
       createdAt: Date.now(),
-      hearts: { current: 5, max: 5, lastRegenAt: Date.now() }
+      hearts: { current: 5, max: 5, lastRegenAt: Date.now() },
+      lastSavedAt: null,
+      selfReportedLevel: null, // ACTFL code from the Level/Speaking Test
+      confirmedLevel: null, // ACTFL code, set by passing a roadmap checkpoint
+      unlockedThroughLevel: null // ACTFL code opened via the Level Test, independent of what's been earned
     },
     srs: {
       // itemId -> { type, repetition, easeFactor, interval, stepIndex, nextReview, lastReview, correct, incorrect, history: [] }
@@ -43,7 +47,17 @@ function defaultState() {
       writingSubmissions: [], // { id, promptId, text, wordCount, date, selfCheck }
       cultureCompleted: [],
       cultureQuizScores: {}, // culId -> { attempts, best }
-      vocabExposure: {} // vocId -> count
+      vocabExposure: {}, // vocId -> count
+      savedWords: {}, // glossary key -> meaning, saved via tap-any-word
+      conversationAsked: [], // "topicId:question" keys already asked, so a new session doesn't repeat
+      immersionAsked: [],
+      roleplaySessions: [], // { date, scenarioId, turns }
+      roadmapUnitsCompleted: [], // roadmap unit ids passed by quiz
+      roadmapUnitsSkipped: [], // roadmap unit ids ticked off as already known
+      checkpointsPassed: [], // ACTFL level codes whose section checkpoint was passed
+      canDoCompleted: [], // "levelCode__index" Can-Do statement ids checked off
+      levelTests: [], // { date, level }
+      speakingTests: [] // { date, level, avg }
     },
     scores: {
       speaking: 0,

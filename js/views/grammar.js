@@ -5,6 +5,8 @@ import { gradeItem, masteryLevel, QUALITY } from "../core/srs.js";
 import { addXP, updateSkillScore } from "../core/gamification.js";
 import { runLesson } from "../core/lessonPlayer.js";
 import { getHearts, hasHearts, minutesUntilNextHeart } from "../core/hearts.js";
+import { correctionBlock } from "../core/feedback.js";
+import { tappable, initTapWords } from "../core/tapword.js";
 import { GRAMMAR } from "../data/grammar.js";
 
 const SPANISH_STOPWORDS = new Set([
@@ -185,7 +187,7 @@ function renderConceptDetail(container, id) {
             el(
               "tbody",
               {},
-              g.exampleSentences.map((s) => el("tr", {}, [el("td", {}, s.es), el("td", {}, s.en)]))
+              g.exampleSentences.map((s) => el("tr", {}, [el("td", { class: "tappable-line" }, [tappable(s.es)]), el("td", {}, s.en)]))
             )
           ]
         )
@@ -271,8 +273,10 @@ function renderConceptDetail(container, id) {
 
   setTab("learn");
 
+  const untapWords = initTapWords();
   return () => {
     if (activeLessonDestroy) activeLessonDestroy();
+    untapWords();
   };
 }
 
@@ -315,12 +319,17 @@ function freeWriteCard(g) {
           feedback.classList.add("incorrect");
           feedback.textContent = `Good try — just double check you're actually using "${g.title}" in there. Take a look at the examples above for inspiration.`;
         }
+        correction.innerHTML = "";
+        const block = correctionBlock(text, { compact: true });
+        if (block) correction.appendChild(block);
       }
     },
     "Check / Comprobar"
   );
+  const correction = el("div", { style: "margin-top:.5rem" });
   card.appendChild(input);
   card.appendChild(el("div", { class: "btn-row" }, [checkBtn]));
   card.appendChild(feedback);
+  card.appendChild(correction);
   return card;
 }

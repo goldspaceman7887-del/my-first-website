@@ -3,6 +3,7 @@ import { reviewCounts, retentionRate } from "../core/srs.js";
 import { xpProgressToNextLevel, ACHIEVEMENTS } from "../core/gamification.js";
 import { el } from "../core/ui.js";
 import { CURRICULUM_UNITS } from "../data/curriculum.js";
+import { ROADMAP_UNITS } from "../data/roadmap.js";
 
 function scoreRing(pct, label, color) {
   const r = 34;
@@ -120,6 +121,32 @@ export function renderDashboard(container) {
   ]);
   mid.appendChild(reviewCard);
   container.appendChild(mid);
+
+  // Roadmap nudge — the Duolingo-style path lives on its own view; this just
+  // says what to do next on it, same as the sibling apps' dashboards do.
+  const roadmapDone = new Set([
+    ...(store.state.progress.roadmapUnitsCompleted || []),
+    ...(store.state.progress.roadmapUnitsSkipped || [])
+  ]);
+  const roadmapUnitsDone = ROADMAP_UNITS.filter((u) => roadmapDone.has(u.id)).length;
+  const nextRoadmapUnit = ROADMAP_UNITS.find((u) => !roadmapDone.has(u.id));
+  const tookLevelTest = (store.state.progress.levelTests || []).length > 0;
+  container.appendChild(
+    el("div", { class: "card", style: "border-left:3px solid var(--accent)" }, [
+      el("div", { class: "card-title" }, !tookLevelTest
+        ? "📊 Start by finding your level"
+        : nextRoadmapUnit ? `🗺️ Roadmap: next up — ${nextRoadmapUnit.title}` : "🎉 Roadmap complete"),
+      el("p", { class: "text-muted" }, !tookLevelTest
+        ? "Take the two-minute Level Test so the roadmap starts in the right place."
+        : nextRoadmapUnit
+          ? `${nextRoadmapUnit.icon} ${nextRoadmapUnit.subtitle} — 8 sentences, a grammar note, then a 10-question unit test. (${roadmapUnitsDone}/${ROADMAP_UNITS.length} units done)`
+          : "You've finished every unit on the roadmap. Keep sharp with Review and Practice."),
+      el("div", { class: "btn-row", style: "margin-top:.5rem" }, [
+        !tookLevelTest ? el("a", { class: "btn btn-primary", href: "#/level-test" }, "📊 Take the Level Test") : null,
+        el("a", { class: "btn btn-primary", href: "#/roadmap" }, "🗺️ Continue roadmap")
+      ].filter(Boolean))
+    ])
+  );
 
   // Score rings
   const scoreCard = el("div", { class: "card" }, [

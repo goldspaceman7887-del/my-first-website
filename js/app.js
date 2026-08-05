@@ -19,6 +19,13 @@ import { renderReview } from "./views/review.js";
 import { renderTutor } from "./views/tutor.js";
 import { renderAchievements } from "./views/achievements.js";
 import { renderSettings } from "./views/settings.js";
+import { renderRoadmap } from "./views/roadmap.js";
+import { renderLevelTest } from "./views/levelTest.js";
+import { renderSpeakingTest } from "./views/speakingTest.js";
+import { renderStoryList, renderStoryDetail } from "./views/story.js";
+import { renderRoleplay } from "./views/roleplay.js";
+import { renderConversation } from "./views/conversation.js";
+import { renderImmersion } from "./views/immersion.js";
 
 // ---------- Theme ----------
 function applyTheme(theme) {
@@ -121,6 +128,14 @@ registerRoute("review", renderReview);
 registerRoute("tutor", renderTutor);
 registerRoute("achievements", renderAchievements);
 registerRoute("settings", renderSettings);
+registerRoute("roadmap", renderRoadmap);
+registerRoute("level-test", renderLevelTest);
+registerRoute("speaking-test", renderSpeakingTest);
+registerRoute("story", renderStoryList);
+registerRoute("story/:id", renderStoryDetail);
+registerRoute("roleplay", renderRoleplay);
+registerRoute("conversation", renderConversation);
+registerRoute("immersion-chat", renderImmersion);
 
 setNotFound((container) => {
   container.appendChild(
@@ -133,8 +148,39 @@ setNotFound((container) => {
   );
 });
 
+// ---------- Offline / installable ----------
+function initServiceWorker() {
+  if (!("serviceWorker" in navigator)) return;
+  // Only meaningful over http(s); opening index.html from the filesystem
+  // has no scope to register against.
+  if (!location.protocol.startsWith("http")) return;
+  // A cached app that never notices a deploy is worse than no cache at all —
+  // someone opening a shared link would keep seeing the old build. Reload once
+  // when a new worker takes over so the fresh CSS/JS actually apply.
+  // On a first-ever visit the worker claims the page and controllerchange
+  // fires too; reloading then would be a pointless flash, so only react when
+  // one worker is genuinely replacing another.
+  const hadController = Boolean(navigator.serviceWorker.controller);
+  let reloading = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (!hadController || reloading) return;
+    reloading = true;
+    window.location.reload();
+  });
+
+  window.addEventListener("load", () => {
+    navigator.serviceWorker
+      .register("service-worker.js")
+      .then((reg) => reg.update())
+      .catch((err) => {
+        console.warn("Offline mode unavailable:", err);
+      });
+  });
+}
+
 // ---------- Boot ----------
 function boot() {
+  initServiceWorker();
   initTheme();
   initNav();
   initImmersion();

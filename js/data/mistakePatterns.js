@@ -1,131 +1,518 @@
-// Rule-based common-mistake detector used by the AI Tutor's "Corrector" tool.
-// Pure pattern matching (regex heuristics), not a live LLM — but genuinely
-// useful for the highest-frequency English-speaker interference errors.
+// SPANISH ERROR CHECKER — the highest-frequency mistakes English speakers make
+// writing Peninsular (Spain) Spanish.
+//
+// The important design point: every rule rewrites YOUR sentence. Showing a
+// canned "here's a natural sentence" beside your attempt makes you do the
+// diffing yourself, and you usually can't — if you could spot the error you
+// would not have made it. So each rule carries a `fix` that transforms the
+// fragment it matched, and the checker hands back your own sentence corrected.
+//
+// Rules only fire when they are confident. A wrong correction teaches a
+// mistake, which is worse than saying nothing at all.
+//
+// Almost all of this grammar is dialect-neutral (ser/estar, gustar, personal
+// a, subjunctive triggers, gender exceptions...) and applies identically in
+// Spain. A handful of rules are Spain-specific: vosotros/ustedes register,
+// and "coger" being completely normal here rather than avoided.
+
+const A = "a-záéíóúüñ";
 
 export const MISTAKE_PATTERNS = [
+  // ---------- ser vs estar ----------
   {
-    id: "ser_estar_location",
-    test: /\b(soy|eres|es|somos|sois|son)\s+(en|de pie)\b/i,
-    mistakeExplained: "Usaste 'ser' para hablar de ubicación. La ubicación siempre se expresa con 'estar', no con 'ser'.",
-    correctVersion: "Ej.: 'Está en Madrid' (no 'Es en Madrid').",
-    rule: "'Ser' se usa para identidad, características permanentes y origen. 'Estar' se usa para ubicación, estados temporales y condiciones.",
-    examples: ["El museo está en el centro.", "Madrid está en España.", "¿Dónde está la estación?"],
-    relatedGrammarId: "gram_estar"
+    id: "estar_profession",
+    label: "ser vs estar",
+    relatedGrammarId: "gram_estar",
+    test: /\b(estoy|est[áa]s|est[áa]|estamos|est[áa]n)\s+((?:un[ao]\s+)?)(doctor|doctora|maestr[oa]|profesor[a]?|abogad[oa]|ingenier[oa]|estudiante|enfermer[oa]|cociner[oa]|camarer[oa]|taxista)\b/i,
+    fix: (m) => {
+      const map = { estoy: "soy", estás: "eres", estas: "eres", está: "es", esta: "es", estamos: "somos", están: "son", estan: "son" };
+      return `${map[m[1].toLowerCase()] || "soy"} ${m[2]}${m[3]}`;
+    },
+    why: "Your job is part of who you are, not a passing state, so it takes ser. Estar is for where you are and how you're doing right now.",
+    rule: "ser = identity, profession, origin · estar = location, mood, condition",
+    examples: ["Soy profesora.", "Es ingeniero.", "Somos estudiantes."]
   },
   {
-    id: "problema_gender",
-    test: /\buna? problema\b/i,
-    mistakeExplained: "'Problema' termina en -a pero es masculino: dijiste 'una problema' en vez de 'un problema'.",
-    correctVersion: "un problema / el problema",
-    rule: "Varias palabras de origen griego que terminan en -ma son masculinas: el problema, el programa, el sistema, el tema, el idioma.",
-    examples: ["Tengo un problema.", "El sistema no funciona.", "Es un tema interesante."],
-    relatedGrammarId: "gram_gender"
+    id: "ser_location",
+    label: "ser vs estar",
+    relatedGrammarId: "gram_estar",
+    test: /\b(soy|eres|es|somos|son)\s+en\b/i,
+    fix: (m) => {
+      const map = { soy: "estoy", eres: "estás", es: "está", somos: "estamos", son: "están" };
+      return `${map[m[1].toLowerCase()]} en`;
+    },
+    why: "English uses 'to be' for both identity and location, so 'soy en' feels right — but location always takes estar.",
+    rule: "Location = estar + en + place",
+    examples: ["Estoy en casa.", "Está en el trabajo.", "Estamos en el mercado."]
   },
   {
-    id: "mucho_gente",
-    test: /\bmucho gente\b/i,
-    mistakeExplained: "'Gente' es femenino singular, así que necesita 'mucha', no 'mucho'.",
-    correctVersion: "mucha gente",
-    rule: "Los adjetivos concuerdan en género y número con el sustantivo. 'Gente' siempre es femenino singular, aunque se refiera a varias personas.",
-    examples: ["Había mucha gente en la plaza.", "Es una gente muy amable.", "Poca gente lo sabe."],
-    relatedGrammarId: "gram_gender"
+    id: "estar_permanent_adj",
+    label: "ser vs estar",
+    relatedGrammarId: "gram_estar",
+    test: /\b(estoy|est[áa]s|est[áa])\s+(alt[oa]|baj[oa]|inteligente|amable)\b/i,
+    fix: (m) => {
+      const map = { estoy: "soy", estás: "eres", estas: "eres", está: "es", esta: "es" };
+      return `${map[m[1].toLowerCase()]} ${m[2]}`;
+    },
+    why: "These describe what someone is like rather than how they are today, so they take ser.",
+    rule: "Lasting qualities take ser; temporary states take estar",
+    examples: ["Es muy alta.", "Soy amable.", "Eres inteligente."]
+  },
+
+  // ---------- tener idioms ----------
+  {
+    id: "ser_age",
+    label: "age uses tener",
+    relatedGrammarId: "gram_idiomatic_structures",
+    test: /\b(soy|eres|es)\s+(\d{1,3})\s*(?:años)?\b/i,
+    fix: (m) => {
+      const map = { soy: "tengo", eres: "tienes", es: "tiene" };
+      return `${map[m[1].toLowerCase()]} ${m[2]} años`;
+    },
+    why: "Spanish says you HAVE years, not that you ARE them.",
+    rule: "tener + number + años",
+    examples: ["Tengo veinte años.", "¿Cuántos años tienes?", "Tiene treinta y dos años."]
   },
   {
-    id: "gustar_yo",
-    test: /\byo gusto\b/i,
-    mistakeExplained: "'Gustar' funciona al revés que en inglés: no dices 'yo gusto algo', dices 'algo me gusta a mí'.",
-    correctVersion: "me gusta / me gustan",
-    rule: "Con 'gustar', el sujeto gramatical es la cosa que gusta, y la persona lleva un pronombre de objeto indirecto (me, te, le, nos, os, les).",
-    examples: ["Me gusta el chocolate.", "Nos gustan las películas españolas.", "¿Te gusta Madrid?"],
-    relatedGrammarId: "gram_indirect_object_pronouns"
+    id: "estar_sensation",
+    label: "sensations use tener",
+    relatedGrammarId: "gram_idiomatic_structures",
+    test: /\b(estoy|est[áa]s)\s+(caliente|fr[íi]o|hambre|sed|sue[ñn]o|miedo)\b/i,
+    fix: (m) => {
+      const map = { estoy: "tengo", estás: "tienes", estas: "tienes" };
+      const w = m[2].toLowerCase();
+      const noun = w.startsWith("calien") ? "calor" : w;
+      return `${map[m[1].toLowerCase()]} ${noun}`;
+    },
+    why: "Physical sensations are things you HAVE in Spanish. This one matters: 'estoy caliente' is a crude sexual comment, not 'I'm warm'.",
+    rule: "tener calor / frío / hambre / sed / sueño / miedo",
+    examples: ["Tengo calor.", "Tengo hambre.", "Tienes sueño."]
+  },
+
+  // ---------- por vs para ----------
+  {
+    id: "por_purpose",
+    label: "por vs para",
+    relatedGrammarId: "gram_advanced_connectors",
+    test: /\bpor\s+(vivir|trabajar|estudiar|aprender|comprar|ayudar|mejorar|practicar)\b/i,
+    fix: (m) => `para ${m[1]}`,
+    why: "You're stating the purpose — what you're doing it FOR — and purpose takes para. Por is for causes and reasons.",
+    rule: "para = purpose, goal, destination · por = cause, exchange, duration",
+    examples: ["Estudio para aprender.", "Ahorro para viajar.", "Lo hice por ti."]
+  },
+
+  // ---------- verbs that need no preposition ----------
+  {
+    id: "buscar_por",
+    label: "no preposition needed",
+    relatedGrammarId: "gram_idiomatic_structures",
+    test: /\bbusc(o|as|a|amos|an|ando|ar)\s+(?:por|para)\s+/i,
+    fix: (m) => `busc${m[1]} `,
+    why: "Buscar already contains the 'for'. Adding por or para is an English habit.",
+    rule: "buscar algo — never buscar por algo",
+    examples: ["Busco trabajo.", "Estoy buscando las llaves."]
   },
   {
-    id: "tener_frio",
-    test: /\b(soy|estoy) (fr[ií]o|calor|hambre|sed|sue[ñn]o|miedo)\b/i,
-    mistakeExplained: "En español, sensaciones como el frío, el calor, el hambre o el sueño se expresan con 'tener', no con 'ser' o 'estar'.",
-    correctVersion: "tengo frío / tengo hambre / tengo sueño",
-    rule: "Muchas sensaciones físicas usan la construcción 'tener + sustantivo': tener frío, tener calor, tener hambre, tener sed, tener sueño, tener miedo.",
-    examples: ["Tengo mucho frío hoy.", "¿Tienes hambre?", "Tenemos sueño después de comer."],
-    relatedGrammarId: "gram_present_irregular"
+    id: "esperar_por",
+    label: "no preposition needed",
+    relatedGrammarId: "gram_idiomatic_structures",
+    test: /\besper(o|as|a|amos|an|ando|ar)\s+por\s+/i,
+    fix: (m) => `esper${m[1]} `,
+    why: "Esperar already means 'wait for'. 'Esperar por' is a direct translation Spanish doesn't use.",
+    rule: "esperar a alguien / esperar algo",
+    examples: ["Te espero fuera.", "Esperamos el autobús."]
+  },
+  {
+    id: "pedir_por",
+    label: "no preposition needed",
+    relatedGrammarId: "gram_idiomatic_structures",
+    test: /\bpid(o|es|e|en)\s+por\s+/i,
+    fix: (m) => `pid${m[1]} `,
+    why: "Pedir already means 'ask for'.",
+    rule: "pedir algo",
+    examples: ["Pedí un café.", "Pide la cuenta."]
+  },
+
+  // ---------- gustar ----------
+  {
+    id: "gustar_subject",
+    label: "gustar works backwards",
+    relatedGrammarId: "gram_indirect_object_pronouns",
+    test: new RegExp(`\\b(?:yo\\s+)?gusto\\s+((?:el|la|los|las)\\s+[${A}]+|[${A}]+)`, "i"),
+    fix: (m) => `me gusta${/^(los|las)\s/i.test(m[1]) ? "n" : ""} ${m[1]}`,
+    why: "Gustar doesn't mean 'to like' — it means 'to be pleasing'. The thing you like is the subject, and you're the one it happens to.",
+    rule: "me gusta + singular · me gustan + plural",
+    examples: ["Me gusta el café.", "Me gustan los churros.", "¿Te gusta bailar?"]
+  },
+  {
+    id: "gustar_plural_agreement",
+    label: "gustar agreement",
+    relatedGrammarId: "gram_indirect_object_pronouns",
+    test: /\b(me|te|le|nos|les|os)\s+gusta\s+(los|las)\s+/i,
+    fix: (m) => `${m[1]} gustan ${m[2]} `,
+    why: "The verb agrees with the thing being liked, not with you. Plural things take gustan.",
+    rule: "me gustan los / las …",
+    examples: ["Me gustan los churros.", "Le gustan las películas.", "¿Os gustan los toros?"]
+  },
+
+  // ---------- reflexives & body parts ----------
+  {
+    id: "possessive_body",
+    label: "body parts take the article",
+    relatedGrammarId: "gram_reflexive",
+    test: /\b(lavo|cepillo|lastim[ée])\s+(?:mis|mi)\s+(manos|dientes|cara|pelo|pierna|brazo|mano)\b/i,
+    fix: (m) => {
+      const article = /^dientes$/i.test(m[2]) ? "los" : /^manos$/i.test(m[2]) ? "las" : /^(pelo|brazo)$/i.test(m[2]) ? "el" : "la";
+      return `me ${m[1].toLowerCase()} ${article} ${m[2]}`;
+    },
+    why: "With your own body, Spanish uses a reflexive plus the definite article — the 'my' is already implied.",
+    rule: "me lavo las manos, not lavo mis manos",
+    examples: ["Me lavo las manos.", "Me cepillo los dientes.", "Se rompió la pierna."]
+  },
+  {
+    id: "missing_reflexive",
+    label: "missing reflexive",
+    relatedGrammarId: "gram_reflexive",
+    test: /(?:^|\s)(levanto|acuesto|ba[ñn]o|despierto)\s+(a\s+las|temprano|tarde)\b/i,
+    fix: (m) => `me ${m[1].toLowerCase()} ${m[2]}`,
+    why: "These are things you do to yourself, so they need me / te / se.",
+    rule: "me levanto, me acuesto, me baño, me despierto",
+    examples: ["Me levanto a las seis.", "Me acuesto tarde.", "Me despierto temprano."]
+  },
+
+  // ---------- hay vs estar ----------
+  {
+    id: "estar_existence",
+    label: "hay, not está",
+    relatedGrammarId: "gram_hay",
+    test: /\b(?:est[áa]|est[áa]n)\s+(mucha|mucho|muchos|muchas)\s+/i,
+    fix: (m) => `hay ${m[1]} `,
+    why: "To say something exists or how much of it there is, Spanish uses hay. Estar is for where a specific thing is.",
+    rule: "hay = there is / there are",
+    examples: ["Hay mucha gente.", "Hay un problema.", "¿Hay bocadillos?"]
+  },
+
+  // ---------- agreement & quantifiers ----------
+  {
+    id: "muy_mucho",
+    label: "muy vs mucho",
+    relatedGrammarId: "gram_adjectives",
+    test: /\bmucho\s+(bueno|malo|grande|caro|bonit[oa]|f[áa]cil|dif[íi]cil|cansad[oa]|content[oa])\b/i,
+    fix: (m) => `muy ${m[1]}`,
+    why: "Muy modifies adjectives; mucho modifies nouns and verbs.",
+    rule: "muy + adjective · mucho + noun",
+    examples: ["Muy bueno.", "Mucho trabajo.", "Me gusta mucho."]
+  },
+  {
+    id: "muy_mucho_verb",
+    label: "muy vs mucho",
+    relatedGrammarId: "gram_adjectives",
+    test: /\bmuy\s+(gusta|gustan|duele|trabajo)\b/i,
+    fix: (m) => `mucho ${m[1]}`,
+    why: "After a verb you need mucho, not muy.",
+    rule: "verb + mucho",
+    examples: ["Me gusta mucho.", "Trabajo mucho.", "Me duele mucho."]
+  },
+  {
+    id: "gente_plural",
+    label: "gente is singular",
+    relatedGrammarId: "gram_gender",
+    test: /\bla\s+gente\s+(son|est[áa]n|tienen|hacen|van)(\s+[a-záéíóúñ]+s\b)?/i,
+    fix: (m) => {
+      const map = { son: "es", están: "está", estan: "está", tienen: "tiene", hacen: "hace", van: "va" };
+      const verb = m[1].toLowerCase();
+      const adjectivePosition = verb === "son" || verb.startsWith("est");
+      const adj = m[2] && adjectivePosition
+        ? m[2].replace(/([a-záéíóúñ]+?)(os|as|es|s)\b/i, (w, stem, end) => {
+            const e = end.toLowerCase();
+            if (e === "os" || e === "as") return stem + "a";
+            if (e === "es") return stem + "e";
+            return stem;
+          })
+        : (m[2] || "");
+      return `la gente ${map[m[1].toLowerCase()]}${adj}`;
+    },
+    why: "Gente is grammatically singular in Spanish even though it means several people.",
+    rule: "la gente es / está / tiene",
+    examples: ["La gente es amable.", "La gente está cansada."]
+  },
+  {
+    id: "un_otro",
+    label: "otro takes no article",
+    relatedGrammarId: "gram_articles",
+    test: /\b(?:un|una)\s+(otr[oa])\b/i,
+    fix: (m) => m[1],
+    why: "Otro already means 'another'. Putting un in front is an English habit.",
+    rule: "otro / otra — never un otro",
+    examples: ["Quiero otro café.", "Es otra cosa."]
+  },
+  {
+    id: "mas_mejor",
+    label: "mejor already means 'more good'",
+    relatedGrammarId: "gram_comparisons",
+    test: /\bm[áa]s\s+(mejor|peor)\b/i,
+    fix: (m) => m[1],
+    why: "Mejor already means 'better', so más is redundant.",
+    rule: "mejor / peor stand alone",
+    examples: ["Está mejor así.", "Es peor de lo que pensé."]
+  },
+  {
+    id: "la_problema",
+    label: "gender exception",
+    relatedGrammarId: "gram_gender",
+    test: /\b(la|una|esta)\s+(problema|tema|d[íi]a|idioma|mapa|sistema)\b/i,
+    fix: (m) => {
+      const map = { la: "el", una: "un", esta: "este" };
+      return `${map[m[1].toLowerCase()]} ${m[2]}`;
+    },
+    why: "These end in -a but are masculine — they came into Spanish from Greek. It's a short, closed list worth memorising.",
+    rule: "el problema, el tema, el día, el idioma, el mapa, el sistema",
+    examples: ["No hay ningún problema.", "Cambiemos de tema.", "Todo el día."]
+  },
+  {
+    id: "el_mano",
+    label: "gender exception",
+    relatedGrammarId: "gram_gender",
+    test: /\b(el|un|este)\s+(mano|foto|moto)\b/i,
+    fix: (m) => {
+      const map = { el: "la", un: "una", este: "esta" };
+      return `${map[m[1].toLowerCase()]} ${m[2]}`;
+    },
+    why: "These end in -o but are feminine. Foto and moto are shortened from fotografía and motocicleta.",
+    rule: "la mano, la foto, la moto",
+    examples: ["Dame la mano.", "Hazme una foto."]
+  },
+  {
+    id: "la_agua",
+    label: "el agua (still feminine)",
+    relatedGrammarId: "gram_gender",
+    test: /\bla\s+(agua|[áa]rea|hambre)\b/i,
+    fix: (m) => `el ${m[1]}`,
+    why: "A feminine noun starting with a stressed 'a' takes el purely for sound. It stays feminine, so its adjectives do too: el agua fría.",
+    rule: "el agua — but el agua está fría",
+    examples: ["El agua está fría.", "Tengo hambre."]
+  },
+
+  // ---------- personal a ----------
+  {
+    id: "missing_personal_a",
+    label: "missing personal a",
+    relatedGrammarId: "gram_direct_object_pronouns",
+    test: /\b(veo|vi|conoc[íi]|conozco|visit[ée]|visito|llam[ée]|llamo|ayud[ée]|ayudo)\s+((?:mi|mis|tu|su)\s+(?:herman[oa]|mam[áa]|pap[áa]|amig[oa]|hij[oa]|abuel[oa]|prim[oa]))\b/i,
+    fix: (m) => `${m[1]} a ${m[2]}`,
+    why: "When the direct object is a specific person, Spanish puts an 'a' in front of them. English has nothing like it, so it's easy to drop.",
+    rule: "verb + a + person",
+    examples: ["Vi a mi hermana.", "Conocí a su padre.", "Llamé a mi madre."]
+  },
+
+  // ---------- subjunctive triggers ----------
+  {
+    id: "espero_que_indicative",
+    label: "subjunctive after espero que",
+    relatedGrammarId: "gram_present_subjunctive",
+    test: /\bespero\s+que\s+(vienes|viene|puedes|puede|tienes|tiene|est[áa]s|est[áa]|es|vas|va)\b/i,
+    fix: (m) => {
+      const map = { vienes: "vengas", viene: "venga", puedes: "puedas", puede: "pueda", tienes: "tengas", tiene: "tenga", estás: "estés", estas: "estés", está: "esté", esta: "esté", es: "sea", vas: "vayas", va: "vaya" };
+      return `espero que ${map[m[1].toLowerCase()]}`;
+    },
+    why: "Hoping isn't stating a fact, so what follows que goes into the subjunctive.",
+    rule: "espero que + subjunctive",
+    examples: ["Espero que vengas.", "Espero que puedas.", "Espero que estés bien."]
+  },
+  {
+    id: "para_que_indicative",
+    label: "subjunctive after para que",
+    relatedGrammarId: "gram_present_subjunctive",
+    test: /\bpara\s+que\s+(sabes|sabe|puedes|puede|vienes|viene|entiendes|entiende)\b/i,
+    fix: (m) => {
+      const map = { sabes: "sepas", sabe: "sepa", puedes: "puedas", puede: "pueda", vienes: "vengas", viene: "venga", entiendes: "entiendas", entiende: "entienda" };
+      return `para que ${map[m[1].toLowerCase()]}`;
+    },
+    why: "Para que introduces a purpose that hasn't happened yet, so it always takes the subjunctive.",
+    rule: "para que + subjunctive, always",
+    examples: ["Te lo digo para que sepas.", "Habla despacio para que entienda."]
+  },
+  {
+    id: "cuando_future",
+    label: "subjunctive after cuando",
+    relatedGrammarId: "gram_present_subjunctive",
+    test: /\bcuando\s+(llego|llegas|llega|termino|terminas|termina)\s*,?\s+(te|le|nos|nos|nos|os|voy|vamos)\b/i,
+    fix: (m) => {
+      const map = { llego: "llegue", llegas: "llegues", llega: "llegue", termino: "termine", terminas: "termines", termina: "termine" };
+      return `cuando ${map[m[1].toLowerCase()]} ${m[2]}`;
+    },
+    why: "When cuando points at something that hasn't happened yet, it takes the subjunctive.",
+    rule: "cuando + subjunctive for future events",
+    examples: ["Cuando llegue, te aviso.", "Cuando termines, avísame."]
+  },
+
+  // ---------- false friends ----------
+  {
+    id: "embarazada",
+    label: "false friend",
+    relatedGrammarId: "gram_idiomatic_structures",
+    test: /\b(estoy|est[áa])\s+embarazad[oa]\b/i,
+    fix: (m) => (m[1].toLowerCase() === "estoy" ? "me da vergüenza" : "le da vergüenza"),
+    why: "Embarazada means pregnant, not embarrassed. For embarrassment, Spain uses 'me da vergüenza' or 'estoy avergonzado/a'.",
+    rule: "embarazada = pregnant · vergüenza = embarrassment",
+    examples: ["Me da mucha vergüenza.", "Qué vergüenza, tío."]
+  },
+  {
+    id: "realizar_false_friend",
+    label: "false friend",
+    relatedGrammarId: "gram_idiomatic_structures",
+    test: /\breali(zo|zas|za|c[ée])\s+que\b/i,
+    fix: (m) => {
+      const map = { zo: "me doy cuenta de", zas: "te das cuenta de", za: "se da cuenta de", cé: "me di cuenta de", ce: "me di cuenta de" };
+      return `${map[m[1].toLowerCase()] || "me doy cuenta de"} que`;
+    },
+    why: "Realizar means to carry something out, not to realize. For realizing, Spanish uses darse cuenta.",
+    rule: "darse cuenta de que = to realize",
+    examples: ["Me di cuenta de que era tarde.", "No me di cuenta."]
+  },
+  {
+    id: "aplicar_para",
+    label: "false friend",
+    relatedGrammarId: "gram_idiomatic_structures",
+    test: /\baplic(o|u[ée])\s+(?:para|a)\s+((?:un|el|la)\s+\w+|trabajo|empleo|beca)\b/i,
+    fix: (m) => `${m[1].toLowerCase() === "o" ? "solicito" : "solicité"} ${m[2]}`,
+    why: "Aplicar means to apply a substance or a rule. For applying to a job, Spanish uses solicitar.",
+    rule: "solicitar un trabajo",
+    examples: ["Solicité el trabajo.", "Voy a solicitar la beca."]
+  },
+  {
+    id: "introducir_person",
+    label: "false friend",
+    relatedGrammarId: "gram_idiomatic_structures",
+    test: /\bintroduc(ir|e|es|o)\s+a\s+((?:mi|tu|su)\s+\w+)/i,
+    fix: (m) => {
+      const map = { ir: "presentar", e: "presenta", es: "presentas", o: "presento" };
+      return `${map[m[1].toLowerCase()]} a ${m[2]}`;
+    },
+    why: "Introducir means to insert. To introduce people, Spanish uses presentar.",
+    rule: "presentar a alguien",
+    examples: ["Te presento a mi hermana.", "Me presentó a sus padres."]
+  },
+  {
+    id: "soportar_false_friend",
+    label: "false friend",
+    relatedGrammarId: "gram_idiomatic_structures",
+    test: /\bte\s+soporto\b/i,
+    fix: () => "te apoyo",
+    why: "Soportar means to put up with. To support someone, Spanish uses apoyar — 'te soporto' says you can barely tolerate them.",
+    rule: "apoyar = to support · soportar = to tolerate",
+    examples: ["Siempre te apoyo.", "Gracias por apoyarme."]
+  },
+
+  // ---------- register (Spain-specific) ----------
+  {
+    id: "tu_usted_mix",
+    label: "mixing tú and usted",
+    relatedGrammarId: "gram_spain_advanced_usage",
+    test: /\busted\b[^.?!]{0,30}?\b(tienes|eres|quieres|puedes)\b/i,
+    fix: (m) => {
+      const map = { tienes: "tiene", eres: "es", quieres: "quiere", puedes: "puede" };
+      return m[0].replace(new RegExp(`\\b${m[1]}\\b`, "i"), map[m[1].toLowerCase()]);
+    },
+    why: "Once you've chosen usted, everything else has to stay formal — verbs and possessives included.",
+    rule: "usted + tiene / es / quiere / su",
+    examples: ["¿Usted tiene tiempo?", "¿Cómo está usted?", "Es su turno."]
   },
   {
     id: "vosotros_ustedes_mix",
-    test: /\bvosotros\s+\w*(an|en)\b.*\bustedes\b|\bustedes\b.*\bvosotros\b/i,
-    mistakeExplained: "Estás mezclando 'vosotros' (informal, plural, España) con 'ustedes' (formal en España / general en Latinoamérica) en la misma frase.",
-    correctVersion: "En España, con amigos usa 'vosotros'; 'ustedes' solo se usa en contextos formales.",
-    rule: "España distingue vosotros (informal) de ustedes (formal). Latinoamérica solo usa 'ustedes' para ambos registros. No mezcles las dos formas.",
-    examples: ["Vosotros sois mis amigos.", "¿Qué queréis hacer esta noche?", "Ustedes, por favor, esperen aquí (formal)."],
-    relatedGrammarId: "gram_spain_advanced_usage"
+    label: "vosotros vs ustedes",
+    relatedGrammarId: "gram_spain_advanced_usage",
+    test: /\bustedes\b[^.?!]{0,30}?\b(sois|tenéis|queréis|podéis|vais|hacéis)\b/i,
+    fix: (m) => {
+      const map = { sois: "son", tenéis: "tienen", queréis: "quieren", podéis: "pueden", vais: "van", hacéis: "hacen" };
+      return m[0].replace(new RegExp(`\\b${m[1]}\\b`, "i"), map[m[1].toLowerCase()]);
+    },
+    why: "In Spain, informal 'you all' is vosotros (sois, tenéis, queréis...); ustedes is only for formal address. Mixing the two mid-sentence is the clearest tell of a non-Spain textbook.",
+    rule: "vosotros + -áis/-éis verb forms (informal) · ustedes + -an/-en forms (formal, rare in Spain except very formal contexts)",
+    examples: ["¿Vosotros sois de aquí?", "¿Qué queréis hacer?", "Ustedes, por favor, esperen aquí (formal)."]
   },
   {
-    id: "double_negative_missing_no",
-    test: /\b(nunca|nada|nadie)\b(?!.*\bno\b)/i,
-    mistakeExplained: "En español, normalmente se necesita 'no' antes del verbo además de la palabra negativa (a diferencia del inglés, que evita la doble negación).",
-    correctVersion: "No tengo nada. / No viene nadie.",
-    rule: "El español usa doble negación: 'no' + verbo + palabra negativa (nada, nadie, nunca), cuando la palabra negativa va después del verbo.",
-    examples: ["No como nunca carne.", "No conozco a nadie aquí.", "No tengo nada que decir."],
-    relatedGrammarId: "gram_questions"
+    id: "agarrar_transport",
+    label: "coger is normal in Spain",
+    relatedGrammarId: "gram_spain_advanced_usage",
+    test: /\b(agarr[oa]|tom[oa])\s+el\s+(autob[uú]s|metro|tren)\b/i,
+    fix: (m) => `${m[1].toLowerCase().startsWith("agarr") ? "cojo" : "cojo"} el ${m[2]}`,
+    why: "'Agarrar'/'tomar' for transport are understood but read as Latin American. In Spain, 'coger' is the completely normal, everyday word — no vulgar connotation here.",
+    rule: "coger el autobús / el metro / el tren",
+    examples: ["Cojo el metro todos los días.", "¿Coges el autobús 24?"]
+  },
+
+  // ---------- phrasing ----------
+  {
+    id: "en_dia_semana",
+    label: "days take el / los",
+    relatedGrammarId: "gram_articles",
+    test: /\ben\s+(lunes|martes|mi[ée]rcoles|jueves|viernes|s[áa]bado|domingo)\b/i,
+    fix: (m) => `el ${m[1]}`,
+    why: "Spanish uses el or los with days of the week where English uses 'on'.",
+    rule: "el lunes = on Monday · los lunes = on Mondays",
+    examples: ["Nos vemos el viernes.", "Trabajo los sábados."]
   },
   {
-    id: "por_para_confusion",
-    test: /\bpara\s+(dos|tres|cuatro|cinco|seis|una?)\s+(d[ií]as|semanas|meses|a[ñn]os|horas)\b/i,
-    mistakeExplained: "Para expresar una duración de tiempo ('durante X tiempo'), normalmente se usa 'por', no 'para'.",
-    correctVersion: "por dos días / por tres semanas",
-    rule: "'Por' se usa para duración, causa y medio; 'para' se usa para propósito, destino y plazo límite.",
-    examples: ["Viajé por dos semanas.", "Lo hice por ti.", "Es para el lunes (plazo)."],
-    relatedGrammarId: "gram_advanced_connectors"
-  },
-  {
-    id: "personal_a_missing",
-    test: /\b(veo|conozco|busco|llamo|ayudo)\s+(mi|el|la|los|las)?\s*(hermano|hermana|amigo|amiga|profesor|profesora|madre|padre)\b(?!.*\ba\b)/i,
-    mistakeExplained: "Cuando el objeto directo es una persona específica, el español requiere la 'a personal' antes del objeto.",
-    correctVersion: "Veo a mi hermano. / Conozco a la profesora.",
-    rule: "La 'a personal' se añade delante de objetos directos que son personas (o mascotas concretas): veo a Juan, conozco a mi amiga.",
-    examples: ["Busco a mi hermano.", "Conozco a Ana.", "¿Ves a tus amigos?"],
-    relatedGrammarId: "gram_direct_object_pronouns"
-  },
-  {
-    id: "subjunctive_trigger_missing",
-    test: /\bespero que\s+\w+(o|a|amos|an)\b/i,
-    mistakeExplained: "Después de 'espero que' (expresión de deseo) se necesita el subjuntivo, no el indicativo.",
-    correctVersion: "Espero que estés bien. (no 'estás')",
-    rule: "Verbos y expresiones de deseo, duda o emoción (esperar que, querer que, ojalá) activan el modo subjuntivo en la cláusula siguiente.",
-    examples: ["Espero que tengas un buen día.", "Quiero que vengas a la fiesta.", "Ojalá haga sol mañana."],
-    relatedGrammarId: "gram_present_subjunctive"
-  },
-  {
-    id: "accent_tu_possessive",
-    test: /\btú\s+(casa|coche|familia|libro|móvil|piso)\b/i,
-    mistakeExplained: "Confundiste 'tú' (pronombre, con tilde) con 'tu' (posesivo, sin tilde).",
-    correctVersion: "tu casa (posesivo) vs. tú vienes (pronombre)",
-    rule: "'Tú' con tilde es el pronombre de sujeto ('you'); 'tu' sin tilde es el posesivo ('your'). Se distinguen solo por la tilde.",
-    examples: ["Tu casa es bonita.", "Tú eres muy simpático.", "¿Es tu móvil?"],
-    relatedGrammarId: "gram_pronunciation"
-  },
-  {
-    id: "ser_estar_mood",
-    test: /\b(soy|es)\s+(cansad[oa]|content[oa]|enfermo|enferma|aburrid[oa]|nervios[oa])\b/i,
-    mistakeExplained: "Usaste 'ser' para un estado temporal (cansancio, enfermedad, ánimo). Estos estados requieren 'estar'.",
-    correctVersion: "estoy cansado / está enfermo",
-    rule: "'Estar' se usa para estados temporales o cambiantes: emociones, salud, condiciones. 'Ser' se reserva para características permanentes o identidad.",
-    examples: ["Estoy cansado hoy.", "Mi madre está enferma.", "Estamos muy contentos."],
-    relatedGrammarId: "gram_estar"
-  },
-  {
-    id: "coger_warning",
-    test: /\bagarr(o|as|a|amos)\s+el\s+(autob[uú]s|metro|tren)\b/i,
-    mistakeExplained: "'Agarrar' se entiende en España, pero suena a español latinoamericano. En España, para transporte se dice 'coger'.",
-    correctVersion: "cojo el autobús / cojo el metro",
-    rule: "En España 'coger' es completamente normal y neutro (tomar/agarrar). En algunos países de Latinoamérica se evita por connotación vulgar — pero en España es la palabra estándar.",
-    examples: ["Cojo el metro todos los días.", "¿Coges el autobús 24?", "Voy a coger un taxi."],
-    relatedGrammarId: "gram_spain_advanced_usage"
+    id: "preguntar_pregunta",
+    label: "phrasing",
+    relatedGrammarId: "gram_idiomatic_structures",
+    test: /\bpregunt(o|as|a|ar|[ée])\s+una\s+pregunta\b/i,
+    fix: (m) => (m[1].toLowerCase() === "ar" ? "hacer una pregunta" : "hago una pregunta"),
+    why: "You don't 'ask a question' with preguntar in Spanish — you make one with hacer.",
+    rule: "hacer una pregunta",
+    examples: ["¿Te puedo hacer una pregunta?", "Hizo muchas preguntas."]
   }
 ];
 
-export function checkText(text) {
+// Runs every confident rule and returns your sentence, corrected.
+export function checkSpanish(text) {
+  const input = String(text || "");
+  if (!input.trim()) return [];
   const hits = [];
+  let corrected = input;
+
   for (const p of MISTAKE_PATTERNS) {
-    if (p.test.test(text)) hits.push(p);
+    const m = input.match(p.test);
+    if (!m) continue;
+    let replacement;
+    try {
+      replacement = p.fix(m, input);
+    } catch (e) {
+      continue; // a rule that can't produce a fix stays silent
+    }
+    if (!replacement || replacement.trim().toLowerCase() === m[0].trim().toLowerCase()) continue;
+
+    // A fix at the start of a sentence must not lowercase it.
+    if (/^[A-ZÁÉÍÓÚÑ]/.test(m[0]) && /^[a-záéíóúñ]/.test(replacement)) {
+      replacement = replacement[0].toUpperCase() + replacement.slice(1);
+    }
+    corrected = corrected.replace(m[0], replacement);
+    hits.push({
+      id: p.id,
+      label: p.label,
+      relatedGrammarId: p.relatedGrammarId,
+      fragment: m[0].trim(),
+      suggestion: replacement.trim(),
+      why: p.why,
+      rule: p.rule,
+      examples: p.examples || []
+    });
   }
-  return hits;
+
+  // Every hit carries the fully corrected sentence, so the UI can show one
+  // "here's your sentence, fixed" line no matter how many rules fired.
+  return hits.map((h) => ({ ...h, corrected: corrected.trim() }));
+}
+
+// Backward-compatible shape for callers written against the older API
+// (Tutor's corrector, before this file was upgraded to checkSpanish()).
+export function checkText(text) {
+  return checkSpanish(text).map((h) => ({
+    ...h,
+    mistakeExplained: h.why,
+    correctVersion: h.corrected,
+    rule: h.rule,
+    examples: h.examples
+  }));
 }

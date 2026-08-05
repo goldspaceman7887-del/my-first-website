@@ -3,6 +3,7 @@ import { el, blurActive } from "../core/ui.js";
 import { audioEngine } from "../core/audio.js";
 import { gradeItem, QUALITY } from "../core/srs.js";
 import { addXP, updateSkillScore } from "../core/gamification.js";
+import { tappable, initTapWords } from "../core/tapword.js";
 import { READINGS } from "../data/reading.js";
 
 function parseQuery() {
@@ -75,7 +76,7 @@ function renderReadingDetail(container, id) {
   ]);
   textCard.appendChild(controls);
   const textBody = el("div", { style: "font-family:var(--font-es);font-size:1.08rem;line-height:1.8" });
-  r.text.split("\n\n").forEach((p) => textBody.appendChild(el("p", {}, p)));
+  r.text.split("\n\n").forEach((p) => textBody.appendChild(el("p", { class: "tappable-line" }, [tappable(p)])));
   textCard.appendChild(textBody);
   const toggleBtn = el(
     "button",
@@ -150,4 +151,6 @@ function renderReadingDetail(container, id) {
     updateSkillScore("vocabulary", 1);
     store.save();
   }
+
+  return initTapWords();
 }
