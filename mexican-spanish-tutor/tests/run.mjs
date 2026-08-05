@@ -468,6 +468,88 @@ async function testCorrections(browser) {
   await ctx.close();
 }
 
+async function testImmersion(browser) {
+  group("immersion");
+  const { page, ctx, errors } = await freshPage(browser, { mobile: true });
+
+  const say = async (msg) => {
+    await page.fill(".chat-input-row input", msg);
+    await page.click('button:has-text("Enviar")');
+    await page.waitForTimeout(450);
+    return page.$$eval(".chat-bubble.bot .cb-es", (els) => els.map((e) => e.textContent.trim()));
+  };
+
+  await go(page, "#/practice/immersion");
+  await page.waitForTimeout(300);
+
+  // 14 turns of the same kind of answer — the old engine returned one canned
+  // reply per keyword, so this is exactly what exposed the repetition.
+  const replies = [];
+  const inputs = ["Hola", "Me llamo Cindy", "Bien, gracias", "Me gusta la comida",
+    "Sí, mucho", "Trabajo en un hospital", "Está bien", "Tengo dos hermanos",
+    "Sí, nos vemos seguido", "Me gusta viajar", "A la playa", "Con mi familia",
+    "Los fines de semana", "Sí, claro"];
+  for (const msg of inputs) {
+    const all = await say(msg);
+    replies.push(all[all.length - 1]);
+  }
+  const unique = new Set(replies);
+  check(`${replies.length} turns produced ${unique.size} distinct replies`,
+    unique.size === replies.length, [...replies].filter((r, i) => replies.indexOf(r) !== i).slice(0, 3).join(" | "));
+
+  const questions = replies.filter((r) => r.includes("?"));
+  check("nearly every reply asks something", questions.length >= replies.length - 2, `${questions.length}/${replies.length}`);
+
+  // Asking for help must not consume a question or invent a new one
+  const beforeHelp = (await page.$$eval(".chat-bubble.bot .cb-es", (e) => e.length));
+  await page.fill(".chat-input-row input", "?");
+  await page.click('button:has-text("Enviar")');
+  await page.waitForTimeout(500);
+  const helpBubble = await page.$(".badge.badge-gold");
+  check('"?" replays the last line with a translation', Boolean(helpBubble));
+  const afterHelp = await page.$$eval(".chat-bubble.bot .cb-es", (e) => e.length);
+  check('"?" does not skip ahead to a new question', afterHelp - beforeHelp <= 1, `${afterHelp - beforeHelp} new bot lines`);
+
+  // A SECOND session in the same browser must not repeat the first session's
+  // questions — this is the part people actually notice.
+  const firstSession = new Set(replies.map((r) => r.replace(/^[^¿]*/, "")).filter(Boolean));
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForTimeout(700);
+  await page.evaluate(async () => {
+    const { audioEngine } = await import("/js/core/audio.js");
+    audioEngine.speak = () => {};
+  });
+  await go(page, "#/practice/immersion");
+  await page.waitForTimeout(300);
+  const second = [];
+  for (const msg of inputs.slice(0, 8)) {
+    const all = await say(msg);
+    second.push(all[all.length - 1]);
+  }
+  const secondQuestions = second.map((r) => r.replace(/^[^¿]*/, "")).filter(Boolean);
+  const repeated = secondQuestions.filter((q) => firstSession.has(q));
+  check("a second session asks different questions", repeated.length === 0, repeated.slice(0, 3).join(" | "));
+
+  // Openers should vary rather than always being the same greeting
+  const openers = new Set();
+  for (let i = 0; i < 8; i++) {
+    const c = await browser.newContext({ ...devices["iPhone 13"] });
+    const pg = await c.newPage();
+    await pg.goto(`${BASE}/index.html`, { waitUntil: "networkidle" });
+    await pg.waitForTimeout(250);
+    for (let k = 0; k < 4; k++) { const b = await pg.$(".onboarding-nav .btn-primary"); if (b) { await b.click(); await pg.waitForTimeout(110); } }
+    await pg.evaluate(async () => { const { audioEngine } = await import("/js/core/audio.js"); audioEngine.speak = () => {}; });
+    await pg.evaluate(() => { window.location.hash = "#/practice/immersion"; });
+    await pg.waitForTimeout(500);
+    const first = await pg.$eval(".chat-bubble.bot .cb-es", (e) => e.textContent.trim()).catch(() => null);
+    if (first) openers.add(first);
+    await c.close();
+  }
+  check("the opening line varies between sessions", openers.size >= 3, `${openers.size} distinct openers in 8 fresh sessions`);
+  check("no JS errors", errors.length === 0, errors.slice(0, 3).join(" | "));
+  await ctx.close();
+}
+
 async function testStorage(browser) {
   group("storage");
   // The bug this guards: deepMerge only walked keys present in the defaults,
@@ -567,6 +649,7 @@ const GROUPS = {
   stories: testStories,
   "tap-a-word": testTapWords,
   "error feedback": testCorrections,
+  immersion: testImmersion,
   storage: testStorage,
   mobile: testMobile,
   offline: testOffline

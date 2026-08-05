@@ -63,7 +63,10 @@ function defaultState() {
       roadmapUnitsCompleted: [], // roadmap unit ids passed by quiz
       roadmapUnitsSkipped: [], // units placed out of (level test or manual tick-off)
       checkpointsPassed: [], // ACTFL level codes whose end-of-section checkpoint you passed
-      savedWords: {} // word -> English gloss, bookmarked from Story Mode
+      savedWords: {}, // word -> English gloss, bookmarked from Story Mode
+      // Questions Immersion has already asked, so a new session doesn't open
+      // with the same one. Resets automatically once the pool is exhausted.
+      immersionAsked: []
     },
     achievements: {
       unlocked: []
