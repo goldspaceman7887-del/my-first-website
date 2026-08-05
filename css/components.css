@@ -82,6 +82,9 @@
 .btn-success:active { box-shadow: 0 0 0 color-mix(in srgb, var(--success) 65%, black); }
 .btn-danger { background: var(--danger); color: #fff; box-shadow: 0 4px 0 color-mix(in srgb, var(--danger) 65%, black); }
 .btn-danger:active { box-shadow: 0 0 0 color-mix(in srgb, var(--danger) 65%, black); }
+/* Toggle state (e.g. "slow audio" on) — an unmistakable pressed look, not
+   just a color tint, for anyone who finds subtle UI cues easy to miss. */
+.btn.active { background: var(--accent); color: var(--accent-ink); box-shadow: 0 0 0 var(--accent-shadow); transform: translateY(4px); }
 .btn-sm { padding: .5rem 1rem; font-size: .8rem; border-radius: 12px; box-shadow: 0 3px 0 var(--btn-default-shadow); }
 .btn-sm:active { transform: translateY(3px); }
 .btn-sm.btn-primary { box-shadow: 0 3px 0 var(--accent-shadow); }
