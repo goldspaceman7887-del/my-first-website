@@ -605,41 +605,90 @@ async function testScenarios(browser) {
   check("NLU extracts sugar preference", nlu.sugar1 === "sin azúcar", JSON.stringify(nlu));
   check("NLU extracts payment method", nlu.payment1 === "tarjeta", JSON.stringify(nlu));
 
-  const completion = await page.evaluate(async () => {
+  // Spot-check the distinctive NLU extractors of each of the other shipped
+  // scenarios (order-coffee's is checked in depth above).
+  const nlu2 = await page.evaluate(async () => {
     const { scenarioById } = await import("/js/data/scenarios.js");
-    const { createSession, submitUserTurn, resolveSession } = await import("/js/core/taskEngine.js");
-    const s = scenarioById("order-coffee");
-    const answers = { drink: "Quiero un latte", size: "mediano", temperature: "caliente", milk: "leche entera", sugar: "con azúcar", payment: "con tarjeta" };
-    const session = createSession(s);
-    let guard = 0;
-    // Repeats until every required slot is filled AND any NPC mistake along
-    // the way has been repaired — a real "success" run must handle whatever
-    // turn kind comes back, not just answer slots in isolation.
-    while (guard < 20) {
-      guard++;
-      if (session.pendingMistake) {
-        submitUserTurn(session, "No, pedí mediano.");
-        continue;
-      }
-      const missing = session.requiredSlots.find((sl) => session.slots[sl.id] === undefined);
-      if (!missing) break;
-      submitUserTurn(session, answers[missing.id] || "no sé");
-    }
-    resolveSession(session);
-    return { status: session.status, filled: session.filledRequiredCount, total: session.requiredSlots.length, turns: session.turns, unresolvedMistakes: session.unresolvedMistakes };
+    const slot = (id, sId) => scenarioById(sId).slots.find((x) => x.id === id);
+    return {
+      destination: slot("destination", "asking-directions").extract("Ando buscando el metro"),
+      directionAck: slot("directionAck", "asking-directions").extract("Ah ok, a la derecha en dos cuadras"),
+      dish: slot("dish", "restaurant").extract("Quiero unas enchiladas, por favor"),
+      spiceLevel: slot("spiceLevel", "restaurant").extract("no muy picante"),
+      nights: slot("nights", "hotel-check-in").extract("Voy a quedarme tres noches"),
+      roomType: slot("roomType", "hotel-check-in").extract("una habitación doble"),
+      reasonForCall: slot("reasonForCall", "calling-a-doctor").extract("Tengo mucha fiebre"),
+      preferredTime: slot("preferredTime", "calling-a-doctor").extract("prefiero en la tarde"),
+      experience: slot("experience", "job-interview").extract("Trabajé tres años en atención al cliente"),
+      motivation: slot("motivation", "job-interview").extract("Me interesa mucho este puesto porque quiero crecer")
+    };
   });
-  check("filling every required slot resolves to success", completion.status === "success", JSON.stringify(completion));
+  check("directions scenario NLU extracts destination and direction ack", nlu2.destination === "el metro" && nlu2.directionAck === "understood", JSON.stringify(nlu2));
+  check("restaurant scenario NLU extracts dish and spice level", nlu2.dish === "enchiladas" && nlu2.spiceLevel === "no muy picante", JSON.stringify(nlu2));
+  check("hotel scenario NLU extracts nights and room type", nlu2.nights === "tres noches" && nlu2.roomType === "doble", JSON.stringify(nlu2));
+  check("doctor scenario NLU extracts reason and preferred time", nlu2.reasonForCall === "fiebre" && nlu2.preferredTime === "tarde", JSON.stringify(nlu2));
+  check("interview scenario NLU extracts experience and motivation", nlu2.experience === "experience-shown" && nlu2.motivation === "motivation-shown", JSON.stringify(nlu2));
 
-  const abandonment = await page.evaluate(async () => {
-    const { scenarioById } = await import("/js/data/scenarios.js");
+  // A per-scenario answer bank good enough to resolve every required slot,
+  // run against EVERY shipped scenario, not just order-coffee — this is the
+  // check that would have caught the substitution/specialRequest/allergy
+  // slots that could never be filled (missing extract()) before that got
+  // fixed, and would catch the same class of bug in any new scenario.
+  const ANSWER_BANK = {
+    "order-coffee": { drink: "Quiero un latte", size: "mediano", temperature: "caliente", milk: "leche entera", sugar: "con azúcar", payment: "con tarjeta" },
+    "asking-directions": { destination: "el metro", transportMode: "a pie", directionAck: "Ok, a la derecha en dos cuadras", distanceAck: "¿Como cuántas cuadras son?", thanks: "Muchas gracias" },
+    restaurant: { dish: "tacos", spiceLevel: "no muy picante", drink: "agua de jamaica", billSplit: "junta" },
+    "hotel-check-in": { reservationConfirmed: "Sí, tengo una reservación", reservationName: "García", nights: "dos noches", roomType: "doble", idDocument: "Aquí tiene mi pasaporte", paymentMethod: "tarjeta" },
+    "calling-a-doctor": { reasonForCall: "Tengo fiebre", patientName: "Ana López", insuranceOrPrivate: "particular", preferredDay: "jueves", preferredTime: "en la mañana" },
+    "job-interview": { selfIntro: "Soy responsable y me gusta trabajar en equipo", experience: "Trabajé dos años en una oficina", motivation: "Me interesa porque busco crecer profesionalmente", availability: "tiempo completo" }
+  };
+  // Each scenario's mistake has its own expectedRepair regex, so a single
+  // generic apology doesn't reliably satisfy all of them — a repair attempt
+  // that never actually matches would starve the guard loop and read as a
+  // false "failed", not a real bug. Give each scenario a repair line crafted
+  // against its own regex.
+  const REPAIR_TEXT = {
+    "order-coffee": "No, pedí mediano, no grande.",
+    "asking-directions": "Ok, entendido, es a la izquierda.",
+    restaurant: "Mejor deme unos tacos entonces.",
+    "hotel-check-in": "Tengo el número de confirmación, aquí está mi correo.",
+    "calling-a-doctor": "¿Qué tal el viernes entonces?",
+    "job-interview": "Dije tres años, no meses."
+  };
+  const allCompletions = await page.evaluate(async ({ bank, repairs }) => {
+    const { SCENARIOS } = await import("/js/data/scenarios.js");
     const { createSession, submitUserTurn, resolveSession } = await import("/js/core/taskEngine.js");
-    const s = scenarioById("order-coffee");
-    const session = createSession(s);
-    for (let i = 0; i < 15; i++) submitUserTurn(session, "mmm no sé");
-    resolveSession(session);
-    return { status: session.status, filled: session.filledRequiredCount };
+    return SCENARIOS.map((s) => {
+      const answers = bank[s.id] || {};
+      const repairText = repairs[s.id] || "Ok, entendido.";
+      const session = createSession(s);
+      let guard = 0;
+      while (guard < 30) {
+        guard++;
+        if (session.pendingMistake) { submitUserTurn(session, repairText); continue; }
+        const missing = session.requiredSlots.find((sl) => session.slots[sl.id] === undefined);
+        if (!missing) break;
+        submitUserTurn(session, answers[missing.id] || "no sé");
+      }
+      resolveSession(session);
+      return { id: s.id, status: session.status, filled: session.filledRequiredCount, total: session.requiredSlots.length, turns: session.turns };
+    });
+  }, { bank: ANSWER_BANK, repairs: REPAIR_TEXT });
+  const notSuccessful = allCompletions.filter((c) => c.status !== "success");
+  check(`all ${allCompletions.length} scenarios resolve to success when every required slot is answered`, notSuccessful.length === 0, JSON.stringify(notSuccessful));
+
+  const allAbandonments = await page.evaluate(async () => {
+    const { SCENARIOS } = await import("/js/data/scenarios.js");
+    const { createSession, submitUserTurn, resolveSession } = await import("/js/core/taskEngine.js");
+    return SCENARIOS.map((s) => {
+      const session = createSession(s);
+      for (let i = 0; i < 20; i++) submitUserTurn(session, "mmm no sé, no sé");
+      resolveSession(session);
+      return { id: s.id, status: session.status };
+    });
   });
-  check("never answering resolves to incomplete (not stuck)", abandonment.status === "incomplete", JSON.stringify(abandonment));
+  const notIncomplete = allAbandonments.filter((a) => a.status !== "incomplete");
+  check("every scenario resolves to incomplete (not stuck) when never answered", notIncomplete.length === 0, JSON.stringify(notIncomplete));
 
   const rubric = await page.evaluate(async () => {
     const { scenarioById } = await import("/js/data/scenarios.js");
