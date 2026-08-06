@@ -92,7 +92,7 @@ async function testRoutes(browser) {
   const { page, ctx, errors } = await freshPage(browser);
   const routes = ["#/dashboard", "#/roadmap", "#/level-test", "#/learn", "#/learn/vocab",
     "#/learn/grammar", "#/learn/dialogues", "#/practice", "#/practice/story",
-    "#/practice/conversation", "#/review", "#/review/known", "#/save", "#/achievements", "#/settings"];
+    "#/practice/conversation", "#/practice/roleplay", "#/review", "#/review/known", "#/save", "#/achievements", "#/settings"];
   let rendered = 0;
   for (const r of routes) {
     await go(page, r);
@@ -664,23 +664,77 @@ async function testScenarios(browser) {
   });
   check("a strong session scores higher than a weak one", rubric.strong > rubric.weak, JSON.stringify(rubric));
 
+  // Gating is relative to the nearest tier that actually HAS scenario
+  // content, not literal ACTFL_LEVELS[index-1] — otherwise the very first
+  // scenario tier shipped would be permanently locked behind a prerequisite
+  // that can never be earned because no scenario exists at that tier. These
+  // fixtures pass an explicit `tiers` lineup so the test stays meaningful
+  // regardless of how many real scenarios/tiers currently exist.
   const gate = await page.evaluate(async () => {
     const { store } = await import("/js/core/storage.js");
     const { meetsGateForTier } = await import("/js/core/actflProfile.js");
+    const { ACTFL_LEVELS } = await import("/js/data/roadmap.js");
+    const fixtureTiers = [ACTFL_LEVELS[0], ACTFL_LEVELS[1]]; // novice-low, novice-mid
     store.state.progress.scenarioAttempts = [];
     const base = { requiredSlotsFilled: 6, requiredSlotsTotal: 6, overallScore: 80, tier: "novice-low" };
-    const openAlways = meetsGateForTier("novice-low");
+    const openAlways = meetsGateForTier("novice-low", fixtureTiers);
     store.state.progress.scenarioAttempts = [
       { ...base, scenarioId: "a" }, { ...base, scenarioId: "a" }
     ];
-    const oneScenarioTwoPasses = meetsGateForTier("novice-mid");
+    const oneScenarioTwoPasses = meetsGateForTier("novice-mid", fixtureTiers);
     store.state.progress.scenarioAttempts.push({ ...base, scenarioId: "b" });
-    const twoScenariosThreePasses = meetsGateForTier("novice-mid");
+    const twoScenariosThreePasses = meetsGateForTier("novice-mid", fixtureTiers);
     return { openAlways, oneScenarioTwoPasses, twoScenariosThreePasses };
   });
-  check("the first ACTFL tier is always open", gate.openAlways === true, JSON.stringify(gate));
+  check("the first content-bearing tier is always open", gate.openAlways === true, JSON.stringify(gate));
   check("a gate stays locked on passes from only one scenario", gate.oneScenarioTwoPasses === false, JSON.stringify(gate));
   check("a gate unlocks on 3 passes across 2 distinct scenarios", gate.twoScenariosThreePasses === true, JSON.stringify(gate));
+
+  // Regression guard for a real bug: with only one scenario shipped so far
+  // (order-coffee, tier novice-mid), novice-mid IS the first content-bearing
+  // tier, so it must be playable immediately with zero prior attempts.
+  const firstShippedTierOpen = await page.evaluate(async () => {
+    const { meetsGateForTier } = await import("/js/core/actflProfile.js");
+    const { store } = await import("/js/core/storage.js");
+    store.state.progress.scenarioAttempts = [];
+    return meetsGateForTier("novice-mid");
+  });
+  check("the first tier that actually ships a scenario is playable with no prior attempts", firstShippedTierOpen === true);
+
+  // Regression: a past bug jumped straight to the debrief without ever
+  // showing the NPC's final line whenever that SAME turn also tripped a
+  // failure/incomplete resolution (e.g. the turn that crosses the abandoned
+  // threshold is still a normal "ask" with real content). Math.random is
+  // pinned so no mistake/follow-up ever fires — every turn is a plain ask —
+  // isolating this from mistake-timing luck.
+  const { page: page2, ctx: ctx2 } = await freshPage(browser);
+  await page2.evaluate(() => { Math.random = () => 0.99; });
+  await page2.evaluate(() => { window.location.hash = "#/practice/roleplay"; });
+  await page2.waitForTimeout(400);
+  await page2.evaluate(() => { [...document.querySelectorAll(".card")].find((c) => c.textContent.includes("Order a Coffee"))?.click(); });
+  await page2.waitForTimeout(300);
+  for (let i = 0; i < 15; i++) {
+    await page2.evaluate(() => { const input = document.querySelector(".chat-input-row input"); if (input) input.value = "no sé, no sé"; });
+    await page2.evaluate(() => { [...document.querySelectorAll(".chat-input-row button")].find((b) => b.textContent.includes("Enviar"))?.click(); });
+    await page2.waitForTimeout(200);
+  }
+  // finish() renders through a 350ms + 700ms chained delay (so the NPC's
+  // final line is visibly shown before the debrief) — give it time to land.
+  await page2.waitForTimeout(1300);
+  const abandoned = await page2.evaluate(async () => {
+    const { store } = await import("/js/core/storage.js");
+    const attempts = store.state.progress.scenarioAttempts;
+    const last = attempts[attempts.length - 1];
+    return {
+      outcome: last && last.outcome,
+      turns: last && last.turns,
+      botBubbles: document.querySelectorAll(".chat-bubble.bot").length,
+      hasDebrief: !!document.querySelector(".empty-state")
+    };
+  });
+  check("an abandoned session still shows the NPC's final turn before the debrief", abandoned.hasDebrief && abandoned.botBubbles >= abandoned.turns, JSON.stringify(abandoned));
+  check("an abandoned session resolves to incomplete, not a silent dead end", abandoned.outcome === "incomplete", JSON.stringify(abandoned));
+  await ctx2.close();
 
   check("no JS errors", errors.length === 0, errors.slice(0, 3).join(" | "));
   await ctx.close();
@@ -710,29 +764,39 @@ async function testProficiency(browser) {
   });
   check("a roadmap checkpoint still floors the estimate", confirmedFloor.idx === confirmedFloor.want, JSON.stringify(confirmedFloor));
 
+  // An earned scenario gate is a floor, tested directly against
+  // canonicalLevelIndex() the same way confirmedLevel is above (recording
+  // HOW a gate gets earned is covered separately in the "scenarios" group).
   const scenarioFloor = await page.evaluate(async () => {
     const { store } = await import("/js/core/storage.js");
-    const { canonicalLevelIndex, recordScenarioAttempt } = await import("/js/core/actflProfile.js");
+    const { canonicalLevelIndex } = await import("/js/core/actflProfile.js");
     const { levelIndex } = await import("/js/data/roadmap.js");
     store.state.profile.xp = 0;
     store.state.profile.confirmedLevel = null;
+    store.state.progress.gatesUnlocked = ["novice-mid"];
+    return { idx: canonicalLevelIndex(), want: levelIndex("novice-mid") };
+  });
+  check("an earned scenario gate raises the estimate past a zero XP baseline", scenarioFloor.idx >= scenarioFloor.want, JSON.stringify(scenarioFloor));
+
+  // Regression guard for a real bug caught in manual testing: with only one
+  // scenario tier shipped so far, that tier is trivially open (no
+  // prerequisite exists to earn), so merely attempting it — even
+  // successfully, repeatedly — must NOT by itself confirm a proficiency
+  // floor. Confirmation requires clearing an actual prerequisite gate.
+  const firstTierNeverAutoConfirms = await page.evaluate(async () => {
+    const { store } = await import("/js/core/storage.js");
+    const { recordScenarioAttempt } = await import("/js/core/actflProfile.js");
     store.state.progress.scenarioAttempts = [];
     store.state.progress.scenarioBest = {};
     store.state.progress.gatesUnlocked = [];
     store.state.profile.actflConfirmedByScenario = null;
-    const passing = { requiredSlotsFilled: 6, requiredSlotsTotal: 6, overallScore: 80, tier: "novice-low", turns: 8, questionsAsked: 1, mistakesFired: 0, unresolvedMistakes: 0, dimensions: {}, outcome: "success", date: "2026-01-01" };
+    const passing = { requiredSlotsFilled: 6, requiredSlotsTotal: 6, overallScore: 80, tier: "novice-mid", turns: 8, questionsAsked: 1, mistakesFired: 0, unresolvedMistakes: 0, dimensions: {}, outcome: "success", date: "2026-01-01" };
     recordScenarioAttempt({ ...passing, scenarioId: "order-coffee" });
     recordScenarioAttempt({ ...passing, scenarioId: "order-coffee" });
-    recordScenarioAttempt({ ...passing, scenarioId: "restaurant-fixture" });
-    return {
-      idx: canonicalLevelIndex(),
-      want: levelIndex("novice-mid"),
-      gatesUnlocked: store.state.progress.gatesUnlocked.slice(),
-      confirmedByScenario: store.state.profile.actflConfirmedByScenario
-    };
+    recordScenarioAttempt({ ...passing, scenarioId: "order-coffee" });
+    return { gatesUnlocked: store.state.progress.gatesUnlocked.slice(), confirmedByScenario: store.state.profile.actflConfirmedByScenario };
   });
-  check("scenario evidence raises the estimate past a zero XP baseline", scenarioFloor.idx >= scenarioFloor.want, JSON.stringify(scenarioFloor));
-  check("scenario evidence records a scenario-confirmed level", scenarioFloor.confirmedByScenario === "novice-mid", JSON.stringify(scenarioFloor));
+  check("passing attempts at the first (always-open) tier don't themselves confirm a gate", firstTierNeverAutoConfirms.gatesUnlocked.length === 0, JSON.stringify(firstTierNeverAutoConfirms));
 
   check("no JS errors", errors.length === 0, errors.slice(0, 3).join(" | "));
   await ctx.close();
@@ -805,7 +869,7 @@ async function testMobile(browser) {
     await page.waitForTimeout(250);
     for (let i = 0; i < 4; i++) { const x = await page.$(".onboarding-nav .btn-primary"); if (x) { await x.click(); await page.waitForTimeout(110); } }
     let overflow = 0;
-    for (const h of ["#/dashboard", "#/roadmap", "#/learn", "#/practice", "#/review", "#/save"]) {
+    for (const h of ["#/dashboard", "#/roadmap", "#/learn", "#/practice", "#/practice/roleplay", "#/review", "#/save"]) {
       await go(page, h);
       const over = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
       if (over > 2) overflow++;

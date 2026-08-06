@@ -2,7 +2,7 @@
 // five. Same views as before, just grouped so the sidebar stays short.
 
 import { el } from "../core/ui.js";
-import { renderRoleplay } from "./roleplay.js";
+import { renderScenarios } from "./scenarios.js";
 import { renderConversation } from "./conversation.js";
 import { renderImmersion } from "./immersion.js";
 import { renderStory } from "./story.js";
@@ -11,7 +11,7 @@ import { renderSpeakingTest } from "./speakingTest.js";
 
 const TABS = [
   { id: "conversation", label: "💬 Conversation", render: renderConversation },
-  { id: "roleplay", label: "🎭 Roleplay", render: renderRoleplay },
+  { id: "roleplay", label: "🎭 Roleplay", render: renderScenarios },
   { id: "speaking-test", label: "🎓 Speaking Test", render: renderSpeakingTest },
   { id: "immersion", label: "🌊 Immersion", render: renderImmersion },
   { id: "story", label: "📖 Stories", render: renderStory },
@@ -24,7 +24,7 @@ export function renderPractice(container, params) {
   container.appendChild(
     el("div", { class: "page-header" }, [
       el("h1", {}, "🎯 Practice"),
-      el("p", {}, "Use what you've learned: role-play a scenario, chat freely, go Spanish-only, read a story, or get your writing corrected.")
+      el("p", {}, "Use what you've learned: complete a real-life task, chat freely, go Spanish-only, read a story, or get your writing corrected.")
     ])
   );
 

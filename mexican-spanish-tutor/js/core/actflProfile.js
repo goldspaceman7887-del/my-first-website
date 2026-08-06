@@ -17,6 +17,7 @@
 
 import { store } from "./storage.js";
 import { ACTFL_LEVELS, levelIndex } from "../data/roadmap.js";
+import { SCENARIOS } from "../data/scenarios.js";
 
 // XP thresholds mapped onto the 7 ACTFL sub-levels this app targets. Owned
 // here (not gamification.js) so this module has no dependency on it —
@@ -47,16 +48,49 @@ function qualifyingAttempts(tierCode) {
   );
 }
 
-// Deterministic gate: a tier unlocks once the learner has demonstrated
-// proficiency at the PRIOR tier — enough passing attempts, across enough
-// distinct scenarios, not just one lucky repeat of the same task.
-export function meetsGateForTier(tierCode) {
-  const priorIdx = levelIndex(tierCode) - 1;
-  if (priorIdx < 0) return true; // the first tier is always open
-  const priorTier = ACTFL_LEVELS[priorIdx].code;
+// Not every ACTFL sub-level necessarily has a scenario yet (the app ships a
+// handful of full-depth scenarios, not all seven tiers at once). Gating must
+// be relative to the nearest earlier tier that actually HAS content — gating
+// tier T against literal ACTFL_LEVELS[index(T)-1] would permanently lock T
+// out if that absolute prior tier has no scenarios to earn the gate with.
+function tiersWithScenarios() {
+  return ACTFL_LEVELS.filter((l) => SCENARIOS.some((s) => s.actflTier === l.code));
+}
+
+// Deterministic gate: a tier's scenarios are playable once the learner has
+// demonstrated proficiency at the nearest earlier content-bearing tier —
+// enough passing attempts, across enough distinct scenarios, not just one
+// lucky repeat of the same task. The first tier that has any scenario at
+// all has no prerequisite and is always open. `tiers` is overridable for
+// tests that need to simulate a content lineup independent of what's
+// actually shipped.
+export function meetsGateForTier(tierCode, tiers = tiersWithScenarios()) {
+  const pos = tiers.findIndex((l) => l.code === tierCode);
+  if (pos <= 0) return true;
+  const priorTier = tiers[pos - 1].code;
   const passes = qualifyingAttempts(priorTier);
   const distinctScenarios = new Set(passes.map((a) => a.scenarioId)).size;
   return passes.length >= GATE_MIN_PASSES && distinctScenarios >= GATE_MIN_DISTINCT_SCENARIOS;
+}
+
+// Rich status for the scenario picker UI: what's unlocked, and exactly how
+// close the learner is to unlocking the next tier.
+export function gateStatus(tierCode, tiers = tiersWithScenarios()) {
+  const pos = tiers.findIndex((l) => l.code === tierCode);
+  if (pos <= 0) {
+    return { unlocked: true, passes: 0, distinctScenarios: 0, needPasses: 0, needDistinct: 0, priorTier: null };
+  }
+  const priorTier = tiers[pos - 1];
+  const passes = qualifyingAttempts(priorTier.code);
+  const distinctScenarios = new Set(passes.map((a) => a.scenarioId)).size;
+  return {
+    unlocked: meetsGateForTier(tierCode, tiers),
+    passes: passes.length,
+    distinctScenarios,
+    needPasses: GATE_MIN_PASSES,
+    needDistinct: GATE_MIN_DISTINCT_SCENARIOS,
+    priorTier
+  };
 }
 
 function highestUnlockedGateIndex() {
@@ -125,18 +159,24 @@ export function proficiencyDetail() {
 // and — if this attempt (combined with prior ones) newly earns a tier's
 // gate — unlocks it. Unlocking is append-only: once earned, a later bad
 // attempt can never re-lock a tier.
+//
+// The first content-bearing tier is always playable with no prerequisite
+// (see meetsGateForTier), but that free access is not itself proficiency
+// evidence — so it's deliberately excluded here and never added to
+// gatesUnlocked just because it was attempted. Only a tier reached by
+// actually clearing a real prerequisite counts as a confirmed floor.
 export function recordScenarioAttempt(attempt) {
   const progress = store.state.progress;
   progress.scenarioAttempts.push(attempt);
   const prevBest = progress.scenarioBest[attempt.scenarioId] || 0;
   progress.scenarioBest[attempt.scenarioId] = Math.max(prevBest, attempt.overallScore);
 
-  for (const level of ACTFL_LEVELS) {
-    if (progress.gatesUnlocked.includes(level.code)) continue;
-    if (meetsGateForTier(level.code)) {
-      progress.gatesUnlocked.push(level.code);
-    }
-  }
+  const tiers = tiersWithScenarios();
+  tiers.forEach((level, pos) => {
+    if (pos === 0) return; // trivially open — not evidence of anything
+    if (progress.gatesUnlocked.includes(level.code)) return;
+    if (meetsGateForTier(level.code, tiers)) progress.gatesUnlocked.push(level.code);
+  });
 
   const highestIdx = highestUnlockedGateIndex();
   if (highestIdx >= 0) {

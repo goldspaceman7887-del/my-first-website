@@ -36,6 +36,7 @@ export function createSession(scenario) {
     pendingMistake: null,
     pendingClarification: null,
     usedFollowUps: new Set(),
+    askedOptionalIds: new Set(),
     lastAskedSlotId: null,
     status: "active"
   };
@@ -46,7 +47,12 @@ export function extractSlots(session, text) {
   for (const slot of session.scenario.slots) {
     if (session.slots[slot.id] !== undefined) continue;
     if (!slot.extract) continue;
-    if (slot.npcInitiated) continue; // only extracted right after the NPC asks — see submitUserTurn
+    // contextOnly slots (permissive free-text acceptors, or ones the NPC
+    // must have proactively raised) are only extracted on the turn right
+    // after the NPC actually asked about them — otherwise a permissive
+    // extractor would swallow an answer meant for something else the
+    // moment the slot becomes eligible.
+    if (slot.contextOnly && session.lastAskedSlotId !== slot.id) continue;
     const value = slot.extract(text);
     if (value === null || value === undefined) continue;
     session.slots[slot.id] = value;
@@ -129,11 +135,16 @@ export function nextTurn(session) {
     return { kind: "ask", slotId: slot.id, es: phrase.es, en: phrase.en };
   }
 
-  // Optional (non-required) slots, one at a time, then done.
-  const optional = session.scenario.slots.filter((s) => !s.required && slotEligible(session, s) && s.askPhrases);
+  // Optional (non-required) slots, asked at most once each — even if the
+  // reply doesn't parse into a value, re-asking forever would mean a
+  // session with an unrecognized answer could never reach "close".
+  const optional = session.scenario.slots.filter(
+    (s) => !s.required && slotEligible(session, s) && s.askPhrases && !session.askedOptionalIds.has(s.id)
+  );
   if (optional.length) {
     const slot = pick(optional);
     session.lastAskedSlotId = slot.id;
+    session.askedOptionalIds.add(slot.id);
     const phrase = pick(slot.askPhrases);
     return { kind: "ask", slotId: slot.id, es: phrase.es, en: phrase.en };
   }

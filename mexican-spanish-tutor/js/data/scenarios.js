@@ -13,6 +13,17 @@
 // dictated) — the same capture-group approach conversationThreads.js uses
 // for MEMORY_RULES, just scoped per-slot instead of a flat table.
 
+// Generic "accept whatever free text follows" extractor for optional
+// free-form slots (substitutions, special requests). Only ever run when
+// contextOnly gates it to the turn right after the NPC actually asked, so
+// being permissive here is safe.
+function extractFreeAnswer(text) {
+  const t = text.trim();
+  if (!t) return null;
+  if (/^(no,?\s*(gracias)?|nada|ninguna?)\.?$/i.test(t)) return "ninguna";
+  return t;
+}
+
 export const SCENARIOS = [
   {
     id: "order-coffee",
@@ -122,19 +133,26 @@ export const SCENARIOS = [
         ]
       },
       {
-        id: "substitution", label: "substitution", required: false, type: "free",
+        // contextOnly: a generic "accept whatever free text follows" extractor
+        // is only safe to run on the turn right after the NPC actually asked
+        // this — otherwise it would swallow an unrelated answer (e.g. "Tarjeta,
+        // por favor.") the moment the slot becomes eligible. taskEngine.js
+        // gates this via session.lastAskedSlotId.
+        id: "substitution", label: "substitution", required: false, type: "free", contextOnly: true,
         askPhrases: [
           { es: "¿Alguna sustitución o algo que quiera cambiar?", en: "Any substitutions or changes?" }
-        ]
+        ],
+        extract: extractFreeAnswer
       },
       {
-        id: "specialRequest", label: "special request", required: false, type: "free",
+        id: "specialRequest", label: "special request", required: false, type: "free", contextOnly: true,
         askPhrases: [
           { es: "¿Algo especial que deba anotar?", en: "Anything special I should note?" }
-        ]
+        ],
+        extract: extractFreeAnswer
       },
       {
-        id: "allergy", label: "allergy check", required: false, type: "boolean", npcInitiated: true,
+        id: "allergy", label: "allergy check", required: false, type: "boolean", contextOnly: true,
         askPhrases: [
           { es: "¿Tiene alguna alergia que deba saber?", en: "Any allergies I should know about?" }
         ],
