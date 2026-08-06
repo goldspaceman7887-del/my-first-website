@@ -550,6 +550,194 @@ async function testImmersion(browser) {
   await ctx.close();
 }
 
+async function testScenarios(browser) {
+  group("scenarios");
+  const { page, ctx, errors } = await freshPage(browser);
+
+  const integrity = await page.evaluate(async () => {
+    const { SCENARIOS } = await import("/js/data/scenarios.js");
+    const { levelIndex } = await import("/js/data/roadmap.js");
+    const problems = [];
+    const ids = new Set();
+    SCENARIOS.forEach((s) => {
+      if (ids.has(s.id)) problems.push(`duplicate id ${s.id}`);
+      ids.add(s.id);
+      if (levelIndex(s.actflTier) === -1) problems.push(`${s.id}: invalid actflTier ${s.actflTier}`);
+      if (!s.openings || !s.openings.length) problems.push(`${s.id}: no openings`);
+      const required = s.slots.filter((sl) => sl.required);
+      if (!required.length) problems.push(`${s.id}: no required slots`);
+      required.forEach((sl) => {
+        if (!sl.askPhrases || !sl.askPhrases.length) problems.push(`${s.id}/${sl.id}: no askPhrases`);
+        if (typeof sl.extract !== "function") problems.push(`${s.id}/${sl.id}: no extract()`);
+      });
+      if (!s.unexpectedFollowUps || !s.unexpectedFollowUps.length) problems.push(`${s.id}: no unexpectedFollowUps`);
+      if (!s.failureStates || !s.failureStates.length) problems.push(`${s.id}: no failureStates`);
+      if (typeof s.successCondition !== "function") problems.push(`${s.id}: no successCondition()`);
+    });
+    return { count: SCENARIOS.length, problems };
+  });
+  check(`${integrity.count} scenario(s) defined`, integrity.count >= 1);
+  check("every scenario has valid tier/slots/openings/failure states", integrity.problems.length === 0, integrity.problems.slice(0, 4).join(" | "));
+
+  const nlu = await page.evaluate(async () => {
+    const { scenarioById } = await import("/js/data/scenarios.js");
+    const s = scenarioById("order-coffee");
+    const slot = (id) => s.slots.find((x) => x.id === id);
+    return {
+      size1: slot("size").extract("Quiero uno mediano, por favor"),
+      size2: slot("size").extract("uno grande"),
+      size3: slot("size").extract("un chico"),
+      milk1: slot("milk").extract("con leche de almendra"),
+      milk2: slot("milk").extract("sin leche"),
+      milk3: slot("milk").extract("deslactosada, por favor"),
+      drink1: slot("drink").extract("Quiero un latte"),
+      drink2: slot("drink").extract("un capuchino"),
+      temp1: slot("temperature").extract("frío, por favor"),
+      temp2: slot("temperature").extract("caliente"),
+      sugar1: slot("sugar").extract("sin azúcar"),
+      payment1: slot("payment").extract("con tarjeta")
+    };
+  });
+  check("NLU extracts size (mediano/grande/chico)", nlu.size1 === "mediano" && nlu.size2 === "grande" && nlu.size3 === "chico", JSON.stringify(nlu));
+  check("NLU extracts milk type", nlu.milk1 === "almendra" && nlu.milk2 === "sin leche" && nlu.milk3 === "deslactosada", JSON.stringify(nlu));
+  check("NLU extracts drink type", nlu.drink1 === "latte" && nlu.drink2 === "capuchino", JSON.stringify(nlu));
+  check("NLU extracts temperature", nlu.temp1 === "frío" && nlu.temp2 === "caliente", JSON.stringify(nlu));
+  check("NLU extracts sugar preference", nlu.sugar1 === "sin azúcar", JSON.stringify(nlu));
+  check("NLU extracts payment method", nlu.payment1 === "tarjeta", JSON.stringify(nlu));
+
+  const completion = await page.evaluate(async () => {
+    const { scenarioById } = await import("/js/data/scenarios.js");
+    const { createSession, submitUserTurn, resolveSession } = await import("/js/core/taskEngine.js");
+    const s = scenarioById("order-coffee");
+    const answers = { drink: "Quiero un latte", size: "mediano", temperature: "caliente", milk: "leche entera", sugar: "con azúcar", payment: "con tarjeta" };
+    const session = createSession(s);
+    let guard = 0;
+    // Repeats until every required slot is filled AND any NPC mistake along
+    // the way has been repaired — a real "success" run must handle whatever
+    // turn kind comes back, not just answer slots in isolation.
+    while (guard < 20) {
+      guard++;
+      if (session.pendingMistake) {
+        submitUserTurn(session, "No, pedí mediano.");
+        continue;
+      }
+      const missing = session.requiredSlots.find((sl) => session.slots[sl.id] === undefined);
+      if (!missing) break;
+      submitUserTurn(session, answers[missing.id] || "no sé");
+    }
+    resolveSession(session);
+    return { status: session.status, filled: session.filledRequiredCount, total: session.requiredSlots.length, turns: session.turns, unresolvedMistakes: session.unresolvedMistakes };
+  });
+  check("filling every required slot resolves to success", completion.status === "success", JSON.stringify(completion));
+
+  const abandonment = await page.evaluate(async () => {
+    const { scenarioById } = await import("/js/data/scenarios.js");
+    const { createSession, submitUserTurn, resolveSession } = await import("/js/core/taskEngine.js");
+    const s = scenarioById("order-coffee");
+    const session = createSession(s);
+    for (let i = 0; i < 15; i++) submitUserTurn(session, "mmm no sé");
+    resolveSession(session);
+    return { status: session.status, filled: session.filledRequiredCount };
+  });
+  check("never answering resolves to incomplete (not stuck)", abandonment.status === "incomplete", JSON.stringify(abandonment));
+
+  const rubric = await page.evaluate(async () => {
+    const { scenarioById } = await import("/js/data/scenarios.js");
+    const { scoreSession } = await import("/js/core/actflAssess.js");
+    const s = scenarioById("order-coffee");
+    const strong = {
+      scenario: s, turns: 8, requiredSlots: s.slots.filter((sl) => sl.required),
+      filledRequiredCount: s.slots.filter((sl) => sl.required).length,
+      questionsAsked: 2, mistakesFired: ["wrong-size"], unresolvedMistakes: 0,
+      log: [
+        { speaker: "user", text: "Quisiera un latte mediano, caliente, con leche de avena y sin azúcar, por favor. ¿Cuánto cuesta?" },
+        { speaker: "npc", isMistakeTrigger: true },
+        { speaker: "user", text: "Perdón, no era grande, pedí mediano. ¿Puede repetir mi orden?" }
+      ]
+    };
+    const weak = {
+      scenario: s, turns: 3, requiredSlots: s.slots.filter((sl) => sl.required),
+      filledRequiredCount: 2, questionsAsked: 0, mistakesFired: [], unresolvedMistakes: 0,
+      log: [{ speaker: "user", text: "latte estoy doctor" }]
+    };
+    return { strong: scoreSession(strong).overall, weak: scoreSession(weak).overall };
+  });
+  check("a strong session scores higher than a weak one", rubric.strong > rubric.weak, JSON.stringify(rubric));
+
+  const gate = await page.evaluate(async () => {
+    const { store } = await import("/js/core/storage.js");
+    const { meetsGateForTier } = await import("/js/core/actflProfile.js");
+    store.state.progress.scenarioAttempts = [];
+    const base = { requiredSlotsFilled: 6, requiredSlotsTotal: 6, overallScore: 80, tier: "novice-low" };
+    const openAlways = meetsGateForTier("novice-low");
+    store.state.progress.scenarioAttempts = [
+      { ...base, scenarioId: "a" }, { ...base, scenarioId: "a" }
+    ];
+    const oneScenarioTwoPasses = meetsGateForTier("novice-mid");
+    store.state.progress.scenarioAttempts.push({ ...base, scenarioId: "b" });
+    const twoScenariosThreePasses = meetsGateForTier("novice-mid");
+    return { openAlways, oneScenarioTwoPasses, twoScenariosThreePasses };
+  });
+  check("the first ACTFL tier is always open", gate.openAlways === true, JSON.stringify(gate));
+  check("a gate stays locked on passes from only one scenario", gate.oneScenarioTwoPasses === false, JSON.stringify(gate));
+  check("a gate unlocks on 3 passes across 2 distinct scenarios", gate.twoScenariosThreePasses === true, JSON.stringify(gate));
+
+  check("no JS errors", errors.length === 0, errors.slice(0, 3).join(" | "));
+  await ctx.close();
+}
+
+async function testProficiency(browser) {
+  group("proficiency");
+  const { page, ctx, errors } = await freshPage(browser);
+
+  const baseline = await page.evaluate(async () => {
+    const { store } = await import("/js/core/storage.js");
+    const { canonicalLevelIndex } = await import("/js/core/actflProfile.js");
+    store.state.profile.xp = 0;
+    store.state.profile.confirmedLevel = null;
+    store.state.progress.gatesUnlocked = [];
+    return canonicalLevelIndex();
+  });
+  check("zero-evidence learner reads as the lowest ACTFL level", baseline === 0, String(baseline));
+
+  const confirmedFloor = await page.evaluate(async () => {
+    const { store } = await import("/js/core/storage.js");
+    const { canonicalLevelIndex } = await import("/js/core/actflProfile.js");
+    const { levelIndex } = await import("/js/data/roadmap.js");
+    store.state.profile.xp = 0;
+    store.state.profile.confirmedLevel = "intermediate-mid";
+    return { idx: canonicalLevelIndex(), want: levelIndex("intermediate-mid") };
+  });
+  check("a roadmap checkpoint still floors the estimate", confirmedFloor.idx === confirmedFloor.want, JSON.stringify(confirmedFloor));
+
+  const scenarioFloor = await page.evaluate(async () => {
+    const { store } = await import("/js/core/storage.js");
+    const { canonicalLevelIndex, recordScenarioAttempt } = await import("/js/core/actflProfile.js");
+    const { levelIndex } = await import("/js/data/roadmap.js");
+    store.state.profile.xp = 0;
+    store.state.profile.confirmedLevel = null;
+    store.state.progress.scenarioAttempts = [];
+    store.state.progress.scenarioBest = {};
+    store.state.progress.gatesUnlocked = [];
+    store.state.profile.actflConfirmedByScenario = null;
+    const passing = { requiredSlotsFilled: 6, requiredSlotsTotal: 6, overallScore: 80, tier: "novice-low", turns: 8, questionsAsked: 1, mistakesFired: 0, unresolvedMistakes: 0, dimensions: {}, outcome: "success", date: "2026-01-01" };
+    recordScenarioAttempt({ ...passing, scenarioId: "order-coffee" });
+    recordScenarioAttempt({ ...passing, scenarioId: "order-coffee" });
+    recordScenarioAttempt({ ...passing, scenarioId: "restaurant-fixture" });
+    return {
+      idx: canonicalLevelIndex(),
+      want: levelIndex("novice-mid"),
+      gatesUnlocked: store.state.progress.gatesUnlocked.slice(),
+      confirmedByScenario: store.state.profile.actflConfirmedByScenario
+    };
+  });
+  check("scenario evidence raises the estimate past a zero XP baseline", scenarioFloor.idx >= scenarioFloor.want, JSON.stringify(scenarioFloor));
+  check("scenario evidence records a scenario-confirmed level", scenarioFloor.confirmedByScenario === "novice-mid", JSON.stringify(scenarioFloor));
+
+  check("no JS errors", errors.length === 0, errors.slice(0, 3).join(" | "));
+  await ctx.close();
+}
+
 async function testStorage(browser) {
   group("storage");
   // The bug this guards: deepMerge only walked keys present in the defaults,
@@ -669,6 +857,8 @@ const GROUPS = {
   "tap-a-word": testTapWords,
   "error feedback": testCorrections,
   immersion: testImmersion,
+  scenarios: testScenarios,
+  proficiency: testProficiency,
   storage: testStorage,
   mobile: testMobile,
   offline: testOffline
