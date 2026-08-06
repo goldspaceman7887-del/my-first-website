@@ -269,7 +269,7 @@ export const CHARACTERS = [
     words: [{ w: "我爱你", py: "wǒ ài nǐ", en: "I love you" }, { w: "爱好", py: "àihào", en: "hobby" }],
     sentences: [{ zh: "我爱我的家人。", py: "Wǒ ài wǒ de jiārén.", en: "I love my family." }, { zh: "你有什么爱好？", py: "Nǐ yǒu shénme àihào?", en: "What are your hobbies?" }],
     convo: [{ spk: "A", zh: "你爱吃什么菜？", py: "Nǐ ài chī shénme cài?" }, { spk: "B", zh: "我爱吃辣的。", py: "Wǒ ài chī là de." }],
-    trick: "The traditional 愛 has 心 (heart) at its core — love comes from the heart." },
+    trick: "爱 has a hand (爫) reaching down over a covering (冖) to hold a friend (友) close — that's love." },
   { id: "c054", char: "叫", pinyin: "jiào", meaning: "to be called; to call out; to order (food)", freq: "very common", category: "verbs",
     words: [{ w: "叫什么", py: "jiào shénme", en: "to be called what" }, { w: "叫外卖", py: "jiào wàimài", en: "to order delivery" }],
     sentences: [{ zh: "你叫什么名字？", py: "Nǐ jiào shénme míngzi?", en: "What's your name?" }, { zh: "我叫王明。", py: "Wǒ jiào Wáng Míng.", en: "My name is Wang Ming." }],
