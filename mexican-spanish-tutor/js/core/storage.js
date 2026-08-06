@@ -37,7 +37,11 @@ function defaultState() {
       unlockedThroughLevel: null,
       // Highest ACTFL level whose end-of-section checkpoint you passed. The
       // level estimate never reports below this.
-      confirmedLevel: null
+      confirmedLevel: null,
+      // Highest ACTFL level whose task-scenario proficiency gate (see
+      // actflProfile.js) has been earned. Same floor treatment as
+      // confirmedLevel — direct evidence, so the estimate never drops below it.
+      actflConfirmedByScenario: null
     },
     srs: {
       // itemId -> { type, repetition, easeFactor, interval, stepIndex, nextReview, lastReview, correct, incorrect, history: [] }
@@ -66,7 +70,15 @@ function defaultState() {
       savedWords: {}, // word -> English gloss, bookmarked from Story Mode
       // Questions Immersion has already asked, so a new session doesn't open
       // with the same one. Resets automatically once the pool is exhausted.
-      immersionAsked: []
+      immersionAsked: [],
+      // Task-scenario attempts: { date, scenarioId, tier, turns,
+      //   requiredSlotsFilled, requiredSlotsTotal, questionsAsked,
+      //   mistakesFired, unresolvedMistakes, dimensions, overallScore, outcome }
+      scenarioAttempts: [],
+      scenarioBest: {}, // scenarioId -> best overallScore
+      // ACTFL level codes whose scenario-proficiency gate has been earned.
+      // Append-only — once unlocked, never re-locked by a later bad attempt.
+      gatesUnlocked: []
     },
     achievements: {
       unlocked: []

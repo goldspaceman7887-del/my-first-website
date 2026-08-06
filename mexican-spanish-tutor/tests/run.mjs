@@ -565,6 +565,17 @@ async function testStorage(browser) {
     store.state.progress.checkpointsPassed = ["novice-low"];
     store.state.profile.confirmedLevel = "novice-low";
     store.state.progress.savedWords = { hola: "hello" };
+    store.state.progress.scenarioAttempts.push({
+      date: "2026-01-01", scenarioId: "order-coffee", tier: "novice-mid",
+      turns: 9, requiredSlotsFilled: 6, requiredSlotsTotal: 6, questionsAsked: 1,
+      mistakesFired: 1, unresolvedMistakes: 0,
+      dimensions: { comprehensibility: 80, vocabularyRange: 60, sentenceFormation: 75,
+        repairStrategies: 100, conversationManagement: 65, questionAsking: 33, surpriseHandling: 100 },
+      overallScore: 78, outcome: "success"
+    });
+    store.state.progress.scenarioBest["order-coffee"] = 78;
+    store.state.progress.gatesUnlocked = ["novice-mid"];
+    store.state.profile.actflConfirmedByScenario = "novice-mid";
     store.saveNow();
   });
   await page.reload({ waitUntil: "networkidle" });
@@ -577,7 +588,11 @@ async function testStorage(browser) {
       units: (store.state.progress.roadmapUnitsCompleted || []).length,
       checkpoints: (store.state.progress.checkpointsPassed || []).length,
       confirmed: store.state.profile.confirmedLevel,
-      saved: Object.keys(store.state.progress.savedWords || {}).length
+      saved: Object.keys(store.state.progress.savedWords || {}).length,
+      scenarioAttempts: (store.state.progress.scenarioAttempts || []).length,
+      scenarioBest: (store.state.progress.scenarioBest || {})["order-coffee"],
+      gatesUnlocked: (store.state.progress.gatesUnlocked || []).length,
+      actflConfirmedByScenario: store.state.profile.actflConfirmedByScenario
     };
   });
   check("spaced repetition survives a reload", after.srs === 2, `${after.srs} of 2 items`);
@@ -586,6 +601,10 @@ async function testStorage(browser) {
   check("checkpoints survive a reload", after.checkpoints === 1, String(after.checkpoints));
   check("confirmed level survives a reload", after.confirmed === "novice-low", String(after.confirmed));
   check("saved story words survive a reload", after.saved === 1, String(after.saved));
+  check("scenario attempts survive a reload", after.scenarioAttempts === 1, String(after.scenarioAttempts));
+  check("scenario best score survives a reload", after.scenarioBest === 78, String(after.scenarioBest));
+  check("unlocked scenario gates survive a reload", after.gatesUnlocked === 1, String(after.gatesUnlocked));
+  check("scenario-confirmed ACTFL level survives a reload", after.actflConfirmedByScenario === "novice-mid", String(after.actflConfirmedByScenario));
   await ctx.close();
 }
 
