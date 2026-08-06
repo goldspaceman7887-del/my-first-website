@@ -69,7 +69,7 @@ export const SCENARIOS = [
 
     slots: [
       {
-        id: "drink", label: "drink type", required: true, type: "enum",
+        id: "drink", label: "drink type", labelEs: "tipo de bebida", required: true, type: "enum",
         values: ["americano", "café de olla", "capuchino", "latte", "espresso", "chocolate"],
         extract(text) {
           const m = text.match(/\b(americano|café de olla|cafe de olla|capuchino|latte|late|espresso|expreso|chocolate)\b/i);
@@ -88,7 +88,7 @@ export const SCENARIOS = [
         confirmTemplate: { es: "Un {v}, va.", en: "One {v}, coming up." }
       },
       {
-        id: "size", label: "size", required: true, type: "enum",
+        id: "size", label: "size", labelEs: "tamaño", required: true, type: "enum",
         values: ["chico", "mediano", "grande"],
         extract(text) {
           const m = text.match(/\b(chic[oa]|pequeñ[oa]|peque[nñ][oa]|median[oa]|grande|extra\s?grande)\b/i);
@@ -104,7 +104,7 @@ export const SCENARIOS = [
         ]
       },
       {
-        id: "temperature", label: "hot or iced", required: true, type: "enum",
+        id: "temperature", label: "hot or iced", labelEs: "caliente o frío", required: true, type: "enum",
         values: ["caliente", "frío"],
         extract(text) {
           if (/\b(fr[ií]o|helad[oa]|con hielo|iced)\b/i.test(text)) return "frío";
@@ -140,7 +140,7 @@ export const SCENARIOS = [
         ]
       },
       {
-        id: "sugar", label: "sugar", required: true, type: "enum",
+        id: "sugar", label: "sugar", labelEs: "azúcar", required: true, type: "enum",
         values: ["con azúcar", "sin azúcar", "con splenda", "con stevia", "medio azúcar"],
         extract(text) {
           if (/\bsin\s+az[uú]car\b/i.test(text)) return "sin azúcar";
@@ -186,7 +186,7 @@ export const SCENARIOS = [
         }
       },
       {
-        id: "payment", label: "payment method", required: true, type: "enum",
+        id: "payment", label: "payment method", labelEs: "forma de pago", required: true, type: "enum",
         values: ["efectivo", "tarjeta"],
         extract(text) {
           if (/\btarjeta\b/i.test(text)) return "tarjeta";
@@ -262,7 +262,7 @@ export const SCENARIOS = [
     ],
     slots: [
       {
-        id: "destination", label: "destination", required: true, type: "enum",
+        id: "destination", label: "destination", labelEs: "destino", required: true, type: "enum",
         values: ["la farmacia", "el metro", "el banco", "el museo", "la catedral", "el parque"],
         extract(text) {
           const m = text.match(/\b(farmacia|metro|banco|museo|catedral|parque)\b/i);
@@ -287,7 +287,7 @@ export const SCENARIOS = [
         }
       },
       {
-        id: "directionAck", label: "acknowledging the directions", required: true, type: "enum",
+        id: "directionAck", label: "acknowledging the directions", labelEs: "confirmar que entendiste", required: true, type: "enum",
         values: ["understood"],
         extract(text) {
           return /\b(derecha|izquierda|derecho|cuadras?|semáforo|esquina)\b/i.test(text) ? "understood" : null;
@@ -298,7 +298,7 @@ export const SCENARIOS = [
         ]
       },
       {
-        id: "distanceAck", label: "checking the distance", required: true, type: "enum",
+        id: "distanceAck", label: "checking the distance", labelEs: "preguntar la distancia", required: true, type: "enum",
         values: ["asked"],
         extract(text) {
           return /\b(cuadras?|lejos|cerca|minutos?)\b/i.test(text) ? "asked" : null;
@@ -306,7 +306,7 @@ export const SCENARIOS = [
         askPhrases: [{ es: "¿Le queda claro, o está muy lejos para usted?", en: "Is that clear, or is it too far?" }]
       },
       {
-        id: "thanks", label: "thanking the local", required: true, type: "enum",
+        id: "thanks", label: "thanking the local", labelEs: "dar las gracias", required: true, type: "enum",
         values: ["thanked"],
         extract(text) {
           return /\bgracias\b/i.test(text) ? "thanked" : null;
@@ -356,7 +356,7 @@ export const SCENARIOS = [
     ],
     slots: [
       {
-        id: "dish", label: "dish", required: true, type: "enum",
+        id: "dish", label: "dish", labelEs: "platillo", required: true, type: "enum",
         values: ["tacos", "enchiladas", "pozole", "quesadillas", "mole", "chiles rellenos"],
         extract(text) {
           const m = text.match(/\b(tacos|enchiladas|pozole|quesadillas|mole|chiles rellenos)\b/i);
@@ -368,7 +368,7 @@ export const SCENARIOS = [
         ]
       },
       {
-        id: "spiceLevel", label: "spice level", required: true, type: "enum",
+        id: "spiceLevel", label: "spice level", labelEs: "nivel de picante", required: true, type: "enum",
         values: ["picante", "no muy picante", "sin picante"],
         extract(text) {
           if (/\bsin (picante|picoso)\b|\bnada picante\b/i.test(text)) return "sin picante";
@@ -379,7 +379,7 @@ export const SCENARIOS = [
         askPhrases: [{ es: "¿Lo quiere picante, o mejor no muy picante?", en: "Do you want it spicy, or not too spicy?" }]
       },
       {
-        id: "drink", label: "drink", required: true, type: "enum",
+        id: "drink", label: "drink", labelEs: "bebida", required: true, type: "enum",
         values: ["agua de jamaica", "agua de horchata", "refresco", "cerveza", "agua natural"],
         extract(text) {
           const m = text.match(/\b(agua de jamaica|jamaica|agua de horchata|horchata|refresco|cerveza|agua natural)\b/i);
@@ -392,7 +392,7 @@ export const SCENARIOS = [
         askPhrases: [{ es: "¿Qué le traigo de tomar — agua de jamaica, horchata, refresco?", en: "What can I bring you to drink — jamaica water, horchata, soda?" }]
       },
       {
-        id: "billSplit", label: "how to split the bill", required: true, type: "enum",
+        id: "billSplit", label: "how to split the bill", labelEs: "cómo dividir la cuenta", required: true, type: "enum",
         values: ["junta", "separada"],
         extract(text) {
           if (/\bsepar/i.test(text)) return "separada";
@@ -457,7 +457,7 @@ export const SCENARIOS = [
     ],
     slots: [
       {
-        id: "reservationConfirmed", label: "whether you have a reservation", required: true, type: "boolean",
+        id: "reservationConfirmed", label: "whether you have a reservation", labelEs: "si tienes reservación", required: true, type: "boolean",
         extract(text) {
           if (/\b(sí|si tengo|tengo una reservaci[oó]n|reservé)\b/i.test(text)) return true;
           if (/\bno tengo|no hice|sin reservaci[oó]n\b/i.test(text)) return false;
@@ -466,12 +466,12 @@ export const SCENARIOS = [
         askPhrases: [{ es: "¿Tiene una reservación con nosotros?", en: "Do you have a reservation with us?" }]
       },
       {
-        id: "reservationName", label: "the name on the reservation", required: true, type: "free", contextOnly: true,
+        id: "reservationName", label: "the name on the reservation", labelEs: "el nombre de la reservación", required: true, type: "free", contextOnly: true,
         extract: extractFreeAnswer,
         askPhrases: [{ es: "¿A nombre de quién está la reservación?", en: "What name is the reservation under?" }]
       },
       {
-        id: "nights", label: "how many nights", required: true, type: "enum",
+        id: "nights", label: "how many nights", labelEs: "cuántas noches", required: true, type: "enum",
         values: ["una noche", "dos noches", "tres noches", "cuatro noches"],
         extract(text) {
           const m = text.match(/\b(una|dos|tres|cuatro|cinco)\s+noches?\b/i);
@@ -482,7 +482,7 @@ export const SCENARIOS = [
         askPhrases: [{ es: "¿Cuántas noches se va a quedar?", en: "How many nights will you be staying?" }]
       },
       {
-        id: "roomType", label: "room type", required: true, type: "enum",
+        id: "roomType", label: "room type", labelEs: "tipo de habitación", required: true, type: "enum",
         values: ["individual", "doble", "matrimonial", "suite"],
         extract(text) {
           const m = text.match(/\b(individual|doble|matrimonial|suite)\b/i);
@@ -491,12 +491,12 @@ export const SCENARIOS = [
         askPhrases: [{ es: "¿Prefiere habitación individual, doble o matrimonial?", en: "Do you prefer a single, double, or matrimonial room?" }]
       },
       {
-        id: "idDocument", label: "handing over ID", required: true, type: "free", contextOnly: true,
+        id: "idDocument", label: "handing over ID", labelEs: "entregar identificación", required: true, type: "free", contextOnly: true,
         extract: extractFreeAnswer,
         askPhrases: [{ es: "¿Me puede dar una identificación, por favor?", en: "Could I get an ID from you, please?" }]
       },
       {
-        id: "paymentMethod", label: "payment method", required: true, type: "enum",
+        id: "paymentMethod", label: "payment method", labelEs: "forma de pago", required: true, type: "enum",
         values: ["efectivo", "tarjeta"],
         extract(text) {
           if (/\btarjeta\b/i.test(text)) return "tarjeta";
@@ -546,7 +546,7 @@ export const SCENARIOS = [
     ],
     slots: [
       {
-        id: "reasonForCall", label: "reason for calling", required: true, type: "enum",
+        id: "reasonForCall", label: "reason for calling", labelEs: "motivo de la llamada", required: true, type: "enum",
         values: ["fiebre", "dolor de cabeza", "dolor de estómago", "tos", "gripe", "mareo", "dolor de garganta"],
         extract(text) {
           const m = text.match(/\b(fiebre|dolor de cabeza|dolor de est[oó]mago|tos|grip[ea]|mareo|dolor de garganta|n[aá]useas?|vomit\w*)\b/i);
@@ -564,12 +564,12 @@ export const SCENARIOS = [
         askPhrases: [{ es: "¿Qué síntomas tiene?", en: "What symptoms do you have?" }]
       },
       {
-        id: "patientName", label: "patient's name", required: true, type: "free", contextOnly: true,
+        id: "patientName", label: "patient's name", labelEs: "nombre del paciente", required: true, type: "free", contextOnly: true,
         extract: extractFreeAnswer,
         askPhrases: [{ es: "¿A nombre de quién hago la cita?", en: "Who should I make the appointment for?" }]
       },
       {
-        id: "insuranceOrPrivate", label: "insurance or private pay", required: true, type: "enum",
+        id: "insuranceOrPrivate", label: "insurance or private pay", labelEs: "seguro o particular", required: true, type: "enum",
         values: ["seguro", "particular"],
         extract(text) {
           if (/\bseguro\b/i.test(text)) return "seguro";
@@ -579,7 +579,7 @@ export const SCENARIOS = [
         askPhrases: [{ es: "¿Va a venir con seguro o de manera particular?", en: "Will you be coming with insurance or paying privately?" }]
       },
       {
-        id: "preferredDay", label: "preferred day", required: true, type: "enum",
+        id: "preferredDay", label: "preferred day", labelEs: "día preferido", required: true, type: "enum",
         values: ["hoy", "mañana", "lunes", "martes", "miércoles", "jueves", "viernes"],
         extract(text) {
           const m = text.match(/\b(hoy|mañana|lunes|martes|mi[eé]rcoles|jueves|viernes)\b/i);
@@ -588,7 +588,7 @@ export const SCENARIOS = [
         askPhrases: [{ es: "¿Qué día le gustaría venir?", en: "What day would you like to come in?" }]
       },
       {
-        id: "preferredTime", label: "preferred time of day", required: true, type: "enum",
+        id: "preferredTime", label: "preferred time of day", labelEs: "hora preferida", required: true, type: "enum",
         values: ["mañana", "tarde"],
         extract(text) {
           if (/\bpor la mañana|en la mañana|temprano\b/i.test(text)) return "mañana";
@@ -644,12 +644,12 @@ export const SCENARIOS = [
     ],
     slots: [
       {
-        id: "selfIntro", label: "self-introduction", required: true, type: "free", contextOnly: true,
+        id: "selfIntro", label: "self-introduction", labelEs: "presentarte", required: true, type: "free", contextOnly: true,
         extract: extractFreeAnswer,
         askPhrases: [{ es: "Platíqueme un poco de usted.", en: "Tell me a bit about yourself." }]
       },
       {
-        id: "experience", label: "past experience", required: true, type: "enum",
+        id: "experience", label: "past experience", labelEs: "experiencia laboral", required: true, type: "enum",
         values: ["experience-shown"],
         extract(text) {
           return /\b(trabaj[eéc]|estudi[eé]|tengo experiencia|he trabajado|fui|laboré)\w*/i.test(text) ? "experience-shown" : null;
@@ -657,7 +657,7 @@ export const SCENARIOS = [
         askPhrases: [{ es: "Cuénteme de su experiencia anterior — ¿dónde ha trabajado?", en: "Tell me about your prior experience — where have you worked?" }]
       },
       {
-        id: "motivation", label: "why this job", required: true, type: "enum",
+        id: "motivation", label: "why this job", labelEs: "por qué te interesa el puesto", required: true, type: "enum",
         values: ["motivation-shown"],
         extract(text) {
           return /\b(me interesa|me gustar[ií]a|porque|me llama la atenci[oó]n|busco)\b/i.test(text) ? "motivation-shown" : null;
@@ -665,7 +665,7 @@ export const SCENARIOS = [
         askPhrases: [{ es: "¿Por qué le interesa este puesto en particular?", en: "Why are you interested in this position specifically?" }]
       },
       {
-        id: "availability", label: "availability", required: true, type: "enum",
+        id: "availability", label: "availability", labelEs: "disponibilidad", required: true, type: "enum",
         values: ["tiempo completo", "medio tiempo", "días específicos"],
         extract(text) {
           if (/\btiempo completo\b/i.test(text)) return "tiempo completo";

@@ -186,5 +186,7 @@ export function resolveSession(session) {
 }
 
 export function missingRequiredSlots(session) {
-  return session.requiredSlots.filter((s) => session.slots[s.id] === undefined).map((s) => s.label);
+  return session.requiredSlots
+    .filter((s) => session.slots[s.id] === undefined)
+    .map((s) => ({ label: s.label, labelEs: s.labelEs || s.label }));
 }

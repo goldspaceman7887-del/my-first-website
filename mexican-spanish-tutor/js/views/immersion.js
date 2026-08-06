@@ -19,7 +19,7 @@ import { addXP, registerStudyToday, updateSkillScore, estimatedLevel } from "../
 import { levelIndex } from "../data/roadmap.js";
 import { THREADS, REACTIONS, NEUTRAL_REACTIONS, PIVOTS, MEMORY_RULES, CALLBACKS } from "../data/conversationThreads.js";
 
-const CONFUSION_TRIGGERS = /(^\?+$|no entiendo|no s[ée] qu[ée] decir|qu[ée] significa|help|english|ingl[ée]s|no comprendo|otra vez|m[áa]s despacio)/i;
+export const CONFUSION_TRIGGERS = /(^\?+$|no entiendo|no s[ée] qu[ée] decir|qu[ée] significa|help|english|ingl[ée]s|no comprendo|otra vez|m[áa]s despacio)/i;
 
 // Openers vary so two sessions in a row don't start the same way.
 const OPENERS = [

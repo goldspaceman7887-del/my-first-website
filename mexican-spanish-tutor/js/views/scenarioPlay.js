@@ -11,6 +11,8 @@ import { correctionBlock } from "../core/feedback.js";
 import { createSession, submitUserTurn, resolveSession, missingRequiredSlots } from "../core/taskEngine.js";
 import { attemptFromSession } from "../core/actflAssess.js";
 import { recordScenarioAttempt } from "../core/actflProfile.js";
+import { tappable, initTapWords } from "../core/tapword.js";
+import { CONFUSION_TRIGGERS } from "./immersion.js";
 
 function pick(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
@@ -18,6 +20,17 @@ function pick(arr) {
 
 function showEnglishInline() {
   return (store.state.settings.immersionLevel || 1) <= 2;
+}
+
+const CHROME_STRINGS = {
+  micTitle: { es: "Responde en voz alta", en: "Answer out loud" },
+  micUnsupported: { es: "Necesitas Chrome o Edge para usar el micrófono", en: "Answering out loud needs Chrome or Edge" },
+  micAria: { es: "Habla tu respuesta", en: "Speak your answer" }
+};
+
+function chrome(key) {
+  const s = CHROME_STRINGS[key];
+  return showEnglishInline() ? s.en : s.es;
 }
 
 const OUTCOME_COPY = {
@@ -53,8 +66,8 @@ export function renderScenarioPlay(container, scenario, { onExit, onRetry } = {}
 
   const micBtn = el("button", {
     class: "btn btn-icon btn-primary",
-    title: canSpeak ? "Answer out loud" : "Answering out loud needs Chrome or Edge",
-    "aria-label": "Speak your answer"
+    title: canSpeak ? chrome("micTitle") : chrome("micUnsupported"),
+    "aria-label": chrome("micAria")
   }, "🎤");
   if (!canSpeak) micBtn.disabled = true;
 
@@ -113,11 +126,14 @@ export function renderScenarioPlay(container, scenario, { onExit, onRetry } = {}
     micBtn.classList.remove("btn-danger");
   }
 
+  let lastNpcLine = null;
+
   function npcBubble(turn) {
     const line = { es: turn.es, en: turn.en };
+    lastNpcLine = line;
     const bubble = el("div", { class: "chat-bubble bot" }, [
       turn.isMistakeTrigger ? el("div", { style: "font-size:.75rem" }, "⚠️") : null,
-      el("div", { class: "cb-es es-text" }, line.es),
+      el("div", { class: "cb-es" }, [tappable(line.es)]),
       showEnglishInline() ? el("div", { class: "cb-en" }, line.en) : null
     ].filter(Boolean));
     log.appendChild(bubble);
@@ -126,15 +142,16 @@ export function renderScenarioPlay(container, scenario, { onExit, onRetry } = {}
   }
 
   function userBubble(text) {
-    log.appendChild(el("div", { class: "chat-bubble user" }, [el("div", { class: "cb-es es-text" }, text)]));
+    log.appendChild(el("div", { class: "chat-bubble user" }, [el("div", { class: "cb-es" }, [tappable(text)])]));
     log.scrollTop = log.scrollHeight;
   }
 
   function updateStatus() {
     if (finished) return;
     const missing = missingRequiredSlots(session);
+    const names = missing.map((m) => (showEnglishInline() ? m.label : m.labelEs));
     statusBar.textContent = missing.length
-      ? `Todavía falta: ${missing.join(", ")}`
+      ? `Todavía falta: ${names.join(", ")}`
       : "Ya tienes todo lo necesario — sigue la conversación hasta que termine.";
   }
 
@@ -152,9 +169,27 @@ export function renderScenarioPlay(container, scenario, { onExit, onRetry } = {}
     const text = input.value.trim();
     if (!text) return;
     userBubble(text);
-    briefCorrection(text);
     input.value = "";
     blurActive();
+
+    // Stuck: replay the last NPC line slowly with a translation instead of
+    // treating "?" / "no entiendo" as an actual answer to whatever was
+    // asked — same negotiate-meaning pattern as Immersion Mode. The
+    // question still stands, so this doesn't consume a turn.
+    if (CONFUSION_TRIGGERS.test(text) && lastNpcLine) {
+      log.appendChild(
+        el("div", { class: "chat-bubble bot" }, [
+          el("span", { class: "badge badge-gold" }, "Más despacio + traducción"),
+          el("div", { class: "cb-es", style: "margin-top:.3rem" }, [tappable(lastNpcLine.es)]),
+          el("div", { class: "cb-en" }, lastNpcLine.en)
+        ])
+      );
+      log.scrollTop = log.scrollHeight;
+      audioEngine.speakSlow(lastNpcLine.es);
+      return;
+    }
+
+    briefCorrection(text);
     updateSkillScore("speaking", 0.5);
 
     const turn = submitUserTurn(session, text);
@@ -222,9 +257,13 @@ export function renderScenarioPlay(container, scenario, { onExit, onRetry } = {}
   }
 
   // ---------- kick off ----------
+  const stopTapWords = initTapWords();
   const opening = pick(scenario.openings);
   npcBubble({ es: opening.es, en: opening.en });
   updateStatus();
 
-  return () => { if (dictation) { dictation.stop(); dictation = null; } };
+  return () => {
+    if (dictation) { dictation.stop(); dictation = null; }
+    stopTapWords();
+  };
 }
