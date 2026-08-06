@@ -65,6 +65,40 @@ export function getItem(itemId) {
   return store.state.srs[itemId] || null;
 }
 
+// Marks an item as already known -- drops it straight into the ladder's
+// final (60-day) step, the same "long-term memory" bucket a normal item
+// only reaches after several successful reviews. This is what "check it
+// off into my toolbox" does: it stops the item from being offered as new
+// and keeps it out of Review's due queue for a long time, without deleting
+// its history the way forgetting it would.
+export function markKnown(itemId, type) {
+  const srs = store.state.srs;
+  const now = Date.now();
+  const topStep = INTERVAL_STEPS.length - 1;
+  srs[itemId] = {
+    id: itemId,
+    type,
+    repetition: 5,
+    easeFactor: DEFAULT_EASE,
+    interval: INTERVAL_STEPS[topStep],
+    stepIndex: topStep,
+    nextReview: now + INTERVAL_STEPS[topStep] * 86400000,
+    lastReview: now,
+    correct: 1,
+    incorrect: 0,
+    history: [{ date: now, quality: 5 }]
+  };
+  store.save();
+  return srs[itemId];
+}
+
+// Undoes markKnown (or any mastery) -- clears the SRS record so the item
+// goes back into the "new" pool and can be learned/reviewed again.
+export function forgetItem(itemId) {
+  delete store.state.srs[itemId];
+  store.save();
+}
+
 export function stepLabel(item) {
   if (!item) return "New";
   const days = INTERVAL_STEPS[item.stepIndex];

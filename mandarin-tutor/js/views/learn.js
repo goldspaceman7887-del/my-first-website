@@ -9,7 +9,7 @@
 import { store } from "../core/storage.js";
 import { el, blurActive, toast } from "../core/ui.js";
 import { audioEngine } from "../core/audio.js";
-import { gradeItem, masteryLevel, QUALITY, newItems } from "../core/srs.js";
+import { gradeItem, masteryLevel, isMastered, markKnown, forgetItem, QUALITY, newItems } from "../core/srs.js";
 import { addXP } from "../core/gamification.js";
 import { toneNumbers, primaryTone } from "../core/pinyin.js";
 import { breakdownWord } from "../core/lookup.js";
@@ -97,7 +97,35 @@ function sentencePracticeBlock(v) {
   return wrap;
 }
 
-function characterDetail(c) {
+// "Known" toggle shown on every detail card -- lets the learner check an
+// item off into the Toolbox (long-term, 60-day SRS step) straight from
+// Browse/Toolbox, not just during the Learn flow's teach step.
+function knownStatusBlock(kind, data, refresh) {
+  const srsId = srsIdFor(kind, data.id);
+  const known = isMastered(srsId, 70);
+  const wrap = el("div", { style: "margin:.6rem 0" });
+  if (known) {
+    wrap.appendChild(el("span", { class: "badge badge-gold" }, "🧰 In your Toolbox"));
+    wrap.appendChild(
+      el("button", { class: "btn btn-ghost btn-sm", style: "margin-left:.5rem", onclick: () => {
+        forgetItem(srsId);
+        toast("Moved back into active studying.", { type: "info" });
+        refresh();
+      } }, "Study this again")
+    );
+  } else {
+    wrap.appendChild(
+      el("button", { class: "btn btn-sm", onclick: () => {
+        markKnown(srsId, kind);
+        toast(`✅ Added to your Toolbox`, { type: "xp", icon: "🧰" });
+        refresh();
+      } }, "✅ I already know this")
+    );
+  }
+  return wrap;
+}
+
+function characterDetail(c, refresh) {
   const wrap = el("div", { class: "card" });
   wrap.appendChild(
     el("div", { class: "flex justify-between items-center" }, [
@@ -107,6 +135,7 @@ function characterDetail(c) {
   );
   wrap.appendChild(el("div", { class: "pinyin-lg" }, c.pinyin));
   wrap.appendChild(el("div", {}, [el("strong", {}, c.meaning)]));
+  wrap.appendChild(knownStatusBlock("character", c, refresh));
   wrap.appendChild(el("span", { class: `badge badge-tone${primaryTone(c.pinyin)}` }, `${c.pinyin} · ${toneNumbers(c.pinyin)}`));
   wrap.appendChild(el("p", { class: "text-faint", style: "margin-top:.4rem" }, toneExplain(primaryTone(c.pinyin))));
 
@@ -129,7 +158,7 @@ function characterDetail(c) {
   return wrap;
 }
 
-function wordDetailCard(v) {
+function wordDetailCard(v, refresh) {
   const wrap = el("div", { class: "card" });
   wrap.appendChild(
     el("div", { class: "flex justify-between items-center" }, [
@@ -139,6 +168,7 @@ function wordDetailCard(v) {
   );
   wrap.appendChild(el("div", { class: "pinyin-lg" }, v.pinyin));
   wrap.appendChild(el("p", {}, [el("strong", {}, v.meaning)]));
+  wrap.appendChild(knownStatusBlock("word", v, refresh));
 
   wrap.appendChild(el("h4", { style: "margin-top:1rem" }, "Common collocations"));
   wrap.appendChild(el("div", {}, v.collocations.map((c) => el("p", {}, [el("span", { class: "hanzi" }, c.w), el("span", { class: "text-muted" }, ` ${c.py} — ${c.en}`)]))));
@@ -174,8 +204,8 @@ function wordDetailCard(v) {
   return wrap;
 }
 
-function detailFor(kind, data) {
-  return kind === "character" ? characterDetail(data) : wordDetailCard(data);
+function detailFor(kind, data, refresh) {
+  return kind === "character" ? characterDetail(data, refresh) : wordDetailCard(data, refresh);
 }
 
 export function renderLearn(container) {
@@ -188,7 +218,7 @@ export function renderLearn(container) {
     ])
   );
 
-  const tabs = el("div", { class: "tabs" }, [tabBtn("learn", "Learn new"), tabBtn("browse", "Browse")]);
+  const tabs = el("div", { class: "tabs" }, [tabBtn("learn", "Learn new"), tabBtn("browse", "Browse"), tabBtn("toolbox", "🧰 Toolbox")]);
   container.appendChild(tabs);
   const body = el("div", {});
   container.appendChild(body);
@@ -206,7 +236,9 @@ export function renderLearn(container) {
   }
   function renderBody() {
     body.innerHTML = "";
-    body.appendChild(view.tab === "learn" ? buildLearnFlow() : buildBrowse());
+    if (view.tab === "learn") body.appendChild(buildLearnFlow());
+    else if (view.tab === "browse") body.appendChild(buildBrowse());
+    else body.appendChild(buildToolbox());
   }
 }
 
@@ -344,6 +376,17 @@ function buildLearnFlow() {
         renderStage();
       } }, flow.learnIdx + 1 < flow.batch.length ? "Got it → Next" : "Got it → See them in sentences")
     );
+    learnWrap.appendChild(
+      el("button", { class: "btn btn-ghost btn-block", style: "margin-top:.5rem", onclick: () => {
+        blurActive();
+        markKnown(srsIdFor(kind, data.id), kind);
+        addXP(1, `Already knew: ${text}`);
+        toast(`✅ "${text}" marked as known — added to your Toolbox`, { type: "xp", icon: "🧰" });
+        flow.batch.splice(flow.learnIdx, 1);
+        if (flow.learnIdx >= flow.batch.length) { flow.stage = flow.batch.length ? "practice" : "done"; flow.practiceIdx = 0; }
+        renderStage();
+      } }, "✅ I already know this — skip it")
+    );
 
     if (store.state.settings.autoplayAudio) audioEngine.speak(text);
     return learnWrap;
@@ -445,8 +488,13 @@ function buildLearnFlow() {
   function renderDone() {
     const doneWrap = el("div", { class: "card empty-state pop-in" });
     doneWrap.appendChild(el("div", { class: "empty-icon" }, "✅"));
-    doneWrap.appendChild(el("h3", {}, `Learned ${flow.batch.length} — ${flow.correctCount} / ${flow.batch.length} correct in context`));
-    doneWrap.appendChild(el("p", {}, "Nice work! These are now in your spaced-repetition queue and will come back up in Review."));
+    if (flow.batch.length === 0) {
+      doneWrap.appendChild(el("h3", {}, "You already knew all of those!"));
+      doneWrap.appendChild(el("p", {}, "They've been added straight to your Toolbox — no need to practice them again."));
+    } else {
+      doneWrap.appendChild(el("h3", {}, `Learned ${flow.batch.length} — ${flow.correctCount} / ${flow.batch.length} correct in context`));
+      doneWrap.appendChild(el("p", {}, "Nice work! These are now in your spaced-repetition queue and will come back up in Review."));
+    }
     doneWrap.appendChild(
       el("div", { class: "btn-row", style: "margin-top:1rem" }, [
         el("button", { class: "btn btn-primary", onclick: () => { flow.stage = "setup"; renderStage(); } }, "Learn more"),
@@ -491,9 +539,14 @@ function buildBrowse() {
     return b;
   }
 
+  function showDetail(kind, data) {
+    detailWrap.innerHTML = "";
+    detailWrap.appendChild(detailFor(kind, data, () => { renderList(); showDetail(kind, data); }));
+    detailWrap.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
   function renderList() {
     grid.innerHTML = "";
-    detailWrap.innerHTML = "";
     const s = state.search.trim().toLowerCase();
     const chars = state.kind === "word" ? [] : CHARACTERS.filter((c) => !s || c.char.includes(s) || c.pinyin.toLowerCase().includes(s) || c.meaning.toLowerCase().includes(s)).map((data) => ({ kind: "character", data }));
     const words = state.kind === "character" ? [] : VOCABULARY.filter((v) => !s || v.word.includes(s) || v.pinyin.toLowerCase().includes(s) || v.meaning.toLowerCase().includes(s)).map((data) => ({ kind: "word", data }));
@@ -504,13 +557,90 @@ function buildBrowse() {
       const text = textFor(kind, data);
       const mastery = masteryLevel(srsIdFor(kind, data.id));
       grid.appendChild(
-        el("div", { class: "card", style: "padding:.9rem;cursor:pointer", onclick: () => {
-          detailWrap.innerHTML = "";
-          detailWrap.appendChild(detailFor(kind, data));
-          detailWrap.scrollIntoView({ behavior: "smooth", block: "nearest" });
-        } }, [
+        el("div", { class: "card", style: "padding:.9rem;cursor:pointer", onclick: () => showDetail(kind, data) }, [
           el("div", { class: "flex justify-between items-center" }, [
             el("span", { class: "badge badge-default" }, kind === "character" ? "🈶" : "🗂️"),
+            el("button", { class: "play-btn", style: "width:30px;height:30px", onclick: (e) => { e.stopPropagation(); audioEngine.speak(text); } }, "🔊")
+          ]),
+          el("div", { class: "hanzi", style: "font-weight:700;font-size:1.2rem;margin-top:.4rem" }, text),
+          el("div", { class: "text-muted", style: "font-size:.85rem" }, `${data.pinyin} — ${data.meaning}`),
+          el("div", { class: "progress-bar", style: "margin-top:.5rem" }, [el("div", { class: "progress-bar-fill", style: `width:${mastery}%` })])
+        ])
+      );
+    });
+  }
+  renderList();
+  return wrap;
+}
+
+function buildToolbox() {
+  const wrap = el("div", {});
+  const state = { kind: "all", search: "" };
+
+  wrap.appendChild(el("p", { class: "text-muted" }, "Everything you've checked off as known, plus anything else you've mastered through spaced repetition — your long-term memory bucket. Nothing here needs regular study, but you can always send an item back into active practice."));
+
+  const searchRow = el("div", { class: "search-row" });
+  const input = el("input", { type: "search", placeholder: "Search your Toolbox...", style: "flex:1;min-width:200px;padding:.6rem .9rem;border-radius:999px;border:1px solid var(--border);background:var(--surface-2);color:var(--text)" });
+  input.addEventListener("input", () => { state.search = input.value; renderList(); });
+  searchRow.appendChild(input);
+  wrap.appendChild(searchRow);
+
+  const kindPills = el("div", { class: "level-pills" }, [
+    kindPill("all", "All"),
+    kindPill("character", "🈶 Characters"),
+    kindPill("word", "🗂️ Words")
+  ]);
+  wrap.appendChild(kindPills);
+
+  const countLabel = el("p", { class: "text-muted", style: "margin-top:.75rem" }, "");
+  wrap.appendChild(countLabel);
+  const grid = el("div", { class: "grid grid-auto" });
+  wrap.appendChild(grid);
+  const detailWrap = el("div", { style: "margin-top:1rem" });
+  wrap.appendChild(detailWrap);
+
+  function kindPill(id, label) {
+    const b = el("button", { class: `level-pill ${state.kind === id ? "active" : ""}`, onclick: () => {
+      state.kind = id;
+      kindPills.querySelectorAll(".level-pill").forEach((x) => x.classList.toggle("active", x.dataset.kind === id));
+      renderList();
+    } }, label);
+    b.dataset.kind = id;
+    return b;
+  }
+
+  function showDetail(kind, data) {
+    detailWrap.innerHTML = "";
+    detailWrap.appendChild(detailFor(kind, data, () => { renderList(); showDetail(kind, data); }));
+    detailWrap.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  function renderList() {
+    grid.innerHTML = "";
+    const s = state.search.trim().toLowerCase();
+    const chars = state.kind === "word" ? [] : CHARACTERS.filter((c) => isMastered(srsIdFor("character", c.id), 70) && (!s || c.char.includes(s) || c.pinyin.toLowerCase().includes(s) || c.meaning.toLowerCase().includes(s))).map((data) => ({ kind: "character", data }));
+    const words = state.kind === "character" ? [] : VOCABULARY.filter((v) => isMastered(srsIdFor("word", v.id), 70) && (!s || v.word.includes(s) || v.pinyin.toLowerCase().includes(s) || v.meaning.toLowerCase().includes(s))).map((data) => ({ kind: "word", data }));
+    const combined = [...chars, ...words];
+    countLabel.textContent = `${combined.length} item(s) in your Toolbox`;
+
+    if (combined.length === 0) {
+      grid.appendChild(
+        el("div", { class: "card empty-state" }, [
+          el("div", { class: "empty-icon" }, "🧰"),
+          el("h3", {}, "Your Toolbox is empty"),
+          el("p", {}, "Check off characters or words as \"already known\" while learning or browsing, and they'll show up here.")
+        ])
+      );
+      return;
+    }
+
+    combined.forEach(({ kind, data }) => {
+      const text = textFor(kind, data);
+      const mastery = masteryLevel(srsIdFor(kind, data.id));
+      grid.appendChild(
+        el("div", { class: "card", style: "padding:.9rem;cursor:pointer", onclick: () => showDetail(kind, data) }, [
+          el("div", { class: "flex justify-between items-center" }, [
+            el("span", { class: "badge badge-gold" }, kind === "character" ? "🈶" : "🗂️"),
             el("button", { class: "play-btn", style: "width:30px;height:30px", onclick: (e) => { e.stopPropagation(); audioEngine.speak(text); } }, "🔊")
           ]),
           el("div", { class: "hanzi", style: "font-weight:700;font-size:1.2rem;margin-top:.4rem" }, text),
