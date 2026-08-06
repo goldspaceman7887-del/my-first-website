@@ -78,7 +78,21 @@ function defaultState() {
       scenarioBest: {}, // scenarioId -> best overallScore
       // ACTFL level codes whose scenario-proficiency gate has been earned.
       // Append-only — once unlocked, never re-locked by a later bad attempt.
-      gatesUnlocked: []
+      gatesUnlocked: [],
+      // Rolling log of the last graded interactions across scenarios,
+      // conversation, and immersion — { date, kind, outcome: "good"|"struggled",
+      // mistakeDensity: 0-1 }. Capped at 20 entries (oldest dropped) by
+      // core/adaptive.js, which reads this to modulate difficulty/pacing in
+      // real time without a separate grading subsystem.
+      recentPerformance: [],
+      // Completed "Day in Mexico" runs — { date, segmentsCompleted: [scenarioId],
+      // segmentResults: { scenarioId: overallScore }, dayOutcome: "great"|"mixed"|"rough" }
+      dailyLifeRuns: [],
+      // Conversation Mode's equivalent of immersionAsked — questions already
+      // asked, persisted cross-session so retaking the mode doesn't repeat
+      // itself the way it used to (immersion.js already had this; conversation.js
+      // previously only tracked it in-memory for the current tab visit).
+      conversationAsked: []
     },
     achievements: {
       unlocked: []

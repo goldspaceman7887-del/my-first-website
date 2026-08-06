@@ -909,6 +909,9 @@ async function testStorage(browser) {
     store.state.progress.scenarioBest["order-coffee"] = 78;
     store.state.progress.gatesUnlocked = ["novice-mid"];
     store.state.profile.actflConfirmedByScenario = "novice-mid";
+    store.state.progress.recentPerformance.push({ date: Date.now(), kind: "scenario", outcome: "good", mistakeDensity: 0.1 });
+    store.state.progress.dailyLifeRuns.push({ date: "2026-01-01", segmentsCompleted: ["order-coffee"], segmentResults: { "order-coffee": 78 }, dayOutcome: "mixed" });
+    store.state.progress.conversationAsked.push("dia:¿A qué hora te levantaste?");
     store.saveNow();
   });
   await page.reload({ waitUntil: "networkidle" });
@@ -925,7 +928,10 @@ async function testStorage(browser) {
       scenarioAttempts: (store.state.progress.scenarioAttempts || []).length,
       scenarioBest: (store.state.progress.scenarioBest || {})["order-coffee"],
       gatesUnlocked: (store.state.progress.gatesUnlocked || []).length,
-      actflConfirmedByScenario: store.state.profile.actflConfirmedByScenario
+      actflConfirmedByScenario: store.state.profile.actflConfirmedByScenario,
+      recentPerformance: (store.state.progress.recentPerformance || []).length,
+      dailyLifeRuns: (store.state.progress.dailyLifeRuns || []).length,
+      conversationAsked: (store.state.progress.conversationAsked || []).length
     };
   });
   check("spaced repetition survives a reload", after.srs === 2, `${after.srs} of 2 items`);
@@ -938,6 +944,9 @@ async function testStorage(browser) {
   check("scenario best score survives a reload", after.scenarioBest === 78, String(after.scenarioBest));
   check("unlocked scenario gates survive a reload", after.gatesUnlocked === 1, String(after.gatesUnlocked));
   check("scenario-confirmed ACTFL level survives a reload", after.actflConfirmedByScenario === "novice-mid", String(after.actflConfirmedByScenario));
+  check("recent performance log survives a reload", after.recentPerformance === 1, String(after.recentPerformance));
+  check("daily life runs survive a reload", after.dailyLifeRuns === 1, String(after.dailyLifeRuns));
+  check("conversation asked-questions log survives a reload", after.conversationAsked === 1, String(after.conversationAsked));
   await ctx.close();
 }
 
