@@ -5,7 +5,7 @@
 import { store, todayISO } from "../core/storage.js";
 import { el, blurActive, toast } from "../core/ui.js";
 import { audioEngine } from "../core/audio.js";
-import { dueItems, newItems, reviewCounts, isMastered } from "../core/srs.js";
+import { reviewCounts, isMastered, gradeItem, QUALITY } from "../core/srs.js";
 import { addXP } from "../core/gamification.js";
 import { CHARACTERS } from "../data/characters.js";
 import { VOCABULARY } from "../data/vocabulary.js";
@@ -19,12 +19,20 @@ const PARTS = [
 
 export function renderDailyLesson(container) {
   let step = 0;
-  const lesson = buildLesson();
+  let lessonNumber = 1;
+  // Tracks what's been shown THIS SITTING, on top of what's already in the
+  // SRS/completed lists, so clicking "Start next lesson" back-to-back never
+  // repeats the same words/characters/sentences/dialogue -- each one
+  // presented gets committed to the SRS at "Finish lesson" (see
+  // commitLessonToSRS), which is what actually makes the *next* lesson
+  // build fresh content instead of the same preview forever.
+  const seen = { words: new Set(), chars: new Set(), sentences: new Set(), dialogues: new Set() };
+  let lesson = buildLesson();
 
   container.appendChild(
     el("div", { class: "page-header" }, [
       el("h1", {}, "📅 Daily Lesson"),
-      el("p", {}, "Review first, then new material in the right order: meaning → sentence → conversation → vocabulary → characters → grammar.")
+      el("p", {}, "Review first, then new material in the right order: meaning → sentence → conversation → vocabulary → characters → grammar. Finish one and start another right away — do as many as you want in one sitting.")
     ])
   );
 
@@ -51,6 +59,8 @@ export function renderDailyLesson(container) {
   }
 
   function render() {
+    tabs.classList.remove("hidden");
+    nav.classList.remove("hidden");
     tabs.querySelectorAll(".tab-btn").forEach((b, i) => b.classList.toggle("active", i === step));
     backBtn.disabled = step === 0;
     nextBtn.textContent = step === PARTS.length - 1 ? "Finish lesson" : "Next →";
@@ -121,6 +131,9 @@ export function renderDailyLesson(container) {
 
   function partNewWords() {
     const wrap = el("div", { class: "card" }, [el("h3", { class: "card-title" }, "3–5 new words"), el("p", { class: "text-muted" }, "Listen, then move on to Vocabulary flashcards later to formally add these to your review queue.")]);
+    if (lesson.newWords.length === 0) {
+      wrap.appendChild(el("p", { class: "text-faint" }, "No new words left to introduce right now — every word in the app has already been covered."));
+    }
     lesson.newWords.forEach((v) => {
       wrap.appendChild(
         el("div", { style: "padding:.5rem 0;border-bottom:1px solid var(--border)" }, [
@@ -137,6 +150,9 @@ export function renderDailyLesson(container) {
 
   function partNewChars() {
     const wrap = el("div", { class: "card" }, [el("h3", { class: "card-title" }, "3 new characters")]);
+    if (lesson.newChars.length === 0) {
+      wrap.appendChild(el("p", { class: "text-faint" }, "No new characters left to introduce right now — every character in the app has already been covered."));
+    }
     lesson.newChars.forEach((c) => {
       wrap.appendChild(
         el("div", { style: "padding:.5rem 0;border-bottom:1px solid var(--border)" }, [
@@ -154,6 +170,9 @@ export function renderDailyLesson(container) {
 
   function partNewSentences() {
     const wrap = el("div", { class: "card" }, [el("h3", { class: "card-title" }, "3 useful daily-life sentences")]);
+    if (lesson.newSentences.length === 0) {
+      wrap.appendChild(el("p", { class: "text-faint" }, "No new sentences left to introduce right now — every sentence pattern in the app has already been covered."));
+    }
     lesson.newSentences.forEach((s) => {
       wrap.appendChild(
         el("div", { style: "padding:.5rem 0;border-bottom:1px solid var(--border)" }, [
@@ -185,6 +204,9 @@ export function renderDailyLesson(container) {
       el("h3", { class: "card-title" }, "Shadowing practice"),
       el("p", { class: "text-muted" }, "Listen, then repeat out loud in the pause. Each phrase plays 3 times.")
     ]);
+    if (items.length === 0) {
+      wrap.appendChild(el("p", { class: "text-faint" }, "Nothing new to shadow this round — head to Sentences to shadow anything you've already learned."));
+    }
     items.forEach((s) => {
       const status = el("span", { class: "text-faint" }, "");
       wrap.appendChild(
@@ -247,32 +269,113 @@ export function renderDailyLesson(container) {
     }
   }
 
+  // Commits everything this lesson previewed into the SRS (a mild "Good"
+  // first grade, same as a successful first review) so it's genuinely
+  // learned -- not shown again as "new" -- and will surface in Review
+  // tomorrow. Without this, "Start next lesson" would just repeat the same
+  // preview forever since nothing was ever recorded as known.
+  function commitLessonToSRS() {
+    lesson.newWords.forEach((v) => {
+      gradeItem(`word_${v.id}`, "word", QUALITY.GOOD);
+      store.state.progress.vocabExposure[v.id] = (store.state.progress.vocabExposure[v.id] || 0) + 1;
+    });
+    lesson.newChars.forEach((c) => {
+      gradeItem(`character_${c.id}`, "character", QUALITY.GOOD);
+      store.state.progress.charExposure[c.id] = (store.state.progress.charExposure[c.id] || 0) + 1;
+    });
+    lesson.newSentences.forEach((s) => {
+      gradeItem(`sentence_${s.id}`, "sentence", QUALITY.GOOD);
+    });
+  }
+
   function finishLesson() {
     blurActive();
+    commitLessonToSRS();
     const today = todayISO();
-    if (!store.state.progress.lessonsCompleted.includes(today)) {
+    const isFirstToday = !store.state.progress.lessonsCompleted.includes(today);
+    if (isFirstToday) {
       store.state.progress.lessonsCompleted.push(today);
       addXP(20, "Daily Lesson completed");
       toast("Daily Lesson complete! +20 XP", { type: "xp", icon: "⚡" });
     } else {
-      toast("Lesson reviewed again — nice consistency!", { icon: "🔁" });
+      addXP(10, "Extra Daily Lesson completed");
+      toast(`Lesson #${lessonNumber} today complete! +10 XP`, { type: "xp", icon: "⚡" });
     }
     store.save();
-    window.location.hash = "#/dashboard";
+    showComplete(isFirstToday);
+  }
+
+  function showComplete(isFirstToday) {
+    tabs.classList.add("hidden");
+    nav.classList.add("hidden");
+    body.innerHTML = "";
+    const more = hasMoreContent();
+    body.appendChild(
+      el("div", { class: "card empty-state pop-in" }, [
+        el("div", { class: "empty-icon" }, "✅"),
+        el("h3", {}, lessonNumber === 1 ? "Daily Lesson complete!" : `Lesson #${lessonNumber} complete today!`),
+        el("p", {}, isFirstToday ? "+20 XP — today's streak is locked in." : "+10 XP — keep going as long as you like."),
+        more
+          ? el("div", { class: "btn-row", style: "margin-top:1rem" }, [
+              el("button", { class: "btn btn-primary", onclick: startNextLesson }, "▶ Start next lesson"),
+              el("a", { class: "btn", href: "#/dashboard" }, "🏠 Back to dashboard")
+            ])
+          : el("div", {}, [
+              el("p", { class: "text-muted", style: "margin-top:.5rem" }, "You've previewed every new word, character, and sentence currently in the app — nice work. Keep them fresh in Review, or go deeper any time in Learn."),
+              el("div", { class: "btn-row", style: "margin-top:1rem" }, [
+                el("a", { class: "btn btn-primary", href: "#/review" }, "Go to Review"),
+                el("a", { class: "btn", href: "#/dashboard" }, "🏠 Back to dashboard")
+              ])
+            ])
+      ])
+    );
+  }
+
+  function startNextLesson() {
+    lessonNumber++;
+    lesson = buildLesson();
+    step = 0;
+    render();
+  }
+
+  // Peeks at whether another lesson would actually have new content, without
+  // marking anything as "seen" (that only happens when a lesson is really
+  // built via buildLesson() below).
+  function hasMoreContent() {
+    const peek = buildLesson({ markSeen: false });
+    return peek.newWords.length > 0 || peek.newChars.length > 0 || peek.newSentences.length > 0 || !!peek.dialogue;
+  }
+
+  function buildLesson({ markSeen = true } = {}) {
+    const knownWordIds = new Set([
+      ...Object.keys(store.state.srs).filter((id) => id.startsWith("word_")).map((id) => id.replace("word_", "")),
+      ...seen.words
+    ]);
+    const knownCharIds = new Set([
+      ...Object.keys(store.state.srs).filter((id) => id.startsWith("character_")).map((id) => id.replace("character_", "")),
+      ...seen.chars
+    ]);
+    const knownSentenceIds = new Set([
+      ...Object.keys(store.state.srs).filter((id) => id.startsWith("sentence_")).map((id) => id.replace("sentence_", "")),
+      ...seen.sentences
+    ]);
+
+    const newWords = VOCABULARY.filter((v) => !knownWordIds.has(v.id)).slice(0, 4);
+    const newChars = CHARACTERS.filter((c) => !knownCharIds.has(c.id) && !(store.state.profile.selfReportedKnownChars || []).includes(c.char)).slice(0, 3);
+    const newSentences = SENTENCES.filter((s) => !knownSentenceIds.has(s.id)).slice(0, 3);
+    const dialogue = DIALOGUES.find((d) => !store.state.progress.dialoguesCompleted.includes(d.id) && !seen.dialogues.has(d.id))
+      || DIALOGUES.find((d) => !store.state.progress.dialoguesCompleted.includes(d.id))
+      || null;
+
+    if (markSeen) {
+      newWords.forEach((v) => seen.words.add(v.id));
+      newChars.forEach((c) => seen.chars.add(c.id));
+      newSentences.forEach((s) => seen.sentences.add(s.id));
+      if (dialogue) seen.dialogues.add(dialogue.id);
+    }
+
+    return { newWords, newChars, newSentences, dialogue };
   }
 
   render();
-}
-
-function buildLesson() {
-  const knownWordIds = new Set(Object.keys(store.state.srs).filter((id) => id.startsWith("word_")).map((id) => id.replace("word_", "")));
-  const knownCharIds = new Set(Object.keys(store.state.srs).filter((id) => id.startsWith("character_")).map((id) => id.replace("character_", "")));
-  const knownSentenceIds = new Set(Object.keys(store.state.srs).filter((id) => id.startsWith("sentence_")).map((id) => id.replace("sentence_", "")));
-
-  const newWords = VOCABULARY.filter((v) => !knownWordIds.has(v.id)).slice(0, 4);
-  const newChars = CHARACTERS.filter((c) => !knownCharIds.has(c.id) && !(store.state.profile.selfReportedKnownChars || []).includes(c.char)).slice(0, 3);
-  const newSentences = SENTENCES.filter((s) => !knownSentenceIds.has(s.id)).slice(0, 3);
-  const dialogue = DIALOGUES.find((d) => !store.state.progress.dialoguesCompleted.includes(d.id)) || null;
-
-  return { newWords, newChars, newSentences, dialogue };
 }
