@@ -11,6 +11,7 @@ import { isMastered } from "./core/srs.js";
 import { renderDashboard } from "./views/dashboard.js";
 import { renderRoadmap } from "./views/roadmap.js";
 import { renderLearn } from "./views/learn.js";
+import { renderPinyin } from "./views/pinyinLab.js";
 import { renderSentences } from "./views/sentences.js";
 import { renderDialogueList, renderDialogueDetail } from "./views/dialogues.js";
 import { renderReview } from "./views/review.js";
@@ -110,6 +111,7 @@ document.getElementById("stat-due-chip").addEventListener("click", () => navigat
 registerRoute("dashboard", renderDashboard);
 registerRoute("roadmap", renderRoadmap);
 registerRoute("learn", renderLearn);
+registerRoute("pinyin", renderPinyin);
 registerRoute("characters", renderLearn);
 registerRoute("vocabulary", renderLearn);
 registerRoute("char-vocab", renderLearn);

@@ -1,4 +1,4 @@
-const CACHE_NAME = "mzh-cache-v16";
+const CACHE_NAME = "mzh-cache-v17";
 
 const PRECACHE_URLS = [
   "./",
@@ -25,6 +25,7 @@ const PRECACHE_URLS = [
   "js/data/characters.js",
   "js/data/dialogues.js",
   "js/data/mistakePatterns.js",
+  "js/data/pinyinChart.js",
   "js/data/roadmap.js",
   "js/data/sentences.js",
   "js/data/stories.js",
@@ -37,6 +38,7 @@ const PRECACHE_URLS = [
   "js/views/immersion.js",
   "js/views/learn.js",
   "js/views/mining.js",
+  "js/views/pinyinLab.js",
   "js/views/review.js",
   "js/views/roadmap.js",
   "js/views/sentences.js",
