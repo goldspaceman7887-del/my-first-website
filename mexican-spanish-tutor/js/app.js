@@ -13,6 +13,7 @@ import { renderDialogueDetail } from "./views/dialogues.js";
 import { renderLearn } from "./views/learn.js";
 import { renderPractice } from "./views/practice.js";
 import { renderLevelTest } from "./views/levelTest.js";
+import { renderProficiencyReport } from "./views/proficiencyReport.js";
 import { renderReview } from "./views/review.js";
 import { renderAchievements } from "./views/achievements.js";
 import { renderSettings } from "./views/settings.js";
@@ -130,6 +131,7 @@ document.getElementById("stat-due-chip").addEventListener("click", () => navigat
 registerRoute("dashboard", renderDashboard);
 registerRoute("roadmap", renderRoadmap);
 registerRoute("level-test", renderLevelTest);
+registerRoute("proficiency", renderProficiencyReport);
 registerRoute("learn", renderLearn);
 registerRoute("learn/:tab", renderLearn);
 registerRoute("dialogues/:id", renderDialogueDetail);

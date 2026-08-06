@@ -90,7 +90,7 @@ async function go(page, hash) {
 async function testRoutes(browser) {
   group("routes");
   const { page, ctx, errors } = await freshPage(browser);
-  const routes = ["#/dashboard", "#/roadmap", "#/level-test", "#/learn", "#/learn/vocab",
+  const routes = ["#/dashboard", "#/roadmap", "#/level-test", "#/proficiency", "#/learn", "#/learn/vocab",
     "#/learn/grammar", "#/learn/dialogues", "#/practice", "#/practice/story",
     "#/practice/conversation", "#/practice/roleplay", "#/review", "#/review/known", "#/save", "#/achievements", "#/settings"];
   let rendered = 0;
@@ -846,6 +846,38 @@ async function testProficiency(browser) {
     return { gatesUnlocked: store.state.progress.gatesUnlocked.slice(), confirmedByScenario: store.state.profile.actflConfirmedByScenario };
   });
   check("passing attempts at the first (always-open) tier don't themselves confirm a gate", firstTierNeverAutoConfirms.gatesUnlocked.length === 0, JSON.stringify(firstTierNeverAutoConfirms));
+
+  // The report view itself: empty state before any scenario is attempted,
+  // then real content (level, strongest/weakest functions, mastered
+  // situations) once an attempt is on record. Earlier fixtures in this same
+  // page already recorded attempts, so reset first.
+  await page.evaluate(async () => {
+    const { store } = await import("/js/core/storage.js");
+    store.state.progress.scenarioAttempts = [];
+    store.state.progress.scenarioBest = {};
+  });
+  await page.evaluate(() => { window.location.hash = "#/proficiency"; });
+  await page.waitForTimeout(300);
+  const emptyReport = await page.evaluate(() => document.getElementById("view-root").innerText);
+  check("proficiency report shows an empty state before any scenario attempt", emptyReport.includes("No task scenarios completed yet"), emptyReport.slice(0, 120));
+
+  await page.evaluate(async () => {
+    const { recordScenarioAttempt } = await import("/js/core/actflProfile.js");
+    recordScenarioAttempt({
+      date: "2026-01-01", scenarioId: "order-coffee", tier: "novice-mid", turns: 8,
+      requiredSlotsFilled: 5, requiredSlotsTotal: 5, questionsAsked: 1, mistakesFired: 0, unresolvedMistakes: 0,
+      dimensions: { comprehensibility: 90, vocabularyRange: 60, sentenceFormation: 80, repairStrategies: 70, conversationManagement: 50, questionAsking: 33, surpriseHandling: 60 },
+      overallScore: 78, outcome: "success"
+    });
+  });
+  await page.evaluate(() => { window.location.hash = "#/dashboard"; });
+  await page.waitForTimeout(100);
+  await page.evaluate(() => { window.location.hash = "#/proficiency"; });
+  await page.waitForTimeout(300);
+  const filledReport = await page.evaluate(() => document.getElementById("view-root").innerText);
+  check("proficiency report shows the current ACTFL level", /Novice|Intermediate|Advanced/.test(filledReport), filledReport.slice(0, 80));
+  check("proficiency report lists a mastered situation after a strong attempt", filledReport.includes("Order a Coffee") && filledReport.includes("Situations mastered"), filledReport.slice(0, 400));
+  check("proficiency report shows strongest/weakest functions", filledReport.includes("Strongest functions") && filledReport.includes("Weakest functions"));
 
   check("no JS errors", errors.length === 0, errors.slice(0, 3).join(" | "));
   await ctx.close();
