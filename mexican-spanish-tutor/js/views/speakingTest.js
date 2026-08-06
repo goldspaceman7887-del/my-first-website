@@ -15,6 +15,7 @@ import { store, todayISO } from "../core/storage.js";
 import { el, toast, blurActive, confettiBurst } from "../core/ui.js";
 import { audioEngine, speechRecognitionSupported, startDictation } from "../core/audio.js";
 import { addXP, registerStudyToday, updateSkillScore } from "../core/gamification.js";
+import { gradeItem, QUALITY } from "../core/srs.js";
 import { checkText } from "../data/mistakePatterns.js";
 import { ACTFL_LEVELS } from "../data/roadmap.js";
 
@@ -122,14 +123,36 @@ function todaysStages(offset = 0) {
   });
 }
 
-const PAST_TENSE_RE = /\b\w*(é|aste|ó|amos|aron|í|iste|ió|imos|ieron|aba|abas|ábamos|aban|ía|ías|íamos|ían)\b/i;
+// JS's default \b treats accented vowels as non-word characters, so a
+// suffix-then-\b pattern both misses real preterite forms that END in a
+// bare accented vowel (comí, hablé, trabajó all failed to match) and
+// falsely fires on any word that merely CONTAINS one mid-word (México,
+// García, día). Testing whole, pre-split words against an end-anchored
+// suffix sidesteps the \b quirk entirely; a short exclusion list handles
+// the handful of common non-verbs that end in the same single-letter
+// suffixes as real preterite forms (café/así vs. hablé/comí).
+const PAST_TENSE_SUFFIX_RE = /(é|aste|ó|amos|aron|í|iste|ió|imos|ieron|aba|abas|ábamos|aban|ía|ías|íamos|ían)$/i;
+const PAST_TENSE_FALSE_POSITIVES = new Set([
+  "café", "así", "ahí", "aquí", "bebé", "papá", "mamá", "sofá", "menú", "bambú", "tabú",
+  "día", "días", "todavía", "maría", "garcía"
+]);
+function hasPastTense(text) {
+  return text
+    .split(/[\s.,;:!?¿¡()"'—-]+/)
+    .filter(Boolean)
+    .some((w) => {
+      const clean = w.toLowerCase();
+      if (PAST_TENSE_FALSE_POSITIVES.has(clean)) return false;
+      return PAST_TENSE_SUFFIX_RE.test(clean);
+    });
+}
 const CONNECTOR_RE = /\b(aunque|sin embargo|por un lado|por otro|además|mientras|ya que|porque|por lo tanto|en resumen|entonces|pero)\b/i;
 
 function scoreResponse(text) {
   const words = text.trim().split(/\s+/).filter(Boolean);
   const sentences = text.split(/[.!?]+/).filter((s) => s.trim().length > 2);
   const mistakes = checkText(text).length;
-  const hasPast = PAST_TENSE_RE.test(text);
+  const hasPast = hasPastTense(text);
   const hasConnector = CONNECTOR_RE.test(text);
   let score = Math.min(60, words.length * 2.2);
   score += sentences.length >= 3 ? 15 : sentences.length * 5;
@@ -140,6 +163,107 @@ function scoreResponse(text) {
     score: Math.max(0, Math.min(100, Math.round(score))),
     words: words.length, sentences: sentences.length, hasPast, hasConnector, mistakes
   };
+}
+
+// Sentence-building phrases, grouped by what they fix. Rather than telling a
+// learner "use connectors" in the abstract, hand them the actual phrases to
+// drop into a sentence — meaning first, the way the rest of the app works.
+const PHRASE_BANK = {
+  extend: {
+    title: "Extend a short answer",
+    blurb: "Your answers were brief — these phrases give you somewhere to go after the first sentence.",
+    phrases: [
+      { es: "Primero...", en: "First..." },
+      { es: "Además,...", en: "Also, / Besides,..." },
+      { es: "Por ejemplo,...", en: "For example..." },
+      { es: "Es decir,...", en: "That is to say / In other words..." },
+      { es: "Sobre todo,...", en: "Above all / Especially..." },
+      { es: "Para terminar,...", en: "To wrap up..." }
+    ]
+  },
+  narrate: {
+    title: "Narrate in the past",
+    blurb: "Use these to move a story forward — mix them with preterite (what happened) and imperfect (the background).",
+    phrases: [
+      { es: "Un día,...", en: "One day..." },
+      { es: "De repente,...", en: "Suddenly..." },
+      { es: "Mientras tanto,...", en: "Meanwhile..." },
+      { es: "Después de eso,...", en: "After that..." },
+      { es: "Al final,...", en: "In the end..." },
+      { es: "Cuando era niño/a,...", en: "When I was a kid..." }
+    ]
+  },
+  connect: {
+    title: "Link your ideas",
+    blurb: "Drop one of these between two sentences instead of just stringing them together.",
+    phrases: [
+      { es: "Sin embargo,...", en: "However..." },
+      { es: "Aunque...", en: "Although..." },
+      { es: "Por eso,...", en: "That's why..." },
+      { es: "Por un lado... por otro lado...", en: "On one hand... on the other hand..." },
+      { es: "Ya que...", en: "Since / Given that..." },
+      { es: "Entonces,...", en: "So / Then..." }
+    ]
+  },
+  opinion: {
+    title: "Give and defend an opinion",
+    blurb: "Push past 'me gusta' — these are how you actually argue a point in Spanish.",
+    phrases: [
+      { es: "En mi opinión,...", en: "In my opinion..." },
+      { es: "Me parece que...", en: "It seems to me that..." },
+      { es: "Desde mi punto de vista,...", en: "From my point of view..." },
+      { es: "No cabe duda de que...", en: "There's no doubt that..." },
+      { es: "Lo que pienso es que...", en: "What I think is..." },
+      { es: "Estoy de acuerdo hasta cierto punto, pero...", en: "I agree up to a point, but..." }
+    ]
+  }
+};
+
+// Which phrase categories actually help THIS learner, based on every answer
+// they gave (not just the two weakest) — a gap that only showed up once is
+// still worth a phrase or two.
+function neededPhraseCategories(responses) {
+  const needed = new Set();
+  responses.forEach((r) => {
+    if (r.words < 25) needed.add("extend");
+    if (!r.hasPast) needed.add("narrate");
+    if (!r.hasConnector) needed.add("connect");
+  });
+  const touchedOpinion = responses.some((r) => r.stage === "opinion" || r.stage === "advanced");
+  if (touchedOpinion || needed.size === 0) needed.add("opinion");
+  // Cap at 3 categories so the report stays a reading, not a curriculum.
+  return [...needed].slice(0, 3);
+}
+
+// Reuses the same savedWords/gloss mechanism Story Mode's tap-word glossary
+// uses, so a saved phrase shows up in Review like anything else — one
+// unified spaced-repetition queue rather than a one-off list you forget.
+function savePhrase(es, en) {
+  store.state.progress.savedWords[es] = en;
+  gradeItem(`gloss_${es}`, "gloss", QUALITY.GOOD);
+  store.save();
+  toast(`"${es}" guardada para repasar`, { icon: "🔖" });
+}
+
+function phraseRow(es, en) {
+  return el("div", { class: "flex justify-between items-center", style: "gap:.5rem;padding:.35rem 0;border-bottom:1px solid var(--border)" }, [
+    el("div", {}, [
+      el("div", { class: "es-text", style: "font-weight:600" }, es),
+      el("div", { class: "text-muted", style: "font-size:.85rem" }, en)
+    ]),
+    el("div", { class: "flex", style: "gap:.3rem;flex-shrink:0" }, [
+      el("button", { class: "btn btn-sm", title: "Hear it", onclick: () => audioEngine.speak(es) }, "🔊"),
+      el("button", { class: "btn btn-sm", title: "Save to review", onclick: () => savePhrase(es, en) }, "🔖")
+    ])
+  ]);
+}
+
+function phraseCategoryBlock(category) {
+  return el("div", { style: "margin-top:.7rem" }, [
+    el("div", { style: "font-weight:700" }, category.title),
+    el("p", { class: "text-faint", style: "font-size:.85rem;margin:.1rem 0 .4rem" }, category.blurb),
+    ...category.phrases.map((p) => phraseRow(p.es, p.en))
+  ]);
 }
 
 export function renderSpeakingTest(container) {
@@ -311,12 +435,13 @@ export function renderSpeakingTest(container) {
     const weak = [...responses].sort((a, b) => a.score - b.score).slice(0, 2);
     const tips = weak.map((r) => {
       const s = STAGES.find((x) => x.key === r.stage);
-      if (r.words < 25) return `${s.title}: aim for longer answers — 4–5 connected sentences, not one line.`;
-      if (!r.hasPast) return `${s.title}: work past tenses in — mix preterite (what happened) with imperfect (background).`;
-      if (!r.hasConnector) return `${s.title}: link your ideas with aunque, sin embargo, por un lado… to build real paragraphs.`;
+      if (r.words < 25) return `${s.title}: you answered in one line — use the "Extend a short answer" phrases below to keep going after the first sentence.`;
+      if (!r.hasPast) return `${s.title}: no past tense showed up — the "Narrate in the past" phrases below give you a way in (mix preterite for what happened with imperfect for the background).`;
+      if (!r.hasConnector) return `${s.title}: your ideas weren't linked — try the "Link your ideas" phrases below instead of just stringing sentences together.`;
       if (r.mistakes) return `${s.title}: ${r.mistakes} common mistake pattern(s) detected — run the answer through the Writing tab.`;
-      return `${s.title}: solid — push for more detail and precision next time.`;
+      return `${s.title}: solid — use the "Give and defend an opinion" phrases below to push for more precision and a stronger argument.`;
     });
+    const phraseCategories = neededPhraseCategories(responses);
 
     store.state.profile.selfReportedLevel = level.code;
     const log = store.state.progress.speakingTests || (store.state.progress.speakingTests = []);
@@ -357,6 +482,14 @@ export function renderSpeakingTest(container) {
       el("div", { class: "card", style: "margin-top:1rem" }, [
         el("div", { class: "card-title" }, "📈 What to work on"),
         el("ul", { style: "margin:.3rem 0 0;padding-left:1.2rem" }, tips.map((t) => el("li", {}, t)))
+      ])
+    );
+
+    body.appendChild(
+      el("div", { class: "card", style: "margin-top:1rem" }, [
+        el("div", { class: "card-title" }, "🗣️ Phrases to build better sentences"),
+        el("p", { class: "text-muted", style: "margin:.2rem 0 .6rem" }, "Picked from today's interview — learn a few, then work them into your next attempt. Tap 🔊 to hear one, 🔖 to add it to Review."),
+        ...phraseCategories.map((key) => phraseCategoryBlock(PHRASE_BANK[key]))
       ])
     );
 

@@ -47,7 +47,7 @@ function frontText(type, data) {
   return data.es;
 }
 function backSub(type, data) {
-  if (type === "gloss") return "Saved from a story";
+  if (type === "gloss") return "Saved phrase";
   if (type === "word") return `/${data.ipa}/`;
   if (type === "dialogue") return `Dialogue · ${data.title}`;
   if (type === "story") return `Story · ${data.title}`;
@@ -97,7 +97,7 @@ function knownPool() {
 
   // Words you bookmarked while reading a story
   Object.entries(store.state.progress.savedWords || {}).forEach(([w, en]) => {
-    out.push({ deck: "saved", srsId: `gloss_${w}`, srsType: "gloss", front: w, sub: "Saved from a story", back: en, note: "" });
+    out.push({ deck: "saved", srsId: `gloss_${w}`, srsType: "gloss", front: w, sub: "Saved phrase", back: en, note: "" });
   });
 
   // Every sentence from every unit you've finished or ticked off
