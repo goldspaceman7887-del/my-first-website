@@ -10,6 +10,8 @@
 // Rules only fire when they are confident. A wrong correction teaches a
 // mistake, which is worse than saying nothing at all.
 
+import { VOCAB_ALTERNATIVES } from "./vocabAlternatives.js";
+
 const A = "a-záéíóúüñ";
 
 export const MISTAKE_PATTERNS = [
@@ -409,6 +411,15 @@ export const MISTAKE_PATTERNS = [
   }
 ];
 
+// Grammar rules first (they take priority for the "corrected sentence"
+// callers show), then Mexican-vocabulary word-choice tips — a different
+// category, checked via the same engine so a learner sees both kinds of
+// feedback from one call instead of two separate systems.
+const ALL_RULES = [
+  ...MISTAKE_PATTERNS.map((p) => ({ category: "grammar", ...p })),
+  ...VOCAB_ALTERNATIVES
+];
+
 // Runs every confident rule and returns your sentence, corrected.
 export function checkSpanish(text) {
   const input = String(text || "");
@@ -416,7 +427,7 @@ export function checkSpanish(text) {
   const hits = [];
   let corrected = input;
 
-  for (const p of MISTAKE_PATTERNS) {
+  for (const p of ALL_RULES) {
     const m = input.match(p.test);
     if (!m) continue;
     let replacement;
@@ -435,6 +446,7 @@ export function checkSpanish(text) {
     hits.push({
       id: p.id,
       label: p.label,
+      category: p.category || "grammar",
       fragment: m[0].trim(),
       suggestion: replacement.trim(),
       why: p.why,

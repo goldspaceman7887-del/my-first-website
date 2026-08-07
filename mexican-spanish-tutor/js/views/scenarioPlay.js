@@ -5,13 +5,14 @@
 
 import { el, blurActive, toast } from "../core/ui.js";
 import { store, todayISO } from "../core/storage.js";
-import { audioEngine, speechRecognitionSupported, startDictation } from "../core/audio.js";
+import { audioEngine, speechRecognitionSupported, startDictation, textSimilarity } from "../core/audio.js";
 import { addXP, registerStudyToday, updateSkillScore } from "../core/gamification.js";
 import { correctionBlock } from "../core/feedback.js";
 import { createSession, submitUserTurn, resolveSession, missingRequiredSlots } from "../core/taskEngine.js";
 import { attemptFromSession } from "../core/actflAssess.js";
 import { recordScenarioAttempt } from "../core/actflProfile.js";
 import { tappable, initTapWords } from "../core/tapword.js";
+import { spanishIPA } from "../data/spanishIPA.js";
 import { CONFUSION_TRIGGERS } from "./immersion.js";
 
 function pick(arr) {
@@ -115,7 +116,7 @@ export function renderScenarioPlay(container, scenario, { onExit, onRetry } = {}
     micStatus.textContent = "";
     if (thenSend) {
       if (!input.value.trim() && text) input.value = text;
-      if (input.value.trim()) send();
+      if (input.value.trim()) { lastInputWasSpoken = true; send(); }
       else micStatus.textContent = "No te escuché. Inténtalo otra vez o escribe tu respuesta.";
     }
   }
@@ -127,6 +128,7 @@ export function renderScenarioPlay(container, scenario, { onExit, onRetry } = {}
   }
 
   let lastNpcLine = null;
+  let lastInputWasSpoken = false;
 
   function npcBubble(turn) {
     const line = { es: turn.es, en: turn.en };
@@ -138,12 +140,34 @@ export function renderScenarioPlay(container, scenario, { onExit, onRetry } = {}
     ].filter(Boolean));
     log.appendChild(bubble);
     log.scrollTop = log.scrollHeight;
-    audioEngine.speak(line.es);
+    // Some turns (mistakes, follow-ups, combo-asks) can be flagged fast:true
+    // — real people don't always slow down for you. speakSlow's manual "?"
+    // escape hatch below is unaffected; this only changes the default pace.
+    audioEngine.speak(line.es, turn.fast ? { rate: 1.2 } : {});
   }
 
   function userBubble(text) {
     log.appendChild(el("div", { class: "chat-bubble user" }, [el("div", { class: "cb-es" }, [tappable(text)])]));
     log.scrollTop = log.scrollHeight;
+  }
+
+  // Not a pronunciation score — there's no acoustic analysis available
+  // client-side without a paid API, which this app deliberately doesn't use.
+  // This is a rough transcript-mismatch flag: did what the recognizer heard
+  // diverge a lot from the slot value it just filled? If so, show the
+  // target's IPA as a "here's roughly what to aim for" hint, honestly
+  // labeled as a sanity check rather than a grade.
+  function pronunciationGuidance(rawText, slotsBefore) {
+    const ids = Object.keys(session.slots);
+    const newlyFilledId = [...ids].reverse().find((id) => slotsBefore[id] === undefined);
+    if (!newlyFilledId) return null;
+    const slotDef = session.scenario.slots.find((s) => s.id === newlyFilledId);
+    if (!slotDef || slotDef.type !== "enum") return null;
+    const canonical = session.slots[newlyFilledId];
+    if (typeof canonical !== "string") return null;
+    const sim = textSimilarity(rawText, canonical);
+    if (sim >= 70) return null;
+    return { canonical, ipa: spanishIPA(canonical) };
   }
 
   function updateStatus() {
@@ -168,6 +192,8 @@ export function renderScenarioPlay(container, scenario, { onExit, onRetry } = {}
     if (finished) return;
     const text = input.value.trim();
     if (!text) return;
+    const wasSpoken = lastInputWasSpoken;
+    lastInputWasSpoken = false;
     userBubble(text);
     input.value = "";
     blurActive();
@@ -192,7 +218,19 @@ export function renderScenarioPlay(container, scenario, { onExit, onRetry } = {}
     briefCorrection(text);
     updateSkillScore("speaking", 0.5);
 
+    const slotsBefore = { ...session.slots };
     const turn = submitUserTurn(session, text);
+
+    if (wasSpoken) {
+      const guidance = pronunciationGuidance(text, slotsBefore);
+      if (guidance) {
+        log.appendChild(
+          el("div", { class: "text-faint", style: "font-size:.78rem;margin:.2rem 0" },
+            `🎙️ Rough transcript check (not a pronunciation score): heard "${text}" — expected something close to "${guidance.canonical}" /${guidance.ipa}/. Speech recognition isn't perfect either, so take this as a sanity check, not a grade.`)
+        );
+      }
+    }
+
     const shouldResolve = turn.kind === "close" || (scenario.failureStates || []).some((f) => f.when(session));
 
     // Whatever the NPC just said — including the mistake announcement itself,

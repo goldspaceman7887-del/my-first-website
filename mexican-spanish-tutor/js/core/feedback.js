@@ -21,10 +21,13 @@ export function correctionBlock(text, { compact = false } = {}) {
   const corrected = hits[0].corrected;
   const wrap = el("div", { class: "correction-block" });
 
+  const allVocab = hits.every((h) => h.category === "vocab");
   wrap.appendChild(
     el("div", { class: "co-head" }, [
-      el("span", { class: "co-icon" }, "✏️"),
-      el("span", {}, hits.length === 1 ? "One thing to fix" : `${hits.length} things to fix`)
+      el("span", { class: "co-icon" }, allVocab ? "💡" : "✏️"),
+      el("span", {}, hits.length === 1
+        ? (allVocab ? "A more natural word for this" : "One thing to fix")
+        : `${hits.length} things to fix`)
     ])
   );
 
@@ -47,12 +50,13 @@ export function correctionBlock(text, { compact = false } = {}) {
   );
 
   hits.forEach((h) => {
-    const item = el("div", { class: "co-item" }, [
+    const isVocab = h.category === "vocab";
+    const item = el("div", { class: `co-item ${isVocab ? "co-item-vocab" : ""}`.trim() }, [
       el("div", { class: "co-swap" }, [
-        el("span", { class: "badge badge-danger" }, h.fragment),
+        el("span", { class: `badge ${isVocab ? "badge-gold" : "badge-danger"}` }, h.fragment),
         el("span", { class: "co-arrow" }, "→"),
         el("span", { class: "badge badge-success" }, h.suggestion),
-        el("span", { class: "co-label" }, h.label)
+        el("span", { class: "co-label" }, isVocab ? `💡 ${h.label}` : h.label)
       ]),
       el("p", { class: "co-explain" }, h.why)
     ]);

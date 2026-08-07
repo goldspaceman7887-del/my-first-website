@@ -380,6 +380,30 @@ async function testCorrections(browser) {
   check("corrects the learner's own sentence", engine.wrong.length === 0, engine.wrong.slice(0, 3).join(" | "));
   check("no false alarms on correct Spanish", engine.falseAlarms.length === 0, engine.falseAlarms.join(" | "));
 
+  // Mexican vocabulary alternatives (coche/carro, etc.) are a distinct
+  // "tip" category, not a grammar error — correctionBlock() must render
+  // them with a gold badge, while an actual grammar mistake keeps the red
+  // one. Regression guard that mixing the two rule sets into one checker
+  // didn't break either category's original behavior.
+  const vocabCategory = await page.evaluate(async () => {
+    const { correctionBlock } = await import("/js/core/feedback.js");
+    const { checkSpanish } = await import("/js/data/mistakePatterns.js");
+    const vocabHits = checkSpanish("Voy en mi coche al trabajo.");
+    const grammarHits = checkSpanish("Estoy doctor.");
+    const vocabBlock = correctionBlock("Voy en mi coche al trabajo.");
+    const grammarBlock = correctionBlock("Estoy doctor.");
+    return {
+      vocabCategory: vocabHits[0] && vocabHits[0].category,
+      grammarCategory: grammarHits[0] && grammarHits[0].category,
+      vocabHasGoldBadge: !!vocabBlock && vocabBlock.querySelector(".badge-gold") !== null,
+      grammarHasDangerBadge: !!grammarBlock && grammarBlock.querySelector(".badge-danger") !== null
+    };
+  });
+  check("word-choice hits are tagged category: vocab", vocabCategory.vocabCategory === "vocab", JSON.stringify(vocabCategory));
+  check("grammar hits are tagged category: grammar", vocabCategory.grammarCategory === "grammar", JSON.stringify(vocabCategory));
+  check("a vocabulary tip renders with a gold badge, not a red error badge", vocabCategory.vocabHasGoldBadge, JSON.stringify(vocabCategory));
+  check("a grammar mistake still renders with its original red badge", vocabCategory.grammarHasDangerBadge, JSON.stringify(vocabCategory));
+
   // The unit test must include a write-it-in-Spanish question that gives feedback
   const hasProduce = await page.evaluate(async () => {
     const { buildQuiz } = await import("/js/views/roadmap.js");
