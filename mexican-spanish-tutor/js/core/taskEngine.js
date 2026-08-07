@@ -95,12 +95,12 @@ export function nextTurn(session) {
     const c = session.pendingClarification;
     session.pendingClarification = null;
     session.lastAskedSlotId = c.forcesSlot || null;
-    return { kind: "clarification", es: c.es, en: c.en };
+    return { kind: "clarification", es: c.es, en: c.en, fast: !!c.fast };
   }
 
   if (session.pendingMistake) {
     const m = session.pendingMistake;
-    return { kind: "repair-prompt", es: m.repairPrompt.es, en: m.repairPrompt.en };
+    return { kind: "repair-prompt", es: m.repairPrompt.es, en: m.repairPrompt.en, fast: !!m.repairPrompt.fast };
   }
 
   // Deliberate mistake: only after every required slot referenced in
@@ -112,7 +112,10 @@ export function nextTurn(session) {
     session.mistakesFired.push(mistake.id);
     session.unresolvedMistakes++;
     session.pendingMistake = mistake;
-    return { kind: "mistake", es: fillTemplate(mistake.npcLine.es, session), en: fillTemplate(mistake.npcLine.en, session), isMistakeTrigger: true };
+    return {
+      kind: "mistake", es: fillTemplate(mistake.npcLine.es, session), en: fillTemplate(mistake.npcLine.en, session),
+      isMistakeTrigger: true, fast: !!mistake.npcLine.fast
+    };
   }
 
   if (Math.random() < 0.2) {
@@ -120,8 +123,28 @@ export function nextTurn(session) {
     if (followUp) {
       session.usedFollowUps.add(followUp.id);
       if (followUp.forcesSlot) session.lastAskedSlotId = followUp.forcesSlot;
-      return { kind: "follow-up", es: followUp.es, en: followUp.en, isMistakeTrigger: !!followUp.isMistakeTrigger };
+      return { kind: "follow-up", es: followUp.es, en: followUp.en, isMistakeTrigger: !!followUp.isMistakeTrigger, fast: !!followUp.fast };
     }
+  }
+
+  // Multi-question turns: occasionally ask two things at once, the way a
+  // real clerk/waiter does ("¿Cuántas noches y qué tipo de habitación?").
+  // Both member slots must be simple (non-contextOnly, already-eligible)
+  // enum/free extractors — extractSlots() already scans every eligible slot
+  // against the reply every turn regardless of what was literally asked, so
+  // a combined question naturally fills both if the answer mentions both,
+  // exactly as if they'd been asked across two separate turns.
+  const eligibleCombos = (session.scenario.comboAsks || []).filter((c) =>
+    c.slots.every((id) => {
+      const s = session.scenario.slots.find((sl) => sl.id === id);
+      return s && !s.contextOnly && slotEligible(session, s);
+    })
+  );
+  if (eligibleCombos.length && Math.random() < 0.25) {
+    const combo = pick(eligibleCombos);
+    const phrase = pick(combo.askPhrases);
+    session.lastAskedSlotId = null; // neither member slot is contextOnly, so this is safe
+    return { kind: "ask", comboSlotIds: combo.slots, es: phrase.es, en: phrase.en, fast: !!combo.fast };
   }
 
   const candidates = session.scenario.slots.filter(

@@ -105,6 +105,22 @@ function speakingTestNudge(baselineIdx) {
   return avgIdx > baselineIdx ? 1 : 0;
 }
 
+// A rough second opinion from the six skill scores (0-100 each, nudged by
+// every gradeable interaction across the app — dialogues, stories,
+// scenarios, roadmap, SRS reviews, the speaking/writing coaches). Never a
+// floor on its own, same treatment as speakingTestNudge() — these are
+// heuristic per-interaction deltas, not verified task completions the way
+// scenario gates are, so they can only nudge, capped at +1 tier.
+const SKILL_SCORE_NUDGE_THRESHOLD = 65;
+
+function skillScoreNudge() {
+  const scores = store.state.scores || {};
+  const values = Object.values(scores);
+  if (!values.length) return 0;
+  const avg = values.reduce((a, b) => a + b, 0) / values.length;
+  return avg >= SKILL_SCORE_NUDGE_THRESHOLD ? 1 : 0;
+}
+
 export function canonicalLevelIndex() {
   const xp = store.state.profile.xp || 0;
   const xpLevelIdx = levelIndex(levelForXP(xp));
@@ -116,6 +132,8 @@ export function canonicalLevelIndex() {
   if (confirmed) idx = Math.max(idx, levelIndex(confirmed));
 
   idx = Math.max(idx, highestUnlockedGateIndex());
+
+  idx = Math.min(ACTFL_LEVELS.length - 1, idx + skillScoreNudge());
 
   idx = Math.min(ACTFL_LEVELS.length - 1, idx + speakingTestNudge(idx));
 
@@ -134,14 +152,17 @@ export function proficiencyDetail() {
   const confirmedIdx = store.state.profile.confirmedLevel ? levelIndex(store.state.profile.confirmedLevel) : -1;
   const scenarioIdx = highestUnlockedGateIndex();
   const preNudgeIdx = Math.max(afterCanDo, confirmedIdx, scenarioIdx);
-  const nudge = speakingTestNudge(preNudgeIdx);
-  const finalIdx = Math.min(ACTFL_LEVELS.length - 1, preNudgeIdx + nudge);
+  const skillNudge = skillScoreNudge();
+  const afterSkillNudge = Math.min(ACTFL_LEVELS.length - 1, preNudgeIdx + skillNudge);
+  const nudge = speakingTestNudge(afterSkillNudge);
+  const finalIdx = Math.min(ACTFL_LEVELS.length - 1, afterSkillNudge + nudge);
 
   const sources = [];
   sources.push({ label: "Study volume (XP)", levelIdx: xpLevelIdx });
   if (canDoCount >= 4) sources.push({ label: "Can-Do statements checked off", levelIdx: afterCanDo });
   if (confirmedIdx >= 0) sources.push({ label: "Roadmap checkpoint passed", levelIdx: confirmedIdx });
   if (scenarioIdx >= 0) sources.push({ label: "Task scenarios completed", levelIdx: scenarioIdx });
+  if (skillNudge > 0) sources.push({ label: "Skill scores (speaking/listening/reading/writing/vocab/grammar)", levelIdx: afterSkillNudge });
   if (nudge > 0) sources.push({ label: "Recent Speaking Test average", levelIdx: finalIdx });
 
   return {

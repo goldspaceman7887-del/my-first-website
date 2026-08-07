@@ -750,6 +750,31 @@ async function testScenarios(browser) {
   });
   check("the first tier that actually ships a scenario is playable with no prior attempts", firstShippedTierOpen === true);
 
+  // comboAsks: a scenario-authoring mechanism for multi-question turns
+  // ("¿Cuántas noches y qué tipo de habitación?"). Tested against a
+  // synthetic fixture scenario rather than real content, since real
+  // scenarios may or may not use it — this only verifies the engine
+  // mechanism itself works.
+  const comboCheck = await page.evaluate(async () => {
+    const { createSession, nextTurn } = await import("/js/core/taskEngine.js");
+    const fixture = {
+      id: "combo-fixture", actflTier: "novice-mid", openings: [{ es: "Hola", en: "Hi" }],
+      slots: [
+        { id: "a", label: "a", required: true, type: "enum", extract: (t) => (/\bsi\b/i.test(t) ? "si" : null), askPhrases: [{ es: "¿A?", en: "A?" }] },
+        { id: "b", label: "b", required: true, type: "enum", extract: (t) => (/\bno\b/i.test(t) ? "no" : null), askPhrases: [{ es: "¿B?", en: "B?" }] }
+      ],
+      comboAsks: [{ id: "ab", slots: ["a", "b"], askPhrases: [{ es: "¿A y B?", en: "A and B?" }], weight: 1 }],
+      unexpectedFollowUps: [], mistakes: [], failureStates: [], successCondition: () => false
+    };
+    const origRandom = Math.random;
+    Math.random = () => 0.01; // forces the 25% comboAsk roll to fire
+    const session = createSession(fixture);
+    const turn = nextTurn(session);
+    Math.random = origRandom;
+    return { comboSlotIds: turn.comboSlotIds, kind: turn.kind };
+  });
+  check("comboAsks can fire a two-slot question", Array.isArray(comboCheck.comboSlotIds) && comboCheck.comboSlotIds.length === 2, JSON.stringify(comboCheck));
+
   // Regression: a past bug jumped straight to the debrief without ever
   // showing the NPC's final line whenever that SAME turn also tripped a
   // failure/incomplete resolution (e.g. the turn that crosses the abandoned
@@ -846,6 +871,24 @@ async function testProficiency(browser) {
     return { gatesUnlocked: store.state.progress.gatesUnlocked.slice(), confirmedByScenario: store.state.profile.actflConfirmedByScenario };
   });
   check("passing attempts at the first (always-open) tier don't themselves confirm a gate", firstTierNeverAutoConfirms.gatesUnlocked.length === 0, JSON.stringify(firstTierNeverAutoConfirms));
+
+  // Skill scores (speaking/listening/reading/writing/vocab/grammar) are a
+  // second opinion — a bounded +1 nudge when their average clears the
+  // threshold, never a floor on their own (mirrors speakingTestNudge).
+  const skillNudge = await page.evaluate(async () => {
+    const { store } = await import("/js/core/storage.js");
+    const { canonicalLevelIndex } = await import("/js/core/actflProfile.js");
+    store.state.profile.xp = 0;
+    store.state.profile.confirmedLevel = null;
+    store.state.progress.gatesUnlocked = [];
+    store.state.progress.speakingTests = [];
+    store.state.scores = { speaking: 0, listening: 0, reading: 0, writing: 0, vocabulary: 0, grammar: 0 };
+    const before = canonicalLevelIndex();
+    store.state.scores = { speaking: 80, listening: 80, reading: 80, writing: 80, vocabulary: 80, grammar: 80 };
+    const after = canonicalLevelIndex();
+    return { before, after };
+  });
+  check("high skill scores nudge the estimate up by one bounded tier", skillNudge.after === skillNudge.before + 1, JSON.stringify(skillNudge));
 
   // The report view itself: empty state before any scenario is attempted,
   // then real content (level, strongest/weakest functions, mastered
