@@ -18,6 +18,7 @@ import { gradeItem, QUALITY } from "../core/srs.js";
 import { STORIES } from "../data/stories.js";
 import { ACTFL_LEVELS } from "../data/roadmap.js";
 import { tappable, initTapWords, closeGloss } from "../core/tapword.js";
+import { englishLine } from "../core/immersion.js";
 
 function levelInfo(code) {
   return ACTFL_LEVELS.find((l) => l.code === code) || { short: code, label: code };
@@ -29,7 +30,6 @@ function levelVariant(code) {
 }
 
 export function renderStory(container) {
-  let showEnglish = true;
   let pop = null;
 
   container.appendChild(
@@ -88,9 +88,6 @@ export function renderStory(container) {
     body.innerHTML = "";
     const l = levelInfo(s.level);
 
-    const englishBtn = el("button", { class: "btn btn-sm", onclick: () => { showEnglish = !showEnglish; showStory(s); } },
-      showEnglish ? "🙈 Hide English" : "👁 Show English");
-
     body.appendChild(
       el("div", { class: "card", style: "margin-bottom:.6rem" }, [
         el("span", { class: `badge badge-${levelVariant(s.level)}` }, l.short),
@@ -98,7 +95,6 @@ export function renderStory(container) {
         el("p", { class: "text-muted", style: "margin:0 0 .6rem" }, s.titleEs),
         el("div", { class: "btn-row" }, [
           el("button", { class: "btn btn-sm", onclick: showList }, "← All stories"),
-          englishBtn,
           el("button", { class: "btn btn-sm", onclick: () => audioEngine.speak(s.paragraphs.map((p) => p.es).join(" ")) }, "🔊 Read it all")
         ])
       ])
@@ -111,8 +107,8 @@ export function renderStory(container) {
             tappable(p.es),
             el("button", { class: "play-btn", style: "width:34px;height:34px;flex-shrink:0", onclick: () => audioEngine.speak(p.es) }, "🔊")
           ]),
-          showEnglish ? el("div", { class: "text-muted", style: "margin-top:.3rem" }, p.en) : null
-        ].filter(Boolean))
+          englishLine(el, p.en, { className: "text-muted", style: "margin-top:.3rem" })
+        ])
       );
     });
 

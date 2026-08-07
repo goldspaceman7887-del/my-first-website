@@ -30,9 +30,9 @@ export function englishNeedsReveal() {
 // toggle that reveals it in place (high immersion). `el` is passed in
 // rather than imported to avoid this module needing a UI dependency —
 // every call site already imports `el` from core/ui.js anyway.
-export function englishLine(el, enText, { className = "text-muted" } = {}) {
-  if (showEnglishInline()) return el("div", { class: className }, enText);
-  const line = el("div", { class: `${className} hidden` }, enText);
+export function englishLine(el, enText, { className = "text-muted", style = "" } = {}) {
+  if (showEnglishInline()) return el("div", { class: className, style }, enText);
+  const line = el("div", { class: `${className} hidden`, style }, enText);
   const btn = el("button", { class: "btn btn-sm english-reveal-btn", type: "button" }, "👁 Show English");
   btn.addEventListener("click", () => {
     line.classList.toggle("hidden");

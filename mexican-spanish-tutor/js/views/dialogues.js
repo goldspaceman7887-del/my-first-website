@@ -5,6 +5,7 @@ import { tappable, initTapWords } from "../core/tapword.js";
 import { addXP, updateSkillScore } from "../core/gamification.js";
 import { gradeItem, QUALITY } from "../core/srs.js";
 import { DIALOGUES } from "../data/dialogues.js";
+import { englishLine } from "../core/immersion.js";
 
 function isDone(id) {
   return store.state.progress.dialoguesCompleted.includes(id);
@@ -66,7 +67,7 @@ export function renderDialogueDetail(container, params) {
         el("div", { class: "line-content" }, [
           // Tap any word in a dialogue line for its meaning.
           el("div", { class: "line-es" }, [tappable(l.es)]),
-          el("div", { class: "line-en" }, l.en)
+          englishLine(el, l.en, { className: "line-en" })
         ]),
         el("div", { class: "line-controls" }, [el("button", { class: "play-btn", onclick: () => audioEngine.speak(l.es) }, "🔊")])
       ])

@@ -40,14 +40,27 @@ export function renderLearn(container, params) {
     render();
   }
 
+  // A tab may return a cleanup function (vocabulary.js does, to release its
+  // tap-word listener). Dropping it would leak a document click listener
+  // every time the sub-tab or route changes.
+  let cleanup = null;
+  function runCleanup() {
+    if (typeof cleanup !== "function") return;
+    try { cleanup(); } catch (e) { console.error(e); }
+    cleanup = null;
+  }
+
   function render() {
     const tab = TABS.find((t) => t.id === active);
+    runCleanup();
     blurb.textContent = tab.blurb;
     body.innerHTML = "";
-    tab.render(body);
+    const maybeCleanup = tab.render(body);
+    if (typeof maybeCleanup === "function") cleanup = maybeCleanup;
     // Each sub-view ships its own header; drop it so this reads as one screen.
     body.querySelector(".page-header")?.remove();
   }
 
   render();
+  return runCleanup;
 }

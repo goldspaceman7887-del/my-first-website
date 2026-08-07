@@ -14,6 +14,7 @@ import { el, blurActive } from "../core/ui.js";
 import { audioEngine } from "../core/audio.js";
 import { gradeItem, gradeAhead, dueItems, reviewCounts, QUALITY, stepLabel, masteryLevel, getItem } from "../core/srs.js";
 import { addXP, updateSkillScore } from "../core/gamification.js";
+import { tappable, initTapWords } from "../core/tapword.js";
 import { VOCABULARY } from "../data/vocabulary.js";
 import { SENTENCES } from "../data/sentences.js";
 import { DIALOGUES } from "../data/dialogues.js";
@@ -139,6 +140,7 @@ const DECKS = [
 ];
 
 export function renderReview(container, params = {}) {
+  const teardownTapWords = initTapWords();
   const counts = reviewCounts();
   let mode = params.tab === "known" ? "known" : "due";
   let deck = "all";
@@ -291,7 +293,7 @@ export function renderReview(container, params = {}) {
         el("div", { class: "flashcard-inner" }, [
           el("div", { class: "flashcard-face front" }, [
             el("span", { class: "badge badge-default" }, ahead ? masteryLabel : `${item.srsType} · ${item.note}`),
-            el("div", { class: "flashcard-word es-text" }, item.front),
+            el("div", { class: "flashcard-word" }, [tappable(item.front)]),
             el("div", { class: "flashcard-hint" }, "Tap to reveal")
           ]),
           el("div", { class: "flashcard-face back" }, [
@@ -361,6 +363,8 @@ export function renderReview(container, params = {}) {
 
   drawTabs();
   draw();
+
+  return teardownTapWords;
 
   function statCard(icon, value, label) {
     return el("div", { class: "card stat-card compact" }, [

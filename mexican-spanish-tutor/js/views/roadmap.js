@@ -25,6 +25,7 @@ import { getHearts, loseHeart, hasHearts, refillHeartsFully, minutesUntilNextHea
 import { ACTFL_LEVELS, ROADMAP_UNITS, levelIndex } from "../data/roadmap.js";
 import { tappable, initTapWords } from "../core/tapword.js";
 import { correctionBlock } from "../core/feedback.js";
+import { englishLine } from "../core/immersion.js";
 
 const PASS_THRESHOLD = 7; // out of 10
 
@@ -860,7 +861,7 @@ export function renderRoadmap(container) {
               tappable(s.es, "unit-sentence"),
               el("button", { class: "play-btn", style: "width:34px;height:34px;flex-shrink:0", onclick: () => audioEngine.speak(s.es) }, "🔊")
             ]),
-            el("div", { class: "text-muted", style: "font-size:.9rem" }, s.en)
+            englishLine(el, s.en, { className: "text-muted", style: "font-size:.9rem" })
           ])
         );
       });
@@ -883,7 +884,7 @@ export function renderRoadmap(container) {
           el("div", { class: "flex justify-between items-center", style: "padding:.35rem 0;border-bottom:1px solid var(--border);gap:.5rem" }, [
             el("div", {}, [
               el("div", { class: "es-text" }, ex.es),
-              el("div", { class: "text-muted", style: "font-size:.85rem" }, ex.en)
+              englishLine(el, ex.en, { className: "text-muted", style: "font-size:.85rem" })
             ]),
             el("button", { class: "play-btn", style: "width:32px;height:32px", onclick: () => audioEngine.speak(ex.es) }, "🔊")
           ])

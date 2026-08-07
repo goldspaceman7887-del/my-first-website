@@ -4,6 +4,8 @@ import { audioEngine } from "../core/audio.js";
 import { gradeItem, masteryLevel, QUALITY, newItems, dueItems } from "../core/srs.js";
 import { addXP, updateSkillScore } from "../core/gamification.js";
 import { VOCABULARY } from "../data/vocabulary.js";
+import { tappable, initTapWords } from "../core/tapword.js";
+import { englishLine } from "../core/immersion.js";
 
 function srsId(v) {
   return `word_${v.id}`;
@@ -26,7 +28,7 @@ function wordDetail(v) {
     ])
   );
   wrap.appendChild(el("div", { class: "ipa-lg" }, `/${v.ipa}/`));
-  wrap.appendChild(el("p", {}, [el("strong", {}, v.meaning), " ", registerBadge(v.register)]));
+  wrap.appendChild(el("p", {}, [el("strong", {}, englishLine(el, v.meaning, { className: "" })), " ", registerBadge(v.register)]));
   // Only the 70 deep entries carry every section. The other 930 are
   // dictionary-style, so each block appears only if that word actually has
   // one — an empty "Mini-dialogue" heading is worse than no heading.
@@ -34,19 +36,19 @@ function wordDetail(v) {
 
   if (v.collocations && v.collocations.length) {
     wrap.appendChild(el("h4", { style: "margin-top:1rem" }, "Common expressions"));
-    wrap.appendChild(el("div", {}, v.collocations.map((c) => el("p", {}, [el("span", { class: "es-text" }, c.w), el("span", { class: "text-muted" }, ` — ${c.en}`)]))));
+    wrap.appendChild(el("div", {}, v.collocations.map((c) => el("p", {}, [el("span", { class: "es-text" }, c.w), " — ", englishLine(el, c.en, { className: "text-muted" })]))));
   }
 
   if (v.sentences && v.sentences.length) {
     wrap.appendChild(el("h4", { style: "margin-top:1rem" }, v.sentences.length > 1 ? "Example sentences" : "Example"));
     wrap.appendChild(
-      el("div", {}, v.sentences.map((s) => el("p", {}, [el("span", { class: "es-text" }, s.es), el("br"), el("span", { class: "text-muted" }, s.en)])))
+      el("div", {}, v.sentences.map((s) => el("p", {}, [tappable(s.es), el("br"), englishLine(el, s.en, { className: "text-muted" })])))
     );
   }
 
   if (v.dialogue && v.dialogue.length) {
     wrap.appendChild(el("h4", { style: "margin-top:1rem" }, "Mini-dialogue"));
-    wrap.appendChild(el("div", {}, v.dialogue.map((l) => el("p", {}, [el("strong", {}, `${l.spk}: `), el("span", { class: "es-text" }, l.es), el("span", { class: "text-muted" }, ` (${l.en})`)]))));
+    wrap.appendChild(el("div", {}, v.dialogue.map((l) => el("p", {}, [el("strong", {}, `${l.spk}: `), tappable(l.es), " ", englishLine(el, `(${l.en})`, { className: "text-muted" })]))));
   }
 
   if (v.speakingPrompt) {
@@ -68,6 +70,7 @@ function wordDetail(v) {
 }
 
 export function renderVocabulary(container) {
+  const teardownTapWords = initTapWords();
   const state = { tab: "flashcards", category: "all", search: "" };
 
   container.appendChild(
@@ -250,7 +253,7 @@ export function renderVocabulary(container) {
                 el("button", { class: "play-btn", style: "width:30px;height:30px", onclick: (e) => { e.stopPropagation(); audioEngine.speak(v.word); } }, "🔊")
               ]),
               el("div", { class: "es-text", style: "font-weight:700;font-size:1.15rem;margin-top:.4rem" }, v.word),
-              el("div", { class: "text-muted", style: "font-size:.85rem" }, v.meaning),
+              englishLine(el, v.meaning, { className: "text-muted", style: "font-size:.85rem" }),
               el("div", { class: "progress-bar", style: "margin-top:.5rem" }, [el("div", { class: "progress-bar-fill", style: `width:${mastery}%` })])
             ]
           )
@@ -262,4 +265,5 @@ export function renderVocabulary(container) {
   }
 
   renderBody();
+  return teardownTapWords;
 }
