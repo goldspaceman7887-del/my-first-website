@@ -421,9 +421,11 @@ async function testCorrections(browser) {
   const node = await page.$(".roadmap-node.unlocked");
   await node.click();
   await page.waitForTimeout(300);
-  await page.click('button:has-text("Continue")');
+  await page.click('button:has-text("Continue")'); // learn -> grammar
   await page.waitForTimeout(200);
-  await page.click('button:has-text("Start unit test")');
+  await page.click('button:has-text("Continue")'); // grammar -> "use it now" (ungraded)
+  await page.waitForTimeout(200);
+  await page.click('button:has-text("Skip to unit test")');
   await page.waitForTimeout(350);
   // Answer correctly on the way there — wrong answers cost hearts and the
   // attempt would end before reaching the Spanish question.

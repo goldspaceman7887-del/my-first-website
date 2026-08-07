@@ -1,9 +1,10 @@
 // ROADMAP — a Duolingo-style path across all 7 ACTFL levels this app
 // targets. Units unlock in order. Every unit, at every level, runs the same
-// loop: learn 8 sentences → read the grammar note → take a 10-question unit
-// test played with hearts (stakes). Wrong answers cost a heart; running out
-// ends the attempt early and you retry. Passing marks the unit complete,
-// awards XP, and unlocks the next node.
+// loop: learn 8 sentences → read the grammar note → use 3 of them right now
+// (ungraded, ~listen/say-or-type) → take a 10-question unit test played with
+// hearts (stakes). Wrong answers cost a heart; running out ends the attempt
+// early and you retry. Passing marks the unit complete, awards XP, and
+// unlocks the next node.
 //
 // The unit test is cumulative: three of its ten questions come from units you
 // already passed, so grammar and vocabulary keep circling back instead of
@@ -18,7 +19,7 @@
 
 import { store } from "../core/storage.js";
 import { el, progressBar, blurActive, toast, confettiBurst } from "../core/ui.js";
-import { audioEngine } from "../core/audio.js";
+import { audioEngine, speechRecognitionSupported, startDictation, textSimilarity } from "../core/audio.js";
 import { addXP, registerStudyToday, updateSkillScore } from "../core/gamification.js";
 import { gradeItem, QUALITY, masteryLevel, isDue } from "../core/srs.js";
 import { getHearts, loseHeart, hasHearts, refillHeartsFully, minutesUntilNextHeart, MAX_HEARTS } from "../core/hearts.js";
@@ -26,6 +27,7 @@ import { ACTFL_LEVELS, ROADMAP_UNITS, levelIndex } from "../data/roadmap.js";
 import { tappable, initTapWords } from "../core/tapword.js";
 import { correctionBlock } from "../core/feedback.js";
 import { englishLine } from "../core/immersion.js";
+import { spanishIPA } from "../data/spanishIPA.js";
 
 const PASS_THRESHOLD = 7; // out of 10
 
@@ -153,6 +155,12 @@ function decoysFor(unit, correct, n, key) {
 // Questions drawn from the current unit, in priority order: if review questions
 // take some of the ten slots, the ones dropped are the duplicated kinds at the
 // end, never the listening, grammar, or word-order question.
+//
+// Weighted toward production (typed/produce/build — you generate Spanish or
+// recall meaning unprompted) over pure recognition (mc/listen — pick from
+// options): a full ten questions run 4 recognition to 6 production, because
+// picking the right multiple-choice option is a much weaker signal of
+// communicative ability than producing the sentence yourself.
 function unitQuestions(unit, count) {
   const pool = shuffle(unit.sentences);
   const esEn = (s) => ({
@@ -174,19 +182,27 @@ function unitQuestions(unit, count) {
     sub: "Write this in Spanish — you'll get feedback on your grammar",
     expected: s.es, speak: s.es
   });
+  const build = (s, role) => ({
+    kind: "build", role, prompt: s.en, correct: s.es,
+    words: shuffle(s.es.replace(/[¿?¡!.,]/g, "").split(/\s+/)), speak: s.es
+  });
 
-  const listen = pool[5] || pool[0];
-  const build = pool[6] || pool[1];
+  const listenSentence = pool[5] || pool[0];
+  const build1Sentence = pool[6] || pool[1];
+  const build2Sentence = pool[7] || pool[2];
   const at = (i) => pool[i % pool.length];
 
   const ordered = [
     esEn(at(0)),
+    produce(at(5)),
     enEs(at(3)),
+    typed(at(7)),
     {
       kind: "listen", role: "listen", prompt: "🔊 Listen and choose what you heard",
-      correct: listen.es, options: shuffle([listen.es, ...decoysFor(unit, listen, 2, "es")]),
-      speak: listen.es, spanishOptions: true
+      correct: listenSentence.es, options: shuffle([listenSentence.es, ...decoysFor(unit, listenSentence, 2, "es")]),
+      speak: listenSentence.es, spanishOptions: true
     },
+    build(build1Sentence, "build"),
     unit.drill
       ? {
           kind: "mc", role: "grammar", prompt: unit.drill.question,
@@ -194,15 +210,9 @@ function unitQuestions(unit, count) {
           options: shuffle(unit.drill.options), spanishOptions: true
         }
       : esEn(at(4)),
-    {
-      kind: "build", role: "build", prompt: build.en, correct: build.es,
-      words: shuffle(build.es.replace(/[¿?¡!.,]/g, "").split(/\s+/)), speak: build.es
-    },
-    typed(at(7)),
-    esEn(at(1)),
-    enEs(at(4)),
-    produce(at(5)),
-    esEn(at(2))
+    typed(at(1)),
+    produce(at(2)),
+    build(build2Sentence, "build2")
   ];
 
   return ordered.slice(0, count);
@@ -894,10 +904,156 @@ export function renderRoadmap(container) {
         ]),
         el("div", { class: "btn-row", style: "margin-top:1rem" }, [
           el("button", { class: "btn", onclick: showLearn }, "← Review sentences"),
-          el("button", { class: "btn btn-primary", onclick: startQuiz }, "Start unit test (10 questions) →")
+          el("button", { class: "btn btn-primary", onclick: showPractice }, "Continue →")
         ])
       ]);
       stage.appendChild(card);
+    }
+
+    // ---------- Use it now ----------
+    // Ungraded: no hearts spent, and skipping is always one tap away. The
+    // point isn't to test you again — the quiz does that — it's to say each
+    // new sentence out loud (or type it) once before you're tested on it, so
+    // it becomes something you can produce, not just recognize. Built from
+    // the unit's own sentences, so it costs nothing extra to author per unit.
+    function showPractice() {
+      stage.innerHTML = "";
+      const canSpeak = speechRecognitionSupported();
+      const drillSentences = shuffle(unit.sentences).slice(0, 3);
+      let idx = 0;
+      let dictation = null;
+      let wasSpoken = false;
+
+      const card = el("div", { class: "card" }, [
+        el("h3", { class: "card-title" }, "3 · Use it now"),
+        el("p", { class: "text-muted" }, "Listen, then say or type each sentence back — ungraded, doesn't cost hearts, and you can skip straight to the unit test any time.")
+      ]);
+      const progress = el("p", { class: "text-muted", style: "margin-top:.6rem;font-size:.85rem" }, "");
+      const promptRow = el("div", { class: "flex justify-between items-center", style: "gap:.5rem;margin-top:.3rem" });
+      const englishSlot = el("div", { style: "margin-top:.2rem" });
+      const feedback = el("div", { style: "margin-top:.6rem" });
+
+      const input = el("input", { type: "text", placeholder: "Escribe o di la oración en español..." });
+      input.style.cssText = "flex:1;padding:.65rem .9rem;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:1.05rem;font-family:var(--font-es);";
+      input.addEventListener("keydown", (e) => { if (e.key === "Enter") check(); });
+
+      const micBtn = el("button", {
+        class: "btn btn-icon btn-primary",
+        title: canSpeak ? "Say it out loud" : "Speaking needs Chrome or Edge",
+        "aria-label": "Speak your answer"
+      }, "🎤");
+      if (!canSpeak) micBtn.disabled = true;
+      micBtn.addEventListener("click", () => (dictation ? stopMic(true) : startMic()));
+      const micStatus = el("div", { class: "text-muted", style: "font-size:.8rem;min-height:1.1em;margin-top:.2rem" }, "");
+
+      const checkBtn = el("button", { class: "btn btn-primary", onclick: () => check() }, "Check");
+      const nextBtn = el("button", { class: "btn btn-primary hidden", onclick: () => { idx++; showSentence(); } }, "Next →");
+      const skipBtn = el("button", { class: "btn btn-ghost", onclick: () => { if (dictation) { dictation.stop(); dictation = null; } startQuiz(); } }, "Skip to unit test →");
+
+      card.appendChild(progress);
+      card.appendChild(promptRow);
+      card.appendChild(englishSlot);
+      card.appendChild(el("div", { class: "chat-input-row", style: "margin-top:.6rem" }, [micBtn, input, checkBtn]));
+      card.appendChild(micStatus);
+      card.appendChild(feedback);
+      card.appendChild(el("div", { class: "btn-row", style: "margin-top:.8rem" }, [nextBtn, skipBtn]));
+      stage.appendChild(card);
+
+      function startMic() {
+        micBtn.textContent = "⏹";
+        micBtn.classList.remove("btn-primary");
+        micBtn.classList.add("btn-danger");
+        micStatus.textContent = "Escuchando…";
+        input.value = "";
+        dictation = startDictation({
+          onInterim: (finalSoFar, interim) => { input.value = (finalSoFar + " " + interim).trim(); },
+          onError: (err) => {
+            if (err === "not-allowed" || err === "service-not-allowed") micStatus.textContent = "El micrófono está bloqueado. Puedes escribir.";
+          },
+          onStateChange: (s) => { if (s === "denied") stopMic(false); }
+        });
+        if (!dictation.supported) { dictation = null; resetMic(); }
+      }
+
+      function stopMic(thenCheck) {
+        if (!dictation) return;
+        const text = dictation.stop();
+        dictation = null;
+        resetMic();
+        micStatus.textContent = "";
+        if (thenCheck) {
+          if (!input.value.trim() && text) input.value = text;
+          if (input.value.trim()) { wasSpoken = true; check(); }
+        }
+      }
+
+      function resetMic() {
+        micBtn.textContent = "🎤";
+        micBtn.classList.add("btn-primary");
+        micBtn.classList.remove("btn-danger");
+      }
+
+      // Reads the CURRENT sentence via `idx` at call time, so this one
+      // function stays correct across every card without being redefined
+      // (and re-bound) per sentence.
+      function check() {
+        const s = drillSentences[idx];
+        const given = input.value.trim();
+        if (!given || !s) return;
+        checkBtn.disabled = true;
+        input.disabled = true;
+        micBtn.disabled = true;
+        feedback.innerHTML = "";
+        const ok = lenientMatch(given, s.es);
+        feedback.appendChild(
+          el("div", { class: `feedback-block ${ok ? "correct" : "incorrect"}` }, [
+            el("strong", {}, ok ? "¡Bien! " : "Casi — "),
+            `Target: "${s.es}"`
+          ])
+        );
+        const block = correctionBlock(given, { compact: true });
+        if (block) feedback.appendChild(block);
+        // Not a pronunciation score — no acoustic analysis is available
+        // client-side without a paid API. This is a rough transcript-
+        // mismatch flag: if the recognizer heard something quite different
+        // from the target, show the target's IPA as a sanity check.
+        if (wasSpoken) {
+          const sim = textSimilarity(given, s.es);
+          if (sim < 70) {
+            feedback.appendChild(
+              el("div", { class: "text-faint", style: "font-size:.78rem;margin-top:.4rem" },
+                `🎙️ Rough transcript check (not a pronunciation score): heard "${given}" — expected something close to "${s.es}" /${spanishIPA(s.es)}/.`)
+            );
+          }
+        }
+        nextBtn.classList.remove("hidden");
+        nextBtn.textContent = idx >= drillSentences.length - 1 ? "Continue to unit test →" : "Next →";
+      }
+
+      function showSentence() {
+        if (dictation) { dictation.stop(); dictation = null; resetMic(); }
+        wasSpoken = false;
+        feedback.innerHTML = "";
+        input.value = "";
+        micStatus.textContent = "";
+        nextBtn.classList.add("hidden");
+        checkBtn.disabled = false;
+        input.disabled = false;
+        micBtn.disabled = !canSpeak;
+
+        if (idx >= drillSentences.length) return startQuiz();
+        const s = drillSentences[idx];
+        progress.textContent = `Sentence ${idx + 1} of ${drillSentences.length}`;
+        promptRow.innerHTML = "";
+        promptRow.appendChild(el("p", { class: "exercise-prompt", style: "margin:0" }, [tappable(s.es)]));
+        promptRow.appendChild(el("button", { class: "play-btn", onclick: () => audioEngine.speak(s.es) }, "🔊"));
+        englishSlot.innerHTML = "";
+        englishSlot.appendChild(englishLine(el, s.en, { className: "text-muted", style: "font-size:.85rem" }));
+        setTimeout(() => audioEngine.speak(s.es), 200);
+        setTimeout(() => input.focus(), 250);
+      }
+
+      showSentence();
     }
 
     // ---------- Quiz ----------
