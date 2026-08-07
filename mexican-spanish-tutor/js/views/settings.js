@@ -52,14 +52,16 @@ export function renderSettings(container) {
   card.appendChild(field("Daily XP goal", dailyGoalInput));
 
   const immersionSelect = el("select", {}, [
-    el("option", { value: "1" }, "1 · Heavy English support"),
-    el("option", { value: "2" }, "2 · Mixed"),
+    el("option", { value: "4" }, "4 · Spanish only, tap for help (default)"),
     el("option", { value: "3" }, "3 · Mostly Spanish"),
-    el("option", { value: "4" }, "4 · Spanish only")
+    el("option", { value: "2" }, "2 · Mixed"),
+    el("option", { value: "1" }, "1 · Heavy English support")
   ]);
-  immersionSelect.value = String(store.state.settings.immersionLevel || 1);
+  immersionSelect.value = String(store.state.settings.immersionLevel || 4);
   immersionSelect.addEventListener("change", () => store.set("settings.immersionLevel", Number(immersionSelect.value)));
-  card.appendChild(field("Immersion level", immersionSelect));
+  card.appendChild(field("Language support (applies app-wide: roadmap, dialogues, stories, grammar, roleplay, conversation, immersion)", immersionSelect));
+  card.appendChild(el("p", { class: "text-muted", style: "font-size:.82rem;margin-top:-.4rem" },
+    "At 3-4, English stays off the screen — tap any underlined word or the 💡 button to see it on demand."));
 
   const themeSelect = el("select", {}, [
     el("option", { value: "auto" }, "Auto (match system)"),

@@ -8,7 +8,7 @@ import { el, toast } from "./ui.js";
 import { store } from "./storage.js";
 import { audioEngine } from "./audio.js";
 import { gradeItem, QUALITY } from "./srs.js";
-import { lookupWord, normalizeWord } from "../data/glossary.js";
+import { lookupWord, lookupWordDetail, normalizeWord } from "../data/glossary.js";
 
 let pop = null;
 
@@ -22,6 +22,7 @@ function showGloss(wordEl, raw) {
   wordEl.classList.add("active");
   const key = normalizeWord(raw);
   const gloss = lookupWord(key);
+  const detail = lookupWordDetail(key); // usage note + example, when it's a full vocabulary entry
 
   pop = el("div", { class: "gloss-pop pop-in", role: "dialog", "aria-label": `Meaning of ${key}` }, [
     el("div", { class: "flex justify-between items-center", style: "gap:.5rem" }, [
@@ -32,6 +33,13 @@ function showGloss(wordEl, raw) {
       ])
     ]),
     el("div", { style: "margin-top:.35rem" }, gloss || "No definition for this one yet."),
+    detail && detail.usageNote ? el("p", { class: "text-muted", style: "margin-top:.4rem;font-size:.85rem" }, detail.usageNote) : null,
+    detail && detail.sentences && detail.sentences[0]
+      ? el("div", { class: "flex justify-between items-center", style: "gap:.4rem;margin-top:.4rem" }, [
+          el("span", { class: "es-text", style: "font-size:.9rem" }, detail.sentences[0].es),
+          el("button", { class: "btn btn-sm", onclick: (e) => { e.stopPropagation(); audioEngine.speak(detail.sentences[0].es); } }, "🔊")
+        ])
+      : null,
     el("button", {
       class: "btn btn-sm btn-primary", style: "margin-top:.6rem",
       onclick: (e) => {
@@ -72,6 +80,34 @@ export function tappable(text, extraClass = "") {
     if (post) wrap.appendChild(document.createTextNode(post));
   });
   return wrap;
+}
+
+// Global "how much English support" dial (Settings → Immersion level, 1-4).
+// 1-2: English shown inline everywhere. 3-4: English hidden by default,
+// behind a per-line reveal toggle — this is what makes English "on demand"
+// app-wide instead of only in Conversation Mode.
+export function immersionLevel() {
+  return store.state.settings.immersionLevel || 4;
+}
+
+// Renders the English half of an es/en pair, respecting the global dial:
+// visible inline at levels 1-2, hidden behind a small "💡" reveal toggle at
+// 3-4. Pass the className/style a caller would have used for an
+// always-visible English line so existing spacing still lines up.
+export function englishReveal(en, { className = "cb-en", style = "" } = {}) {
+  const visibleAttrs = style ? { class: className, style } : { class: className };
+  if (immersionLevel() <= 2) return el("div", visibleAttrs, en);
+  const hiddenAttrs = { ...visibleAttrs, class: `${className} hidden` };
+  const hint = el("div", hiddenAttrs, en);
+  return el("span", { class: "en-reveal-wrap" }, [
+    hint,
+    el("button", {
+      class: "btn btn-sm en-reveal-btn",
+      title: "Show English",
+      "aria-label": "Show English",
+      onclick: (e) => { e.stopPropagation(); hint.classList.toggle("hidden"); }
+    }, "💡")
+  ]);
 }
 
 // Views that render tappable text must call this on teardown: the popup lives

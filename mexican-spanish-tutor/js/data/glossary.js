@@ -624,13 +624,15 @@ export function normalizeWord(w) {
 
 // The 1,000-word list is itself a dictionary, so rather than duplicating those
 // meanings here it is indexed and used as a second layer. Articles come off,
-// because a reader taps "mercado", not "el mercado".
+// because a reader taps "mercado", not "el mercado". The index keeps the
+// whole entry (not just the meaning) so lookupWordDetail() below can surface
+// a usage note and an example sentence, not just a bare gloss.
 let vocabIndex = null;
 function buildVocabIndex() {
   const idx = new Map();
   for (const v of VOCABULARY) {
     const key = normalizeWord(v.word).replace(/^(el|la|los|las|un|una)\s+/, "");
-    if (key && !key.includes(" ") && !idx.has(key)) idx.set(key, v.meaning);
+    if (key && !key.includes(" ") && !idx.has(key)) idx.set(key, v);
   }
   return idx;
 }
@@ -645,7 +647,7 @@ export function lookupWord(w) {
   if (GLOSSARY[key]) return GLOSSARY[key];
 
   if (!vocabIndex) vocabIndex = buildVocabIndex();
-  if (vocabIndex.has(key)) return vocabIndex.get(key);
+  if (vocabIndex.has(key)) return vocabIndex.get(key).meaning;
 
   // Plurals only — dropping -s or -es is safe. Guessing at verb endings or
   // gender is not, and a confidently wrong definition teaches the wrong thing.
@@ -653,7 +655,7 @@ export function lookupWord(w) {
     const singular = key.endsWith("es") ? key.slice(0, -2) : key.endsWith("s") ? key.slice(0, -1) : null;
     if (singular) {
       if (GLOSSARY[singular]) return `${GLOSSARY[singular]} (plural)`;
-      if (vocabIndex.has(singular)) return `${vocabIndex.get(singular)} (plural)`;
+      if (vocabIndex.has(singular)) return `${vocabIndex.get(singular).meaning} (plural)`;
     }
   }
   return null;
@@ -661,4 +663,21 @@ export function lookupWord(w) {
 
 export function hasDefinition(w) {
   return lookupWord(w) !== null;
+}
+
+// Same word, more than a bare gloss: when the tapped word resolves to a full
+// VOCABULARY entry (not just a hand-written GLOSSARY string), the tap-word
+// popover can also show a usage note and an example sentence. Returns null
+// for hand-written-glossary-only words (there's nothing more to show) or
+// words with no definition at all.
+export function lookupWordDetail(w) {
+  const key = normalizeWord(w);
+  if (!key) return null;
+  if (!vocabIndex) vocabIndex = buildVocabIndex();
+  if (vocabIndex.has(key)) return vocabIndex.get(key);
+  if (key.length > 3) {
+    const singular = key.endsWith("es") ? key.slice(0, -2) : key.endsWith("s") ? key.slice(0, -1) : null;
+    if (singular && vocabIndex.has(singular)) return vocabIndex.get(singular);
+  }
+  return null;
 }

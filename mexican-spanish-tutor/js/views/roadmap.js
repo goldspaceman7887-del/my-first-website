@@ -23,8 +23,39 @@ import { addXP, registerStudyToday, updateSkillScore } from "../core/gamificatio
 import { gradeItem, QUALITY, masteryLevel, isDue } from "../core/srs.js";
 import { getHearts, loseHeart, hasHearts, refillHeartsFully, minutesUntilNextHeart, MAX_HEARTS } from "../core/hearts.js";
 import { ACTFL_LEVELS, ROADMAP_UNITS, levelIndex } from "../data/roadmap.js";
-import { tappable, initTapWords } from "../core/tapword.js";
+import { tappable, initTapWords, englishReveal } from "../core/tapword.js";
 import { correctionBlock } from "../core/feedback.js";
+import { scenariosByCategory } from "../data/scenarios.js";
+
+// Rough keyword match from a unit's title/subtitle onto a Scenario Mode
+// category, so "practice this for real" has somewhere to point without
+// needing every one of the 35 units hand-tagged. Units with no match simply
+// don't show the link — this is a light-touch connector, not a rebuild of
+// the roadmap's own already-solid "learn → use → review" loop.
+const SCENARIO_CATEGORY_KEYWORDS = {
+  food: /food|comida|restaurant/i,
+  shopping: /shop|compra/i,
+  transportation: /transport|direcciones/i,
+  travel: /travel|viaj/i,
+  healthcare: /health|salud|m[ée]dic|doctor/i,
+  social: /friend|amistad|famil|social/i,
+  workplace: /\bwork\b|trabajo|oficina|empleo/i,
+  housing: /hous|casa|departamento|renta/i,
+  banking: /bank|banco|dinero/i,
+  emergencies: /emergenc|unexpected|imprevist/i,
+  government: /government|gobierno|tr[aá]mite/i
+};
+
+function scenarioForUnit(unit) {
+  const text = `${unit.title} ${unit.subtitle}`;
+  for (const [cat, re] of Object.entries(SCENARIO_CATEGORY_KEYWORDS)) {
+    if (re.test(text)) {
+      const scenarios = scenariosByCategory(cat);
+      if (scenarios.length) return scenarios[0];
+    }
+  }
+  return null;
+}
 
 const PASS_THRESHOLD = 7; // out of 10
 
@@ -860,7 +891,7 @@ export function renderRoadmap(container) {
               tappable(s.es, "unit-sentence"),
               el("button", { class: "play-btn", style: "width:34px;height:34px;flex-shrink:0", onclick: () => audioEngine.speak(s.es) }, "🔊")
             ]),
-            el("div", { class: "text-muted", style: "font-size:.9rem" }, s.en)
+            englishReveal(s.en, { className: "text-muted", style: "font-size:.9rem" })
           ])
         );
       });
@@ -883,7 +914,7 @@ export function renderRoadmap(container) {
           el("div", { class: "flex justify-between items-center", style: "padding:.35rem 0;border-bottom:1px solid var(--border);gap:.5rem" }, [
             el("div", {}, [
               el("div", { class: "es-text" }, ex.es),
-              el("div", { class: "text-muted", style: "font-size:.85rem" }, ex.en)
+              englishReveal(ex.en, { className: "text-muted", style: "font-size:.85rem" })
             ]),
             el("button", { class: "play-btn", style: "width:32px;height:32px", onclick: () => audioEngine.speak(ex.es) }, "🔊")
           ])
@@ -891,11 +922,17 @@ export function renderRoadmap(container) {
         el("div", { class: "feedback-block incorrect", style: "margin-top:.8rem" }, [
           el("strong", {}, "Common mistake: "), g.commonMistake
         ]),
+        (() => {
+          const scenario = scenarioForUnit(unit);
+          return scenario
+            ? el("a", { class: "btn", style: "margin-top:.8rem;display:inline-block", href: `#/scenarios/${scenario.id}` }, `🎬 Practice this for real: ${scenario.title}`)
+            : null;
+        })(),
         el("div", { class: "btn-row", style: "margin-top:1rem" }, [
           el("button", { class: "btn", onclick: showLearn }, "← Review sentences"),
           el("button", { class: "btn btn-primary", onclick: startQuiz }, "Start unit test (10 questions) →")
         ])
-      ]);
+      ].filter(Boolean));
       stage.appendChild(card);
     }
 

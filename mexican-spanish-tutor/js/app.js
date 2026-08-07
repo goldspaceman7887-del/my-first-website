@@ -17,6 +17,8 @@ import { renderReview } from "./views/review.js";
 import { renderAchievements } from "./views/achievements.js";
 import { renderSettings } from "./views/settings.js";
 import { renderSaveProgress } from "./views/saveProgress.js";
+import { renderScenarioList, renderScenarioRun } from "./views/scenario.js";
+import { renderDailySim } from "./views/dailySim.js";
 
 // ---------- Theme ----------
 function applyTheme(theme) {
@@ -93,7 +95,7 @@ function initKeyboardTaming() {
 // ---------- Immersion selector ----------
 function initImmersion() {
   const sel = document.getElementById("immersion-select");
-  sel.value = String(store.state.settings.immersionLevel || 1);
+  sel.value = String(store.state.settings.immersionLevel || 4);
   sel.addEventListener("change", () => {
     store.set("settings.immersionLevel", Number(sel.value));
   });
@@ -140,6 +142,9 @@ registerRoute("review/:tab", renderReview);
 registerRoute("save", renderSaveProgress);
 registerRoute("achievements", renderAchievements);
 registerRoute("settings", renderSettings);
+registerRoute("scenarios", renderScenarioList);
+registerRoute("scenarios/:id", renderScenarioRun);
+registerRoute("daily-life", renderDailySim);
 
 setNotFound((container) => {
   container.appendChild(

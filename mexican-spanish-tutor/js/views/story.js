@@ -17,7 +17,7 @@ import { addXP, registerStudyToday, updateSkillScore } from "../core/gamificatio
 import { gradeItem, QUALITY } from "../core/srs.js";
 import { STORIES } from "../data/stories.js";
 import { ACTFL_LEVELS } from "../data/roadmap.js";
-import { tappable, initTapWords, closeGloss } from "../core/tapword.js";
+import { tappable, initTapWords, closeGloss, immersionLevel } from "../core/tapword.js";
 
 function levelInfo(code) {
   return ACTFL_LEVELS.find((l) => l.code === code) || { short: code, label: code };
@@ -29,7 +29,9 @@ function levelVariant(code) {
 }
 
 export function renderStory(container) {
-  let showEnglish = true;
+  // Follows the global Spanish-exposure dial by default; the per-story
+  // Hide/Show English button below still lets you override for this read.
+  let showEnglish = immersionLevel() <= 2;
   let pop = null;
 
   container.appendChild(

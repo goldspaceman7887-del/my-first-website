@@ -9,7 +9,11 @@ function defaultState() {
     version: SCHEMA_VERSION,
     settings: {
       theme: "auto", // "light" | "dark" | "auto"
-      immersionLevel: 1, // 1-4, mirrors the app-wide "how much English support" dial
+      // 1-4, app-wide "how much English support" dial: 1=heavy English,
+      // 4=Spanish only with tap-to-reveal. Defaults to 4 ("no English unless
+      // you ask for it") for anyone who has never set it; existing saved
+      // values are untouched by this default.
+      immersionLevel: 4,
       voiceRate: 0.95,
       slowVoiceRate: 0.6,
       preferredVoiceName: null,
@@ -66,7 +70,12 @@ function defaultState() {
       savedWords: {}, // word -> English gloss, bookmarked from Story Mode
       // Questions Immersion has already asked, so a new session doesn't open
       // with the same one. Resets automatically once the pool is exhausted.
-      immersionAsked: []
+      immersionAsked: [],
+      scenarioSessions: [], // { date, scenarioId, outcome }
+      scenariosCompleted: [], // scenario ids resolved to any outcome
+      dailySimSessions: [], // { date, slotsCompleted, outcomes: [] }
+      // Snapshot of the onboarding placement check, or null if never taken.
+      placementResult: null // { date, level, scores: {...} }
     },
     achievements: {
       unlocked: []

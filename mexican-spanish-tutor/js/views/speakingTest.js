@@ -15,7 +15,7 @@ import { store, todayISO } from "../core/storage.js";
 import { el, toast, blurActive, confettiBurst } from "../core/ui.js";
 import { audioEngine, speechRecognitionSupported, startDictation } from "../core/audio.js";
 import { addXP, registerStudyToday, updateSkillScore } from "../core/gamification.js";
-import { checkText } from "../data/mistakePatterns.js";
+import { scoreOpenResponse } from "../core/assessment.js";
 import { ACTFL_LEVELS } from "../data/roadmap.js";
 
 // Each stage holds several prompts. Which one you get rotates by the day, so
@@ -120,26 +120,6 @@ function todaysStages(offset = 0) {
     const variant = stage.prompts[(day + offset + i) % stage.prompts.length];
     return { key: stage.key, title: stage.title, es: variant.es, en: variant.en };
   });
-}
-
-const PAST_TENSE_RE = /\b\w*(é|aste|ó|amos|aron|í|iste|ió|imos|ieron|aba|abas|ábamos|aban|ía|ías|íamos|ían)\b/i;
-const CONNECTOR_RE = /\b(aunque|sin embargo|por un lado|por otro|además|mientras|ya que|porque|por lo tanto|en resumen|entonces|pero)\b/i;
-
-function scoreResponse(text) {
-  const words = text.trim().split(/\s+/).filter(Boolean);
-  const sentences = text.split(/[.!?]+/).filter((s) => s.trim().length > 2);
-  const mistakes = checkText(text).length;
-  const hasPast = PAST_TENSE_RE.test(text);
-  const hasConnector = CONNECTOR_RE.test(text);
-  let score = Math.min(60, words.length * 2.2);
-  score += sentences.length >= 3 ? 15 : sentences.length * 5;
-  score += hasPast ? 10 : 0;
-  score += hasConnector ? 15 : 0;
-  score -= mistakes * 8;
-  return {
-    score: Math.max(0, Math.min(100, Math.round(score))),
-    words: words.length, sentences: sentences.length, hasPast, hasConnector, mistakes
-  };
 }
 
 export function renderSpeakingTest(container) {
@@ -269,10 +249,10 @@ export function renderSpeakingTest(container) {
         // Fold the follow-up into the stage it came from — it's the same turn.
         const parent = responses[responses.length - 1];
         parent.text += " " + answer;
-        Object.assign(parent, scoreResponse(parent.text));
+        Object.assign(parent, scoreOpenResponse(parent.text));
         pendingFollowUp = null;
       } else {
-        responses.push({ stage: stage.key, text: answer, ...scoreResponse(answer) });
+        responses.push({ stage: stage.key, text: answer, ...scoreOpenResponse(answer) });
         idx++;
         // Only probe when they gave us something to pull on.
         if (answer.split(/\s+/).length >= 6) {

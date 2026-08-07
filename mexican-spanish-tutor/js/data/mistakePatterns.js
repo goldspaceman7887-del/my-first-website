@@ -329,7 +329,8 @@ export const MISTAKE_PATTERNS = [
     fix: (m) => (m[1].toLowerCase() === "estoy" ? "tengo pena" : "tiene pena"),
     why: "Embarazada means pregnant, not embarrassed. For embarrassment Mexicans say 'me da pena' or 'tengo pena'.",
     rule: "embarazada = pregnant · pena = embarrassment",
-    examples: ["Me da mucha pena.", "Qué pena contigo."]
+    examples: ["Me da mucha pena.", "Qué pena contigo."],
+    alternatives: ["me da vergüenza (also fine, a bit more formal)", "qué oso (very colloquial — \"how embarrassing\")"]
   },
   {
     id: "realizar_false_friend",
@@ -341,7 +342,8 @@ export const MISTAKE_PATTERNS = [
     },
     why: "Realizar means to carry something out, not to realize. For realizing, Spanish uses darse cuenta.",
     rule: "darse cuenta de que = to realize",
-    examples: ["Me di cuenta de que era tarde.", "No me di cuenta."]
+    examples: ["Me di cuenta de que era tarde.", "No me di cuenta."],
+    alternatives: ["caer en cuenta de que (same meaning, a touch more formal)"]
   },
   {
     id: "aplicar_para",
@@ -350,7 +352,8 @@ export const MISTAKE_PATTERNS = [
     fix: (m) => `${m[1].toLowerCase() === "o" ? "solicito" : "solicité"} ${m[2]}`,
     why: "Aplicar means to apply a substance or a rule. For applying to a job, Spanish uses solicitar.",
     rule: "solicitar un trabajo",
-    examples: ["Solicité el trabajo.", "Voy a solicitar la beca."]
+    examples: ["Solicité el trabajo.", "Voy a solicitar la beca."],
+    alternatives: ["postularme a (also heard, common in formal/HR contexts)"]
   },
   {
     id: "introducir_person",
@@ -362,7 +365,8 @@ export const MISTAKE_PATTERNS = [
     },
     why: "Introducir means to insert. To introduce people, Spanish uses presentar.",
     rule: "presentar a alguien",
-    examples: ["Te presento a mi hermana.", "Me presentó a sus papás."]
+    examples: ["Te presento a mi hermana.", "Me presentó a sus papás."],
+    alternatives: ["dar a conocer a (more formal, e.g. introducing a speaker)"]
   },
   {
     id: "soportar_false_friend",
@@ -371,7 +375,8 @@ export const MISTAKE_PATTERNS = [
     fix: () => "te apoyo",
     why: "Soportar means to put up with. To support someone, Spanish uses apoyar — 'te soporto' says you can barely tolerate them.",
     rule: "apoyar = to support · soportar = to tolerate",
-    examples: ["Siempre te apoyo.", "Gracias por apoyarme."]
+    examples: ["Siempre te apoyo.", "Gracias por apoyarme."],
+    alternatives: ["te banco (very colloquial — \"I've got your back\")"]
   },
 
   // ---------- register ----------
@@ -439,7 +444,8 @@ export function checkSpanish(text) {
       suggestion: replacement.trim(),
       why: p.why,
       rule: p.rule,
-      examples: p.examples || []
+      examples: p.examples || [],
+      alternatives: p.alternatives || []
     });
   }
 

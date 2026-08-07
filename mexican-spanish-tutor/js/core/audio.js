@@ -284,3 +284,27 @@ export function textSimilarity(a, b) {
   });
   return Math.round((matches / Math.max(wa.length, wb.length)) * 100);
 }
+
+// Points at specific words in an attempt (typed or transcribed from speech)
+// that didn't match the expected sentence, so feedback can say "X didn't
+// quite land — it sounded like Y" instead of just a bare percentage. Reuses
+// textSimilarity()'s normalization so the two stay consistent. Returns null
+// when there's nothing specific to flag.
+export function pronunciationTip(expected, attempt) {
+  const we = normalize(expected).split(/\s+/).filter(Boolean);
+  const wa = normalize(attempt).split(/\s+/).filter(Boolean);
+  if (!we.length) return null;
+  const pool = wa.slice();
+  const missed = [];
+  we.forEach((w, i) => {
+    const idx = pool.indexOf(w);
+    if (idx !== -1) { pool.splice(idx, 1); return; }
+    missed.push({ expected: w, insteadHeard: wa[i] || null });
+  });
+  if (!missed.length) return null;
+  // First couple of misses only — a wall of word-by-word notes stops being
+  // useful feedback.
+  return missed.slice(0, 3).map((m) => m.insteadHeard
+    ? `"${m.expected}" didn't quite land — it came out more like "${m.insteadHeard}". Try it again a little slower and more deliberately.`
+    : `"${m.expected}" didn't come through at all — try that word again, a bit louder or slower.`);
+}

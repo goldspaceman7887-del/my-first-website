@@ -4,6 +4,7 @@ import { audioEngine } from "../core/audio.js";
 import { gradeItem, masteryLevel, QUALITY } from "../core/srs.js";
 import { addXP, updateSkillScore } from "../core/gamification.js";
 import { SENTENCES } from "../data/sentences.js";
+import { englishReveal } from "../core/tapword.js";
 
 function srsId(s) {
   return `sentence_${s.id}`;
@@ -31,7 +32,7 @@ function sentenceDetail(s, { onGraded } = {}) {
       el("button", { class: "play-btn", onclick: () => audioEngine.speak(s.es) }, "🔊")
     ])
   );
-  wrap.appendChild(el("p", {}, s.en));
+  wrap.appendChild(englishReveal(s.en, { className: "" }));
 
   wrap.appendChild(el("h4", { style: "margin-top:1rem" }, "Vocabulary breakdown"));
   wrap.appendChild(el("div", { class: "flex gap-2 flex-wrap" }, s.vocab.map((v) => el("span", { class: "badge badge-default" }, `${v.w} — ${v.en}`))));
