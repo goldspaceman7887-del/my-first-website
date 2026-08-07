@@ -701,6 +701,771 @@ export const SCENARIOS = [
       comprehensibility: 0.1, vocabularyRange: 0.15, sentenceFormation: 0.15,
       repairStrategies: 0.15, conversationManagement: 0.2, questionAsking: 0.15, surpriseHandling: 0.1
     }
+  },
+
+  // ---------------------------------------------------------------------
+  {
+    id: "taking-the-metro",
+    title: "Taking the Metro",
+    titleEs: "Tomar el metro",
+    actflTier: "novice-mid",
+    npcRole: "empleado del metro",
+    npcName: "Sr. Ortiz",
+    icon: "🚇",
+    setting: {
+      es: "Estás en una estación del metro en la Ciudad de México y necesitas comprar tu boleto e ir al andén correcto.",
+      en: "You're at a metro station in Mexico City and need to buy your ticket and get to the right platform."
+    },
+    openings: [
+      { es: "Buenas, ¿a dónde va?", en: "Hi, where are you headed?" },
+      { es: "¿Le ayudo con su viaje?", en: "Can I help you with your trip?" },
+      { es: "¿Qué necesita?", en: "What do you need?" }
+    ],
+    slots: [
+      {
+        id: "destination", label: "destination station", labelEs: "estación destino", required: true, type: "enum",
+        values: ["el zócalo", "chapultepec", "insurgentes", "bellas artes", "coyoacán", "polanco"],
+        extract(text) {
+          const m = text.match(/\b(z[oó]calo|chapultepec|insurgentes|bellas artes|coyoac[aá]n|polanco)\b/i);
+          if (!m) return null;
+          const w = m[1].toLowerCase();
+          if (/^z[oó]calo$/.test(w)) return "el zócalo";
+          if (w.startsWith("coyoac")) return "coyoacán";
+          return w;
+        },
+        askPhrases: [
+          { es: "¿A dónde va?", en: "Where are you headed?" },
+          { es: "¿Qué estación necesita?", en: "What station do you need?" }
+        ]
+      },
+      {
+        id: "platformAck", label: "acknowledging the platform/line", labelEs: "confirmar el andén", required: true, type: "enum",
+        values: ["understood"],
+        extract(text) {
+          return /\b(and[eé]n|l[ií]nea|transbordo|direcci[oó]n)\b/i.test(text) ? "understood" : null;
+        },
+        askPhrases: [
+          { es: "Vaya al andén de la Línea 2, dirección Cuatro Caminos.", en: "Go to the Line 2 platform, direction Cuatro Caminos." },
+          { es: "Tome la Línea 3 y haga transbordo en Balderas.", en: "Take Line 3 and transfer at Balderas." }
+        ]
+      },
+      {
+        id: "tripAmount", label: "how many trips to load", labelEs: "cuántos viajes cargar", required: true, type: "enum",
+        values: ["un viaje", "cinco viajes", "diez viajes", "veinte viajes"],
+        extract(text) {
+          const m = text.match(/\b(un|cinco|diez|veinte)\s+viajes?\b/i);
+          if (!m) return null;
+          const w = m[1].toLowerCase();
+          return w === "un" ? "un viaje" : `${w} viajes`;
+        },
+        askPhrases: [{ es: "¿Cuántos viajes quiere cargar?", en: "How many trips would you like to load?" }]
+      },
+      {
+        id: "paymentMethod", label: "payment method", labelEs: "forma de pago", required: true, type: "enum",
+        values: ["efectivo", "tarjeta bancaria"],
+        extract(text) {
+          if (/\btarjeta\b/i.test(text)) return "tarjeta bancaria";
+          if (/\befectivo\b/i.test(text)) return "efectivo";
+          return null;
+        },
+        askPhrases: [{ es: "¿Cómo va a pagar, efectivo o tarjeta?", en: "How will you pay, cash or card?" }]
+      },
+      {
+        id: "thanks", label: "thanking the employee", labelEs: "dar las gracias", required: true, type: "enum",
+        values: ["thanked"],
+        extract(text) {
+          return /\bgracias\b/i.test(text) ? "thanked" : null;
+        },
+        askPhrases: [{ es: "¿Le quedó claro cómo llegar?", en: "Is it clear how to get there?" }]
+      }
+    ],
+    comboAsks: [
+      { slots: ["tripAmount", "paymentMethod"], askPhrases: [{ es: "¿Cuántos viajes quiere y cómo va a pagar?", en: "How many trips do you want and how will you pay?" }] }
+    ],
+    unexpectedFollowUps: [
+      { id: "rushHour", afterSlots: ["destination"], es: "Aguas, va a ir bien lleno a esta hora.", en: "Watch out, it's going to be packed at this hour.", weight: 0.5 },
+      { id: "transferNeeded", afterSlots: ["platformAck"], es: "Recuerde bajarse en la siguiente para hacer transbordo.", en: "Remember to get off at the next stop to transfer.", weight: 0.4, fast: true }
+    ],
+    mistakes: [
+      {
+        id: "wrong-platform", chance: 0.2,
+        npcLine: { es: "Ah espere, ese andén no es — es del otro lado.", en: "Oh wait, that's not the platform — it's on the other side." },
+        firesIf: (session) => session.slots.platformAck === "understood",
+        expectedRepair: /entendido|est[aá] bien|del otro lado|ok|gracias/i,
+        repairPrompt: { es: "¿Me escuchó? Es del otro lado.", en: "Did you hear me? It's on the other side." }
+      }
+    ],
+    failureStates: defaultFailureStates(),
+    successCondition: fullSlotCompletion,
+    dimensionWeights: {
+      comprehensibility: 0.35, vocabularyRange: 0.15, sentenceFormation: 0.15,
+      repairStrategies: 0.1, conversationManagement: 0.1, questionAsking: 0.1, surpriseHandling: 0.05
+    }
+  },
+
+  // ---------------------------------------------------------------------
+  {
+    id: "clothing-store",
+    title: "Shop for Clothes",
+    titleEs: "Comprar ropa",
+    actflTier: "novice-high",
+    npcRole: "vendedora",
+    npcName: "Sra. Nayeli",
+    icon: "👕",
+    setting: {
+      es: "Estás en una tienda de ropa buscando algo para comprar.",
+      en: "You're in a clothing store looking for something to buy."
+    },
+    openings: [
+      { es: "Hola, bienvenido. ¿Busca algo en especial?", en: "Hi, welcome. Are you looking for something specific?" },
+      { es: "¿Le ayudo a encontrar algo?", en: "Can I help you find something?" }
+    ],
+    slots: [
+      {
+        id: "itemType", label: "item type", labelEs: "prenda", required: true, type: "enum",
+        values: ["una camisa", "un pantalón", "un vestido", "una chamarra", "unos zapatos"],
+        extract(text) {
+          const m = text.match(/\b(camisa|pantal[oó]n|vestido|chamarra|zapatos)\b/i);
+          if (!m) return null;
+          const w = m[1].toLowerCase();
+          if (w.startsWith("camisa")) return "una camisa";
+          if (w.startsWith("pantal")) return "un pantalón";
+          if (w === "vestido") return "un vestido";
+          if (w === "chamarra") return "una chamarra";
+          return "unos zapatos";
+        },
+        askPhrases: [{ es: "¿Qué anda buscando?", en: "What are you looking for?" }]
+      },
+      {
+        id: "size", label: "size", labelEs: "talla", required: true, type: "enum",
+        values: ["chica", "mediana", "grande", "extra grande"],
+        extract(text) {
+          const m = text.match(/\b(chic[oa]|median[oa]|grande|extra\s?grande)\b/i);
+          if (!m) return null;
+          const w = m[1].toLowerCase();
+          if (/^extra/.test(text.toLowerCase()) || w === "extra grande") return "extra grande";
+          if (w.startsWith("chic")) return "chica";
+          if (w.startsWith("median")) return "mediana";
+          return "grande";
+        },
+        askPhrases: [{ es: "¿Qué talla usa?", en: "What size do you wear?" }]
+      },
+      {
+        id: "color", label: "color", required: true, type: "enum",
+        values: ["negro", "azul", "blanco", "rojo", "gris"],
+        extract(text) {
+          const m = text.match(/\b(negro|azul|blanco|rojo|gris)\b/i);
+          return m ? m[1].toLowerCase() : null;
+        },
+        askPhrases: [{ es: "¿De qué color lo quiere?", en: "What color would you like?" }]
+      },
+      {
+        id: "tryOn", label: "whether to try it on", labelEs: "si te lo pruebas", required: true, type: "boolean",
+        extract(text) {
+          if (/\b(claro|por favor|quiero probarlo)\b/i.test(text)) return true;
+          if (/\bno,?\s*gracias\b|no hace falta\b/i.test(text)) return false;
+          return null;
+        },
+        askPhrases: [{ es: "¿Se lo quiere probar?", en: "Would you like to try it on?" }]
+      },
+      {
+        id: "paymentMethod", label: "payment method", labelEs: "forma de pago", required: true, type: "enum",
+        values: ["efectivo", "tarjeta"],
+        extract(text) {
+          if (/\btarjeta\b/i.test(text)) return "tarjeta";
+          if (/\befectivo\b/i.test(text)) return "efectivo";
+          return null;
+        },
+        askPhrases: [{ es: "¿Cómo va a pagar, efectivo o tarjeta?", en: "How will you pay, cash or card?" }]
+      }
+    ],
+    comboAsks: [
+      { slots: ["size", "color"], askPhrases: [{ es: "¿Qué talla y de qué color lo busca?", en: "What size and what color are you looking for?" }] }
+    ],
+    unexpectedFollowUps: [
+      { id: "discount", afterSlots: ["itemType"], es: "Ah, ese anda en oferta, treinta por ciento de descuento.", en: "Oh, that one's on sale, 30 percent off.", weight: 0.4 },
+      { id: "matchingItem", afterSlots: ["color"], es: "Tenemos algo que combina, ¿le muestro?", en: "We have something that matches, want me to show you?", weight: 0.4 }
+    ],
+    mistakes: [
+      {
+        id: "out-of-size", chance: 0.2,
+        npcLine: { es: "Uy, se nos acabó esa talla — ¿le sirve otra?", en: "Oh, we're out of that size — would another one work?" },
+        firesIf: (session) => !!session.slots.size,
+        forcesSlot: "size",
+        expectedRepair: /\b(chica|median[oa]|grande|extra grande)\b/i,
+        repairPrompt: { es: "¿Qué otra talla le sirve?", en: "What other size works for you?" }
+      }
+    ],
+    failureStates: defaultFailureStates(),
+    successCondition: fullSlotCompletion,
+    dimensionWeights: {
+      comprehensibility: 0.3, vocabularyRange: 0.15, sentenceFormation: 0.15,
+      repairStrategies: 0.1, conversationManagement: 0.15, questionAsking: 0.1, surpriseHandling: 0.05
+    }
+  },
+
+  // ---------------------------------------------------------------------
+  {
+    id: "making-friends-party",
+    title: "Meeting People at a Party",
+    titleEs: "Conocer gente en una fiesta",
+    actflTier: "novice-high",
+    npcRole: "invitado",
+    npcName: "Vale",
+    icon: "🎉",
+    setting: {
+      es: "Estás en una fiesta y conoces a alguien nuevo.",
+      en: "You're at a party and meet someone new."
+    },
+    openings: [
+      { es: "¡Hola! No te había visto antes, ¿verdad? Soy Vale.", en: "Hi! I haven't seen you before, right? I'm Vale." },
+      { es: "¿Qué onda? ¿De dónde conoces al que organiza la fiesta?", en: "Hey! How do you know the host?" }
+    ],
+    slots: [
+      {
+        id: "selfName", label: "your name", labelEs: "tu nombre", required: true, type: "free", contextOnly: true,
+        extract: extractFreeAnswer,
+        askPhrases: [{ es: "¿Cómo te llamas?", en: "What's your name?" }]
+      },
+      {
+        id: "howKnowHost", label: "how you know the host", labelEs: "cómo conoces al anfitrión", required: true, type: "enum",
+        values: ["amigo del trabajo", "compañero de escuela", "vecino", "familiar"],
+        extract(text) {
+          if (/\btrabajo\b/i.test(text)) return "amigo del trabajo";
+          if (/\bescuela\b/i.test(text)) return "compañero de escuela";
+          if (/\bvecin[oa]\b/i.test(text)) return "vecino";
+          if (/\bfamili/i.test(text)) return "familiar";
+          return null;
+        },
+        askPhrases: [{ es: "¿De dónde conoces al anfitrión?", en: "How do you know the host?" }]
+      },
+      {
+        id: "whatYouDo", label: "what you do", labelEs: "a qué te dedicas", required: true, type: "enum",
+        values: ["trabajo", "estudio"],
+        extract(text) {
+          if (/\bestudio\b/i.test(text)) return "estudio";
+          if (/\btrabajo\b/i.test(text)) return "trabajo";
+          return null;
+        },
+        askPhrases: [{ es: "¿A qué te dedicas?", en: "What do you do?" }]
+      },
+      {
+        id: "hobby", label: "a hobby", labelEs: "un pasatiempo", required: true, type: "free", contextOnly: true,
+        extract: extractFreeAnswer,
+        askPhrases: [{ es: "¿Qué te gusta hacer en tu tiempo libre?", en: "What do you like to do in your free time?" }]
+      },
+      {
+        id: "exchangeContact", label: "whether to exchange contact info", labelEs: "si intercambian número", required: true, type: "boolean",
+        extract(text) {
+          if (/\b(claro|va|dale|por supuesto)\b/i.test(text)) return true;
+          if (/\bno,?\s*gracias\b|mejor no\b/i.test(text)) return false;
+          return null;
+        },
+        askPhrases: [{ es: "Oye, ¿nos damos número para seguir platicando?", en: "Hey, should we exchange numbers to keep chatting?" }]
+      }
+    ],
+    comboAsks: [
+      { slots: ["howKnowHost", "whatYouDo"], askPhrases: [{ es: "¿De dónde conoces al anfitrión y a qué te dedicas?", en: "How do you know the host and what do you do?" }] }
+    ],
+    unexpectedFollowUps: [
+      { id: "loudMusic", afterSlots: ["selfName"], es: "¡Está bien fuerte la música! ¿Qué dijiste?", en: "The music's really loud! What did you say?", weight: 0.4, fast: true },
+      { id: "introduceOthers", afterSlots: ["hobby"], es: "Ven, te presento a unos amigos.", en: "Come on, let me introduce you to some friends.", weight: 0.4 }
+    ],
+    mistakes: [
+      {
+        id: "mishear-name", chance: 0.2,
+        npcLine: { es: "Perdón, ¿cómo dijiste que te llamabas?", en: "Sorry, what did you say your name was?" },
+        firesIf: (session) => !!session.slots.selfName,
+        expectedRepair: /me llamo|mi nombre es|soy/i,
+        repairPrompt: { es: "No te escuché bien, ¿me repites tu nombre?", en: "I didn't hear you well, can you repeat your name?" }
+      }
+    ],
+    failureStates: defaultFailureStates(),
+    successCondition: fullSlotCompletion,
+    dimensionWeights: {
+      comprehensibility: 0.3, vocabularyRange: 0.15, sentenceFormation: 0.15,
+      repairStrategies: 0.1, conversationManagement: 0.15, questionAsking: 0.1, surpriseHandling: 0.05
+    }
+  },
+
+  // ---------------------------------------------------------------------
+  {
+    id: "apartment-hunting",
+    title: "Apartment Hunting",
+    titleEs: "Buscar departamento",
+    actflTier: "intermediate-low",
+    npcRole: "agente inmobiliario",
+    npcName: "Sr. Cruz",
+    icon: "🏠",
+    setting: {
+      es: "Estás viendo un departamento en renta en Guadalajara y hablas con el agente.",
+      en: "You're viewing an apartment for rent in Guadalajara and talking with the agent."
+    },
+    openings: [
+      { es: "Bienvenido, pase. ¿Qué le gustaría saber del departamento?", en: "Welcome, come in. What would you like to know about the apartment?" },
+      { es: "Hola, ¿es su primera vez viendo el lugar?", en: "Hi, is this your first time seeing the place?" }
+    ],
+    slots: [
+      {
+        id: "moveInDate", label: "move-in date", labelEs: "fecha de mudanza", required: true, type: "enum",
+        values: ["este mes", "el próximo mes", "en dos meses"],
+        extract(text) {
+          if (/\beste mes\b/i.test(text)) return "este mes";
+          if (/\bpr[oó]ximo mes\b/i.test(text)) return "el próximo mes";
+          if (/\bdos meses\b/i.test(text)) return "en dos meses";
+          return null;
+        },
+        askPhrases: [{ es: "¿Cuándo necesita mudarse?", en: "When do you need to move in?" }]
+      },
+      {
+        id: "budget", label: "monthly budget", labelEs: "presupuesto mensual", required: true, type: "enum",
+        values: ["seis mil pesos", "ocho mil pesos", "diez mil pesos", "doce mil pesos"],
+        extract(text) {
+          const m = text.match(/\b(seis|ocho|diez|doce)\s+mil\s+pesos\b/i);
+          return m ? `${m[1].toLowerCase()} mil pesos` : null;
+        },
+        askPhrases: [{ es: "¿Cuál es su presupuesto mensual?", en: "What's your monthly budget?" }]
+      },
+      {
+        id: "hasPets", label: "whether you have pets", labelEs: "si tienes mascotas", required: true, type: "boolean",
+        extract(text) {
+          if (/\b(perro|gato|mascota)\b/i.test(text) && !/\bno tengo\b/i.test(text)) return true;
+          if (/\bno tengo|no,? no\b/i.test(text)) return false;
+          return null;
+        },
+        askPhrases: [{ es: "¿Tiene mascotas?", en: "Do you have pets?" }]
+      },
+      {
+        id: "numberOfOccupants", label: "number of occupants", labelEs: "cuántas personas", required: true, type: "enum",
+        values: ["una persona", "dos personas", "tres personas", "una familia"],
+        extract(text) {
+          if (/\buna familia\b/i.test(text)) return "una familia";
+          const m = text.match(/\b(una|dos|tres|cuatro)\s+personas?\b/i);
+          if (!m) return null;
+          const n = m[1].toLowerCase();
+          return n === "una" ? "una persona" : `${n} personas`;
+        },
+        askPhrases: [{ es: "¿Cuántas personas van a vivir ahí?", en: "How many people will live there?" }]
+      },
+      {
+        id: "depositAck", label: "acknowledging the deposit terms", labelEs: "confirmar el depósito", required: true, type: "enum",
+        values: ["understood"],
+        extract(text) {
+          return /\bdep[oó]sito|mes de garant[ií]a|entendido|est[aá] bien\b/i.test(text) ? "understood" : null;
+        },
+        askPhrases: [{ es: "Se pide un mes de depósito y el primer mes de renta por adelantado.", en: "We require a month's deposit and first month's rent in advance." }]
+      },
+      {
+        id: "leaseLength", label: "lease length", labelEs: "duración del contrato", required: true, type: "enum",
+        values: ["seis meses", "un año", "dos años"],
+        extract(text) {
+          if (/\bseis meses\b/i.test(text)) return "seis meses";
+          if (/\bun a[nñ]o\b/i.test(text)) return "un año";
+          if (/\bdos a[nñ]os\b/i.test(text)) return "dos años";
+          return null;
+        },
+        askPhrases: [{ es: "¿Por cuánto tiempo quiere firmar el contrato?", en: "How long would you like to sign the lease for?" }]
+      }
+    ],
+    comboAsks: [
+      { slots: ["moveInDate", "leaseLength"], askPhrases: [{ es: "¿Cuándo se mudaría y por cuánto tiempo firmaría?", en: "When would you move in and how long would you sign for?" }] }
+    ],
+    unexpectedFollowUps: [
+      { id: "utilitiesIncluded", afterSlots: ["budget"], es: "Ah, y eso no incluye los servicios — agua, luz, eso es aparte.", en: "Oh, and that doesn't include utilities — water, electricity, that's separate.", weight: 0.5 },
+      { id: "noisyNeighbors", afterSlots: ["numberOfOccupants"], es: "Le aviso que los vecinos de arriba a veces hacen ruido.", en: "Just so you know, the upstairs neighbors are sometimes noisy.", weight: 0.3 }
+    ],
+    mistakes: [
+      {
+        id: "wrong-price", chance: 0.2,
+        npcLine: { es: "Ay perdón, me equivoqué — la renta es de {budget}, no lo que le dije antes.", en: "Oh sorry, I made a mistake — the rent is {budget}, not what I told you before." },
+        firesIf: (session) => !!session.slots.budget,
+        expectedRepair: /entendido|est[aá] bien|de acuerdo|ok/i,
+        repairPrompt: { es: "¿Le parece bien ese precio?", en: "Is that price okay with you?" }
+      }
+    ],
+    failureStates: defaultFailureStates({ abandonTurns: 15, mistakeTurns: 13 }),
+    successCondition: fullSlotCompletion,
+    dimensionWeights: {
+      comprehensibility: 0.2, vocabularyRange: 0.15, sentenceFormation: 0.15,
+      repairStrategies: 0.15, conversationManagement: 0.2, questionAsking: 0.1, surpriseHandling: 0.05
+    }
+  },
+
+  // ---------------------------------------------------------------------
+  {
+    id: "opening-a-bank-account",
+    title: "Open a Bank Account",
+    titleEs: "Abrir una cuenta bancaria",
+    actflTier: "intermediate-low",
+    npcRole: "ejecutivo bancario",
+    npcName: "Lic. Mendoza",
+    icon: "🏦",
+    setting: {
+      es: "Estás en el banco para abrir una cuenta.",
+      en: "You're at the bank to open an account."
+    },
+    openings: [
+      { es: "Buenos días, ¿en qué le puedo ayudar hoy?", en: "Good morning, how can I help you today?" },
+      { es: "Adelante, tome asiento. ¿Qué necesita?", en: "Go ahead, have a seat. What do you need?" }
+    ],
+    slots: [
+      {
+        id: "accountType", label: "account type", labelEs: "tipo de cuenta", required: true, type: "enum",
+        values: ["cuenta de ahorros", "cuenta de cheques", "cuenta de nómina"],
+        extract(text) {
+          if (/\bahorros\b/i.test(text)) return "cuenta de ahorros";
+          if (/\bcheques\b/i.test(text)) return "cuenta de cheques";
+          if (/\bn[oó]mina\b/i.test(text)) return "cuenta de nómina";
+          return null;
+        },
+        askPhrases: [{ es: "¿Qué tipo de cuenta quiere abrir?", en: "What kind of account would you like to open?" }]
+      },
+      {
+        id: "idDocument", label: "handing over ID", labelEs: "entregar identificación", required: true, type: "free", contextOnly: true,
+        extract: extractFreeAnswer,
+        askPhrases: [{ es: "¿Me puede dar una identificación oficial?", en: "Could I have an official ID?" }]
+      },
+      {
+        id: "proofOfAddress", label: "whether you brought proof of address", labelEs: "si trae comprobante de domicilio", required: true, type: "boolean",
+        extract(text) {
+          if (/\btraigo\b|\baqu[ií]\s+(lo\s+)?tengo\b/i.test(text) && !/\bno\b/i.test(text)) return true;
+          if (/\bno\s+traigo\b|\bno\s+tengo\b|se me olvid[oó]\b/i.test(text)) return false;
+          return null;
+        },
+        askPhrases: [{ es: "¿Trae algún comprobante de domicilio?", en: "Did you bring proof of address?" }]
+      },
+      {
+        id: "initialDeposit", label: "opening deposit amount", labelEs: "depósito inicial", required: true, type: "enum",
+        values: ["quinientos pesos", "mil pesos", "dos mil pesos", "cinco mil pesos"],
+        extract(text) {
+          if (/\bquinientos pesos\b/i.test(text)) return "quinientos pesos";
+          const m = text.match(/\b(un|mil|dos mil|cinco mil)\s*(mil)?\s*pesos\b/i);
+          if (/\bmil pesos\b/i.test(text) && !/\bdos mil|cinco mil\b/i.test(text)) return "mil pesos";
+          if (/\bdos mil pesos\b/i.test(text)) return "dos mil pesos";
+          if (/\bcinco mil pesos\b/i.test(text)) return "cinco mil pesos";
+          return null;
+        },
+        askPhrases: [{ es: "¿Con cuánto quiere abrir la cuenta?", en: "How much would you like to open the account with?" }]
+      },
+      {
+        id: "debitCardWanted", label: "whether you want a debit card", labelEs: "si quieres tarjeta de débito", required: true, type: "boolean",
+        extract(text) {
+          if (/\b(claro|por favor)\b/i.test(text)) return true;
+          if (/\bno,?\s*gracias\b/i.test(text)) return false;
+          return null;
+        },
+        askPhrases: [{ es: "¿Quiere que le demos una tarjeta de débito también?", en: "Would you like a debit card as well?" }]
+      },
+      {
+        id: "onlineBanking", label: "whether you want online banking", labelEs: "si quieres banca en línea", required: true, type: "boolean",
+        extract(text) {
+          if (/\b(claro|me interesa)\b/i.test(text)) return true;
+          if (/\bno,?\s*gracias\b/i.test(text)) return false;
+          return null;
+        },
+        askPhrases: [{ es: "¿Le interesa la banca en línea?", en: "Are you interested in online banking?" }]
+      }
+    ],
+    comboAsks: [
+      { slots: ["debitCardWanted", "onlineBanking"], askPhrases: [{ es: "¿Quiere tarjeta de débito y banca en línea?", en: "Would you like a debit card and online banking?" }] }
+    ],
+    unexpectedFollowUps: [
+      { id: "monthlyFee", afterSlots: ["accountType"], es: "Ah, le comento que esta cuenta tiene una comisión mensual si no mantiene el saldo mínimo.", en: "Just so you know, this account has a monthly fee if you don't keep the minimum balance.", weight: 0.5 },
+      { id: "appDownload", afterSlots: ["onlineBanking"], es: "Le recomiendo bajar la aplicación del banco desde ahorita.", en: "I'd recommend downloading the bank's app right now.", weight: 0.3 }
+    ],
+    mistakes: [
+      {
+        id: "missing-document", chance: 0.2,
+        npcLine: { es: "Disculpe, este comprobante ya tiene más de tres meses — necesito uno más reciente.", en: "Sorry, this proof is more than three months old — I need a more recent one." },
+        firesIf: (session) => session.slots.proofOfAddress === true,
+        expectedRepair: /entendido|puedo traer|tengo otro|est[aá] bien/i,
+        repairPrompt: { es: "¿Tiene otro comprobante más reciente?", en: "Do you have a more recent one?" }
+      }
+    ],
+    failureStates: defaultFailureStates({ abandonTurns: 15, mistakeTurns: 13 }),
+    successCondition: fullSlotCompletion,
+    dimensionWeights: {
+      comprehensibility: 0.2, vocabularyRange: 0.15, sentenceFormation: 0.15,
+      repairStrategies: 0.15, conversationManagement: 0.2, questionAsking: 0.1, surpriseHandling: 0.05
+    }
+  },
+
+  // ---------------------------------------------------------------------
+  {
+    id: "team-meeting",
+    title: "Team Meeting",
+    titleEs: "Junta de equipo",
+    actflTier: "intermediate-mid",
+    npcRole: "jefa de equipo",
+    npcName: "Ing. Torres",
+    icon: "📊",
+    setting: {
+      es: "Estás en una junta de equipo en la oficina y la jefa de proyecto quiere saber el estatus del tuyo.",
+      en: "You're in a team meeting at the office and the project lead wants a status update on yours."
+    },
+    openings: [
+      { es: "Buenos días a todos. Empecemos — ¿cómo va tu proyecto?", en: "Good morning everyone. Let's start — how's your project going?" },
+      { es: "A ver, cuéntame el avance de tu parte.", en: "So, tell me the progress on your part." }
+    ],
+    slots: [
+      {
+        id: "projectStatus", label: "project status", labelEs: "estatus del proyecto", required: true, type: "enum",
+        values: ["a tiempo", "atrasado", "adelantado"],
+        extract(text) {
+          if (/\ba tiempo\b/i.test(text)) return "a tiempo";
+          if (/\b(atrasad|retrasad)[oa]\b/i.test(text)) return "atrasado";
+          if (/\badelantad[oa]\b/i.test(text)) return "adelantado";
+          return null;
+        },
+        askPhrases: [{ es: "¿Cómo va tu proyecto — a tiempo, atrasado, adelantado?", en: "How's your project going — on time, behind, ahead?" }]
+      },
+      {
+        id: "blocker", label: "any blockers", labelEs: "obstáculos", required: true, type: "enum",
+        values: ["sin problemas", "falta de recursos", "dependencia de otro equipo", "problema técnico"],
+        extract(text) {
+          if (/\bsin problemas?\b|\bningun[oa]\b|\bno hay\b/i.test(text)) return "sin problemas";
+          if (/\brecursos?\b/i.test(text)) return "falta de recursos";
+          if (/\botro equipo\b|\bdependencia\b/i.test(text)) return "dependencia de otro equipo";
+          if (/\bt[eé]cnico\b/i.test(text)) return "problema técnico";
+          return null;
+        },
+        askPhrases: [{ es: "¿Hay algún obstáculo o dependencia que debamos resolver?", en: "Any blockers or dependencies we should resolve?" }]
+      },
+      {
+        id: "nextDeadline", label: "next deadline", labelEs: "próxima fecha límite", required: true, type: "enum",
+        values: ["lunes", "martes", "miércoles", "jueves", "viernes"],
+        extract(text) {
+          const m = text.match(/\b(lunes|martes|mi[eé]rcoles|jueves|viernes)\b/i);
+          return m ? m[1].toLowerCase() : null;
+        },
+        askPhrases: [{ es: "¿Para cuándo lo tienes listo?", en: "When will it be ready?" }]
+      },
+      {
+        id: "needHelp", label: "whether you need help", labelEs: "si necesitas ayuda", required: true, type: "boolean",
+        extract(text) {
+          if (/\bs[ií],?\s*necesito|necesito ayuda\b/i.test(text)) return true;
+          if (/\bno,?\s*(no necesito|estoy bien|gracias)\b/i.test(text)) return false;
+          return null;
+        },
+        askPhrases: [{ es: "¿Necesitas ayuda de alguien del equipo?", en: "Do you need help from anyone on the team?" }]
+      },
+      {
+        id: "actionItem", label: "your next concrete step", labelEs: "tu siguiente paso", required: true, type: "free", contextOnly: true,
+        extract: extractFreeAnswer,
+        askPhrases: [{ es: "¿Cuál es tu siguiente paso concreto?", en: "What's your next concrete step?" }]
+      }
+    ],
+    comboAsks: [
+      { slots: ["projectStatus", "nextDeadline"], askPhrases: [{ es: "¿Cómo va tu proyecto y para cuándo lo tienes?", en: "How's your project going and when will you have it?" }] }
+    ],
+    unexpectedFollowUps: [
+      { id: "interrupt", afterSlots: ["blocker"], es: "Perdón, te voy a interrumpir un segundo — ¿ya hablaste con Recursos Humanos?", en: "Sorry, let me interrupt for a second — have you talked to HR yet?", weight: 0.5, fast: true },
+      { id: "anyoneElse", afterSlots: ["needHelp"], es: "¿Alguien más tiene algo que agregar sobre esto?", en: "Does anyone else have anything to add about this?", weight: 0.4 }
+    ],
+    mistakes: [
+      {
+        id: "wrong-project", chance: 0.2,
+        npcLine: { es: "Espera, ¿ese no era el proyecto de Marketing? Perdón, me confundí.", en: "Wait, wasn't that the Marketing project? Sorry, I got confused." },
+        firesIf: (session) => !!session.slots.projectStatus,
+        expectedRepair: /no,?\s*(es|era)|te refieres a|hablo de|mi proyecto es/i,
+        repairPrompt: { es: "A ver, ¿de qué proyecto hablamos entonces?", en: "Okay, which project are we talking about then?" }
+      }
+    ],
+    failureStates: defaultFailureStates({ abandonTurns: 15, mistakeTurns: 13 }),
+    successCondition: fullSlotCompletion,
+    dimensionWeights: {
+      comprehensibility: 0.2, vocabularyRange: 0.15, sentenceFormation: 0.15,
+      repairStrategies: 0.15, conversationManagement: 0.2, questionAsking: 0.1, surpriseHandling: 0.05
+    }
+  },
+
+  // ---------------------------------------------------------------------
+  {
+    id: "lost-wallet-police-report",
+    title: "Report a Lost Wallet",
+    titleEs: "Reportar una cartera perdida",
+    actflTier: "intermediate-mid",
+    npcRole: "oficial de policía",
+    npcName: "Oficial Vargas",
+    icon: "🚨",
+    setting: {
+      es: "Perdiste tu cartera y vas a la policía para reportarlo.",
+      en: "You lost your wallet and go to the police to report it."
+    },
+    openings: [
+      { es: "Buenas, ¿en qué le puedo ayudar?", en: "Good day, how can I help you?" },
+      { es: "¿Qué se le ofrece?", en: "What do you need?" }
+    ],
+    slots: [
+      {
+        id: "reasonForReport", label: "reason for the report", labelEs: "motivo del reporte", required: true, type: "enum",
+        values: ["perdí mi cartera", "me robaron la cartera", "perdí mi teléfono", "me robaron el teléfono"],
+        extract(text) {
+          const robbedWallet = /\brobaron\b.*\bcartera\b/i.test(text);
+          const robbedPhone = /\brobaron\b.*\btel[eé]fono\b/i.test(text);
+          if (robbedWallet) return "me robaron la cartera";
+          if (robbedPhone) return "me robaron el teléfono";
+          if (/\bperd[ií].*\bcartera\b/i.test(text)) return "perdí mi cartera";
+          if (/\bperd[ií].*\btel[eé]fono\b/i.test(text)) return "perdí mi teléfono";
+          return null;
+        },
+        askPhrases: [{ es: "¿Qué pasó exactamente?", en: "What exactly happened?" }]
+      },
+      {
+        id: "whenItHappened", label: "when it happened", labelEs: "cuándo pasó", required: true, type: "enum",
+        values: ["hoy en la mañana", "hoy en la tarde", "ayer", "hace dos días"],
+        extract(text) {
+          if (/\bhoy en la ma[nñ]ana\b/i.test(text)) return "hoy en la mañana";
+          if (/\bhoy en la tarde\b/i.test(text)) return "hoy en la tarde";
+          if (/\bhace dos d[ií]as\b/i.test(text)) return "hace dos días";
+          if (/\bayer\b/i.test(text)) return "ayer";
+          return null;
+        },
+        askPhrases: [{ es: "¿Cuándo pasó esto?", en: "When did this happen?" }]
+      },
+      {
+        id: "whereItHappened", label: "where it happened", labelEs: "dónde pasó", required: true, type: "enum",
+        values: ["en el metro", "en la calle", "en un restaurante", "en el mercado"],
+        extract(text) {
+          if (/\bmetro\b/i.test(text)) return "en el metro";
+          if (/\bcalle\b/i.test(text)) return "en la calle";
+          if (/\brestaurante\b/i.test(text)) return "en un restaurante";
+          if (/\bmercado\b/i.test(text)) return "en el mercado";
+          return null;
+        },
+        askPhrases: [{ es: "¿Dónde fue — en qué lugar?", en: "Where was it — what place?" }]
+      },
+      {
+        id: "itemsLost", label: "what was inside", labelEs: "qué traía adentro", required: true, type: "free", contextOnly: true,
+        extract: extractFreeAnswer,
+        askPhrases: [{ es: "¿Qué traía adentro?", en: "What did you have inside it?" }]
+      },
+      {
+        id: "fullName", label: "full name for the report", labelEs: "nombre completo", required: true, type: "free", contextOnly: true,
+        extract: extractFreeAnswer,
+        askPhrases: [{ es: "Necesito su nombre completo para el reporte.", en: "I need your full name for the report." }]
+      },
+      {
+        id: "contactPhone", label: "callback number", labelEs: "número de contacto", required: true, type: "free", contextOnly: true,
+        extract: extractFreeAnswer,
+        askPhrases: [{ es: "¿Me deja un número donde le podamos llamar?", en: "Could you leave a number where we can reach you?" }]
+      }
+    ],
+    comboAsks: [
+      { slots: ["whenItHappened", "whereItHappened"], askPhrases: [{ es: "¿Cuándo y dónde pasó?", en: "When and where did it happen?" }] }
+    ],
+    unexpectedFollowUps: [
+      { id: "cardBlock", afterSlots: ["itemsLost"], es: "¿Ya canceló sus tarjetas del banco?", en: "Have you already cancelled your bank cards?", weight: 0.6 },
+      { id: "witnessAsk", afterSlots: ["whereItHappened"], es: "¿Había alguien más ahí que haya visto algo?", en: "Was anyone else there who might have seen something?", weight: 0.4 }
+    ],
+    mistakes: [
+      {
+        id: "wrong-form", chance: 0.2,
+        npcLine: { es: "Ay, disculpe, le di el formato equivocado — necesito el otro.", en: "Oh, sorry, I gave you the wrong form — I need the other one." },
+        firesIf: (session) => !!session.slots.reasonForReport,
+        expectedRepair: /entendido|est[aá] bien|no hay problema|ok/i,
+        repairPrompt: { es: "¿Me entendió? Un momento, por favor.", en: "Did you understand? One moment, please." }
+      }
+    ],
+    failureStates: defaultFailureStates({ abandonTurns: 15, mistakeTurns: 13 }),
+    successCondition: fullSlotCompletion,
+    dimensionWeights: {
+      comprehensibility: 0.2, vocabularyRange: 0.15, sentenceFormation: 0.15,
+      repairStrategies: 0.15, conversationManagement: 0.2, questionAsking: 0.1, surpriseHandling: 0.05
+    }
+  },
+
+  // ---------------------------------------------------------------------
+  {
+    id: "renewing-id-paperwork",
+    title: "Renew Official ID",
+    titleEs: "Renovar identificación oficial",
+    actflTier: "advanced-low",
+    npcRole: "funcionario",
+    npcName: "Lic. Paredes",
+    icon: "🪪",
+    setting: {
+      es: "Estás en una oficina de gobierno para renovar tu identificación oficial.",
+      en: "You're at a government office to renew your official ID."
+    },
+    openings: [
+      { es: "Buenos días, ¿qué trámite viene a hacer?", en: "Good morning, what procedure are you here for?" },
+      { es: "Adelante. ¿En qué le puedo apoyar?", en: "Go ahead. How can I help you?" }
+    ],
+    slots: [
+      {
+        id: "reasonForVisit", label: "reason for the visit", labelEs: "motivo de la visita", required: true, type: "enum",
+        values: ["renovación", "reposición por robo", "cambio de domicilio", "primera vez"],
+        extract(text) {
+          if (/\brenovaci[oó]n\b/i.test(text)) return "renovación";
+          if (/\breposici[oó]n\b/i.test(text)) return "reposición por robo";
+          if (/\bcambio de domicilio\b/i.test(text)) return "cambio de domicilio";
+          if (/\bprimera vez\b/i.test(text)) return "primera vez";
+          return null;
+        },
+        askPhrases: [{ es: "¿Es renovación, reposición, o es la primera vez que la tramita?", en: "Is it a renewal, replacement, or your first time applying?" }]
+      },
+      {
+        id: "documentsBrought", label: "documents brought", labelEs: "documentos que trae", required: true, type: "free", contextOnly: true,
+        extract: extractFreeAnswer,
+        askPhrases: [{ es: "¿Qué documentos trae?", en: "What documents did you bring?" }]
+      },
+      {
+        id: "currentAddressConfirm", label: "whether the address is current", labelEs: "si la dirección sigue vigente", required: true, type: "boolean",
+        extract(text) {
+          if (/\bs[ií],?\s*(sigo|la misma)\b/i.test(text)) return true;
+          if (/\bno,?\s*(me cambi[eé]|ya no)\b/i.test(text)) return false;
+          return null;
+        },
+        askPhrases: [{ es: "¿Sigue viviendo en la misma dirección registrada?", en: "Are you still living at the registered address?" }]
+      },
+      {
+        id: "appointmentOrWalkIn", label: "appointment or walk-in", labelEs: "con o sin cita", required: true, type: "enum",
+        values: ["con cita", "sin cita"],
+        extract(text) {
+          if (/\bcon cita\b/i.test(text)) return "con cita";
+          if (/\bsin cita\b/i.test(text)) return "sin cita";
+          return null;
+        },
+        askPhrases: [{ es: "¿Viene con cita programada o sin cita?", en: "Are you here with a scheduled appointment or a walk-in?" }]
+      },
+      {
+        id: "reasonExplanation", label: "detailed explanation", labelEs: "explicación detallada", required: true, type: "free", contextOnly: true,
+        extract: extractFreeAnswer,
+        askPhrases: [{ es: "Cuénteme con más detalle qué pasó con su identificación anterior.", en: "Tell me in more detail what happened with your previous ID." }]
+      },
+      {
+        id: "followUpAppointment", label: "day for the follow-up appointment", labelEs: "día de la siguiente cita", required: true, type: "enum",
+        values: ["lunes", "martes", "miércoles", "jueves", "viernes"],
+        extract(text) {
+          const m = text.match(/\b(lunes|martes|mi[eé]rcoles|jueves|viernes)\b/i);
+          return m ? m[1].toLowerCase() : null;
+        },
+        askPhrases: [{ es: "¿Qué día le viene bien para tomarle sus datos biométricos?", en: "What day works for you to come in for biometrics?" }]
+      }
+    ],
+    comboAsks: [
+      { slots: ["reasonForVisit", "appointmentOrWalkIn"], askPhrases: [{ es: "¿Qué trámite es y viene con cita o sin cita?", en: "What procedure is it and are you here with or without an appointment?" }] }
+    ],
+    unexpectedFollowUps: [
+      { id: "feeAsk", afterSlots: ["reasonForVisit"], es: "Le comento que la reposición por robo tiene un costo adicional.", en: "Just so you know, a replacement for theft has an additional cost.", weight: 0.4 },
+      { id: "biometrics", afterSlots: ["documentsBrought"], es: "Vamos a necesitar tomarle sus datos biométricos de nuevo — huellas y foto.", en: "We're going to need to take your biometric data again — fingerprints and photo.", weight: 0.5 }
+    ],
+    mistakes: [
+      {
+        id: "system-down", chance: 0.2,
+        npcLine: { es: "Disculpe, el sistema se cayó — vamos a tener que esperar unos minutos o reagendar.", en: "Sorry, the system just went down — we'll have to wait a few minutes or reschedule." },
+        firesIf: (session) => !!session.slots.reasonForVisit,
+        expectedRepair: /espero|puedo esperar|reagend|otro d[ií]a|est[aá] bien/i,
+        repairPrompt: { es: "¿Prefiere esperar o reagendar para otro día?", en: "Would you rather wait or reschedule for another day?" }
+      }
+    ],
+    failureStates: defaultFailureStates({ abandonTurns: 16, mistakeTurns: 14 }),
+    successCondition: fullSlotCompletion,
+    dimensionWeights: {
+      comprehensibility: 0.1, vocabularyRange: 0.15, sentenceFormation: 0.15,
+      repairStrategies: 0.15, conversationManagement: 0.2, questionAsking: 0.15, surpriseHandling: 0.1
+    }
   }
 ];
 

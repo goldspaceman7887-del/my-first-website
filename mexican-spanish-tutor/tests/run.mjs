@@ -677,7 +677,15 @@ async function testScenarios(browser) {
     restaurant: { dish: "tacos", spiceLevel: "no muy picante", drink: "agua de jamaica", billSplit: "junta" },
     "hotel-check-in": { reservationConfirmed: "Sí, tengo una reservación", reservationName: "García", nights: "dos noches", roomType: "doble", idDocument: "Aquí tiene mi pasaporte", paymentMethod: "tarjeta" },
     "calling-a-doctor": { reasonForCall: "Tengo fiebre", patientName: "Ana López", insuranceOrPrivate: "particular", preferredDay: "jueves", preferredTime: "en la mañana" },
-    "job-interview": { selfIntro: "Soy responsable y me gusta trabajar en equipo", experience: "Trabajé dos años en una oficina", motivation: "Me interesa porque busco crecer profesionalmente", availability: "tiempo completo" }
+    "job-interview": { selfIntro: "Soy responsable y me gusta trabajar en equipo", experience: "Trabajé dos años en una oficina", motivation: "Me interesa porque busco crecer profesionalmente", availability: "tiempo completo" },
+    "taking-the-metro": { destination: "Voy a Chapultepec", platformAck: "Ok, entendido, es la línea 2", tripAmount: "diez viajes", paymentMethod: "con tarjeta", thanks: "Muchas gracias" },
+    "clothing-store": { itemType: "una camisa", size: "mediana", color: "azul", tryOn: "Sí, claro", paymentMethod: "con tarjeta" },
+    "making-friends-party": { selfName: "Me llamo Diego", howKnowHost: "Soy amigo del trabajo", whatYouDo: "Trabajo en una oficina", hobby: "Me gusta correr y leer", exchangeContact: "Sí, claro" },
+    "apartment-hunting": { moveInDate: "este mes", budget: "ocho mil pesos", hasPets: "No tengo mascotas", numberOfOccupants: "dos personas", depositAck: "Entendido, está bien", leaseLength: "un año" },
+    "opening-a-bank-account": { accountType: "cuenta de ahorros", idDocument: "Aquí tiene mi identificación", proofOfAddress: "Sí, aquí lo traigo", initialDeposit: "mil pesos", debitCardWanted: "Sí, por favor", onlineBanking: "Sí, me interesa" },
+    "team-meeting": { projectStatus: "Vamos a tiempo", blocker: "Sin problemas por ahora", nextDeadline: "viernes", needHelp: "No, estoy bien", actionItem: "Voy a terminar el reporte mañana" },
+    "lost-wallet-police-report": { reasonForReport: "Perdí mi cartera", whenItHappened: "hoy en la mañana", whereItHappened: "en el metro", itemsLost: "Traía mi identificación y tarjetas", fullName: "Roberto Sánchez", contactPhone: "555-123-4567" },
+    "renewing-id-paperwork": { reasonForVisit: "Es una renovación", documentsBrought: "Traigo mi acta de nacimiento y comprobante", currentAddressConfirm: "Sí, sigo en la misma dirección", appointmentOrWalkIn: "con cita", reasonExplanation: "Mi identificación anterior ya venció hace un mes", followUpAppointment: "martes" }
   };
   // Each scenario's mistake has its own expectedRepair regex, so a single
   // generic apology doesn't reliably satisfy all of them — a repair attempt
@@ -690,7 +698,15 @@ async function testScenarios(browser) {
     restaurant: "Mejor deme unos tacos entonces.",
     "hotel-check-in": "Tengo el número de confirmación, aquí está mi correo.",
     "calling-a-doctor": "¿Qué tal el viernes entonces?",
-    "job-interview": "Dije tres años, no meses."
+    "job-interview": "Dije tres años, no meses.",
+    "taking-the-metro": "Ok, entendido, gracias.",
+    "clothing-store": "Mejor deme una mediana entonces.",
+    "making-friends-party": "Me llamo Diego otra vez.",
+    "apartment-hunting": "Está bien, de acuerdo.",
+    "opening-a-bank-account": "Está bien, puedo traer otro.",
+    "team-meeting": "No, es el proyecto de Ventas.",
+    "lost-wallet-police-report": "Está bien, no hay problema.",
+    "renewing-id-paperwork": "Puedo esperar unos minutos, está bien."
   };
   const allCompletions = await page.evaluate(async ({ bank, repairs }) => {
     const { SCENARIOS } = await import("/js/data/scenarios.js");
