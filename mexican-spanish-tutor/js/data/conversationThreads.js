@@ -177,6 +177,43 @@ export const MEMORY_RULES = [
   { key: "gusto", re: /\bme gustan?\s+((?:el |la |los |las )?[a-záéíóúñ][a-záéíóúñ\s]{1,26}?)(?=[.,;!?]|$)/i }
 ];
 
+// Unpredictability banks — used sparingly by core/conversationEngine.js so
+// the partner occasionally behaves like a real person mid-conversation:
+// mishearing you, cutting in with a tangent, asking you to clarify, or
+// stacking two questions in one turn. Every line ends in "?" on purpose —
+// Immersion Mode's test suite checks that nearly every bot reply asks
+// something, and these fire in the same slot a normal probe would.
+
+export const MISUNDERSTANDINGS = [
+  { es: "Perdón, ¿qué dijiste? No alcancé a oír bien.", en: "Sorry, what did you say? I didn't quite catch that." },
+  { es: "Espera, ¿dijiste que sí o que no? Me perdí.", en: "Wait, did you say yes or no? I got lost." },
+  { es: "Ay, creí que habías dicho otra cosa — ¿me lo repites?", en: "Oh, I thought you said something else — can you repeat it?" },
+  { es: "¿Cómo? Se me fue la onda un segundo, ¿qué contabas?", en: "What? I spaced out for a second, what were you telling me?" },
+  { es: "Mmm, ¿en serio dijiste eso? No estoy segura de haber entendido.", en: "Hmm, did you really say that? I'm not sure I understood." }
+];
+
+export const INTERRUPTIONS = [
+  { es: "Espera, espera — antes de que sigas, ¿ya viste que va a llover?", en: "Wait, wait — before you go on, did you see it's about to rain?" },
+  { es: "Ay, perdón que te interrumpa, pero se me acaba de ocurrir algo: ¿ya comiste?", en: "Sorry to interrupt, but something just occurred to me: have you eaten yet?" },
+  { es: "Un momento — ¿oíste eso? Bueno, no importa. ¿En qué íbamos?", en: "Hold on — did you hear that? Never mind. Where were we?" },
+  { es: "Perdón, se me cruzó un pensamiento — ¿tú crees que va a estar bien el clima este fin?", en: "Sorry, a thought just crossed my mind — do you think the weather will be good this weekend?" },
+  { es: "Espérame tantito, ¿me repites lo último? Se me fue el hilo.", en: "Hold on a sec, can you repeat that last part? I lost my train of thought." }
+];
+
+export const CLARIFICATION_REQUESTS = [
+  { es: "No sé si entendí bien — ¿me lo puedes explicar de otra forma?", en: "I'm not sure I understood — can you explain it another way?" },
+  { es: "¿A qué te refieres exactamente con eso?", en: "What exactly do you mean by that?" },
+  { es: "¿Puedes ser más específico? No me quedó claro.", en: "Can you be more specific? That wasn't clear to me." },
+  { es: "Eso no me quedó del todo claro, ¿me explicas otra vez?", en: "That wasn't entirely clear to me, can you explain again?" }
+];
+
+export const MULTI_QUESTION_PROBES = [
+  { es: "Oye, dos cosas: ¿cómo te fue hoy y ya comiste algo?", en: "Hey, two things: how was your day, and have you eaten?" },
+  { es: "Cuéntame, ¿qué hiciste ayer y con quién estabas?", en: "Tell me, what did you do yesterday, and who were you with?" },
+  { es: "¿Qué tal tu semana, y ya tienes planes para el fin?", en: "How's your week been, and do you already have weekend plans?" },
+  { es: "A ver, ¿de dónde eres y qué te trae por aquí?", en: "So, where are you from, and what brings you here?" }
+];
+
 export const CALLBACKS = {
   nombre: [
     { es: "Oye {v}, ¿y qué más me cuentas?", en: "Hey {v}, what else can you tell me?" },

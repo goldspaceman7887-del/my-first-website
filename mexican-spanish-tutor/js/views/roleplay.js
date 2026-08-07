@@ -6,9 +6,10 @@
 import { store, todayISO } from "../core/storage.js";
 import { correctionBlock } from "../core/feedback.js";
 import { el, blurActive, toast } from "../core/ui.js";
-import { audioEngine, textSimilarity, speechRecognitionSupported, listenOnce } from "../core/audio.js";
+import { audioEngine, textSimilarity, pronunciationTip, speechRecognitionSupported, listenOnce } from "../core/audio.js";
 import { addXP, registerStudyToday, updateSkillScore } from "../core/gamification.js";
 import { DIALOGUES } from "../data/dialogues.js";
+import { tappable, englishReveal, immersionLevel } from "../core/tapword.js";
 
 const SCENARIO_LABELS = {
   restaurant: "🌮 Restaurant", airport: "✈️ Airport", hotel: "🏨 Hotel", store: "🛍️ Store",
@@ -69,8 +70,8 @@ export function renderRoleplay(container) {
     function botBubble(line) {
       log.appendChild(
         el("div", { class: "chat-bubble bot" }, [
-          el("div", { class: "cb-es es-text" }, line.es),
-          el("div", { class: "cb-en" }, line.en)
+          tappable(line.es, "cb-es"),
+          englishReveal(line.en, { className: "cb-en" })
         ])
       );
       log.scrollTop = log.scrollHeight;
@@ -98,10 +99,14 @@ export function renderRoleplay(container) {
     }
 
     function promptUserTurn(line) {
+      const showHint = immersionLevel() <= 2;
+      const hintP = el("p", { class: `text-faint ${showHint ? "" : "hidden"}`.trim() }, `(${line.en})`);
+      const hintToggle = showHint ? null : el("button", { class: "btn btn-sm", onclick: () => hintP.classList.toggle("hidden") }, "💡 English");
       const prompt = el("div", { class: "card" }, [
         el("p", { style: "font-weight:700" }, `Tu turno como ${userRole}:`),
-        el("p", { class: "text-faint" }, `(${line.en})`)
-      ]);
+        hintP,
+        hintToggle
+      ].filter(Boolean));
       const input = el("input", { type: "text", placeholder: "Escribe tu respuesta en español..." });
       input.style.cssText = "width:100%;padding:.65rem .9rem;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:1.05rem;";
       const row = el("div", { class: "chat-input-row" }, [input]);
@@ -134,6 +139,17 @@ export function renderRoleplay(container) {
         // On top of the model answer, flag anything fixable in what you wrote.
         const notes = correctionBlock(text, { compact: true });
         if (notes) log.appendChild(notes);
+        // Below a strong match, point at the specific words that were off
+        // rather than leaving the learner to guess from a bare percentage.
+        if (score < 70) {
+          const tips = pronunciationTip(line.es, text);
+          if (tips) {
+            log.appendChild(
+              el("div", { class: "correction-block compact" }, tips.map((t) =>
+                el("p", { class: "co-explain" }, t)))
+            );
+          }
+        }
         audioEngine.speak(line.es);
         updateSkillScore("speaking", score >= 60 ? 2 : 0.5);
         turns++;

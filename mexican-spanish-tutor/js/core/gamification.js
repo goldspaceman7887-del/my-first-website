@@ -2,6 +2,7 @@
 
 import { store, todayISO, daysBetween } from "./storage.js";
 import { ACTFL_LEVELS, levelIndex } from "../data/roadmap.js";
+import { computeActflEstimate } from "./assessment.js";
 
 // XP thresholds mapped onto the 7 ACTFL sub-levels this app targets.
 const XP_THRESHOLDS = [0, 300, 800, 1600, 2800, 4400, 6500];
@@ -17,10 +18,6 @@ export function addXP(amount, reason = "") {
   return p.xp;
 }
 
-// Composite ACTFL estimate: XP is the baseline pace-setter, nudged by how
-// many Can-Do statements the learner has actually checked off (self-report +
-// performance both feed the same signal, per the spec's "update regularly
-// based on performance").
 export function levelForXP(xp) {
   let idx = 0;
   for (let i = 0; i < XP_THRESHOLDS.length; i++) {
@@ -29,19 +26,12 @@ export function levelForXP(xp) {
   return ACTFL_LEVELS[idx].code;
 }
 
+// Composite ACTFL estimate — see core/assessment.js for the formula (blends
+// XP, real skill-score performance, can-do checklist, and confirmed-level
+// floor). Kept as a zero-arg export so every existing caller (dashboard,
+// conversation.js, immersion.js, roadmap.js, ...) is unaffected.
 export function estimatedLevel() {
-  const xp = store.state.profile.xp || 0;
-  const xpLevelIdx = levelIndex(levelForXP(xp));
-  const canDoCount = (store.state.progress.canDoCompleted || []).length;
-  // Roughly 4 can-do statements checked off nudges the estimate up one level,
-  // but never past what XP alone would already justify by more than one tier.
-  const canDoBoost = Math.min(1, Math.floor(canDoCount / 8));
-  let idx = Math.min(ACTFL_LEVELS.length - 1, xpLevelIdx + (canDoCount >= 4 ? canDoBoost : 0));
-  // Passing a section checkpoint is direct evidence of that level, so the
-  // estimate never reads below it — XP alone shouldn't drag it back down.
-  const confirmed = store.state.profile.confirmedLevel;
-  if (confirmed) idx = Math.max(idx, levelIndex(confirmed));
-  return ACTFL_LEVELS[idx];
+  return computeActflEstimate(store.state, { levelForXP });
 }
 
 export function xpProgressToNextLevel() {

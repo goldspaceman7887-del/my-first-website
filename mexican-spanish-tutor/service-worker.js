@@ -5,7 +5,7 @@
 //
 // Bump CACHE_NAME on every deploy so returning users get the new build
 // instead of being pinned to a stale cache forever.
-const CACHE_NAME = "mxes-cache-v11";
+const CACHE_NAME = "mxes-cache-v12";
 
 const PRECACHE_URLS = [
   "./",
@@ -19,8 +19,10 @@ const PRECACHE_URLS = [
   "css/main.css",
   "css/themes.css",
   "js/app.js",
+  "js/core/assessment.js",
   "js/core/audio.js",
   "js/core/backup.js",
+  "js/core/conversationEngine.js",
   "js/core/distractors.js",
   "js/core/gamification.js",
   "js/core/feedback.js",
@@ -36,6 +38,7 @@ const PRECACHE_URLS = [
   "js/data/glossary.js",
   "js/data/mistakePatterns.js",
   "js/data/roadmap.js",
+  "js/data/scenarios.js",
   "js/data/sentences.js",
   "js/data/stories.js",
   "js/data/spanishIPA.js",
@@ -44,21 +47,28 @@ const PRECACHE_URLS = [
   "js/views/achievements.js",
   "js/views/conversation.js",
   "js/views/correction.js",
+  "js/views/dailyPractice.js",
+  "js/views/dailySim.js",
   "js/views/dashboard.js",
   "js/views/dialogues.js",
   "js/views/immersion.js",
   "js/views/learn.js",
   "js/views/levelTest.js",
+  "js/views/listeningPractice.js",
   "js/views/practice.js",
   "js/views/review.js",
   "js/views/roadmap.js",
   "js/views/roleplay.js",
   "js/views/saveProgress.js",
+  "js/views/scenario.js",
   "js/views/sentences.js",
   "js/views/settings.js",
+  "js/views/skillPractice.js",
+  "js/views/speakingPractice.js",
   "js/views/speakingTest.js",
   "js/views/story.js",
-  "js/views/vocabulary.js"
+  "js/views/vocabulary.js",
+  "js/views/weaknessReview.js"
 ];
 
 self.addEventListener("install", (event) => {

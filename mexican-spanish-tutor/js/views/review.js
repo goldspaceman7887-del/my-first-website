@@ -141,7 +141,10 @@ const DECKS = [
 export function renderReview(container, params = {}) {
   const counts = reviewCounts();
   let mode = params.tab === "known" ? "known" : "due";
-  let deck = "all";
+  // Callers that mount this view directly (rather than via the URL) can
+  // preselect a deck — e.g. Practice's "Vocabulary Review" opens straight
+  // into the Words deck instead of making you pick it every time.
+  let deck = params.deck && DECKS.some((d) => d.id === params.deck) ? params.deck : "all";
 
   container.appendChild(
     el("div", { class: "page-header" }, [

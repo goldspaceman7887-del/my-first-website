@@ -64,6 +64,14 @@ export function correctionBlock(text, { compact = false } = {}) {
             el("span", { class: "es-text co-example" }, ex)))
         );
       }
+      if (h.alternatives && h.alternatives.length) {
+        item.appendChild(
+          el("p", { class: "co-alternatives" }, [
+            el("span", { class: "co-tag" }, "You could also say"),
+            el("span", {}, ` ${h.alternatives.join(" · ")}`)
+          ])
+        );
+      }
     }
     wrap.appendChild(item);
   });

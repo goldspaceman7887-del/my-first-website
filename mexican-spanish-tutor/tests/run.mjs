@@ -63,8 +63,8 @@ async function freshPage(browser, { mobile = false } = {}) {
   page.on("console", (m) => { if (m.type() === "error" && !m.text().includes("favicon")) errors.push(m.text()); });
   await page.goto(`${BASE}/index.html`, { waitUntil: "networkidle" });
   await page.waitForTimeout(300);
-  // Click past onboarding
-  for (let i = 0; i < 4; i++) {
+  // Click past onboarding (7 steps => up to 7 primary-button clicks to fully close it)
+  for (let i = 0; i < 9; i++) {
     const btn = await page.$(".onboarding-nav .btn-primary");
     if (btn) { await btn.click(); await page.waitForTimeout(120); }
   }
@@ -92,7 +92,8 @@ async function testRoutes(browser) {
   const { page, ctx, errors } = await freshPage(browser);
   const routes = ["#/dashboard", "#/roadmap", "#/level-test", "#/learn", "#/learn/vocab",
     "#/learn/grammar", "#/learn/dialogues", "#/practice", "#/practice/story",
-    "#/practice/conversation", "#/review", "#/review/known", "#/save", "#/achievements", "#/settings"];
+    "#/practice/conversation", "#/review", "#/review/known", "#/save", "#/achievements", "#/settings",
+    "#/scenarios", "#/scenarios/food_cafe_order", "#/daily-life"];
   let rendered = 0;
   for (const r of routes) {
     await go(page, r);
@@ -537,7 +538,7 @@ async function testImmersion(browser) {
     const pg = await c.newPage();
     await pg.goto(`${BASE}/index.html`, { waitUntil: "networkidle" });
     await pg.waitForTimeout(250);
-    for (let k = 0; k < 4; k++) { const b = await pg.$(".onboarding-nav .btn-primary"); if (b) { await b.click(); await pg.waitForTimeout(110); } }
+    for (let k = 0; k < 9; k++) { const b = await pg.$(".onboarding-nav .btn-primary"); if (b) { await b.click(); await pg.waitForTimeout(110); } }
     await pg.evaluate(async () => { const { audioEngine } = await import("/js/core/audio.js"); audioEngine.speak = () => {}; });
     await pg.evaluate(() => { window.location.hash = "#/practice/immersion"; });
     await pg.waitForTimeout(500);
@@ -565,6 +566,10 @@ async function testStorage(browser) {
     store.state.progress.checkpointsPassed = ["novice-low"];
     store.state.profile.confirmedLevel = "novice-low";
     store.state.progress.savedWords = { hola: "hello" };
+    store.state.progress.scenarioSessions.push({ date: "2026-01-01", scenarioId: "food_cafe_order", outcome: "success" });
+    store.state.progress.scenariosCompleted = ["food_cafe_order"];
+    store.state.progress.dailySimSessions.push({ date: "2026-01-01", outcomes: ["success"] });
+    store.state.progress.placementResult = { date: "2026-01-01", level: "novice-mid", openAvg: 40, mcRatio: 66 };
     store.saveNow();
   });
   await page.reload({ waitUntil: "networkidle" });
@@ -577,7 +582,11 @@ async function testStorage(browser) {
       units: (store.state.progress.roadmapUnitsCompleted || []).length,
       checkpoints: (store.state.progress.checkpointsPassed || []).length,
       confirmed: store.state.profile.confirmedLevel,
-      saved: Object.keys(store.state.progress.savedWords || {}).length
+      saved: Object.keys(store.state.progress.savedWords || {}).length,
+      scenarioSessions: (store.state.progress.scenarioSessions || []).length,
+      scenariosCompleted: (store.state.progress.scenariosCompleted || []).length,
+      dailySimSessions: (store.state.progress.dailySimSessions || []).length,
+      placementLevel: store.state.progress.placementResult && store.state.progress.placementResult.level
     };
   });
   check("spaced repetition survives a reload", after.srs === 2, `${after.srs} of 2 items`);
@@ -586,6 +595,10 @@ async function testStorage(browser) {
   check("checkpoints survive a reload", after.checkpoints === 1, String(after.checkpoints));
   check("confirmed level survives a reload", after.confirmed === "novice-low", String(after.confirmed));
   check("saved story words survive a reload", after.saved === 1, String(after.saved));
+  check("scenario sessions survive a reload", after.scenarioSessions === 1, String(after.scenarioSessions));
+  check("completed scenarios survive a reload", after.scenariosCompleted === 1, String(after.scenariosCompleted));
+  check("daily simulation sessions survive a reload", after.dailySimSessions === 1, String(after.dailySimSessions));
+  check("onboarding placement result survives a reload", after.placementLevel === "novice-mid", String(after.placementLevel));
   await ctx.close();
 }
 
@@ -596,7 +609,7 @@ async function testMobile(browser) {
     const page = await ctx.newPage();
     await page.goto(`${BASE}/index.html`, { waitUntil: "networkidle" });
     await page.waitForTimeout(250);
-    for (let i = 0; i < 4; i++) { const x = await page.$(".onboarding-nav .btn-primary"); if (x) { await x.click(); await page.waitForTimeout(110); } }
+    for (let i = 0; i < 9; i++) { const x = await page.$(".onboarding-nav .btn-primary"); if (x) { await x.click(); await page.waitForTimeout(110); } }
     let overflow = 0;
     for (const h of ["#/dashboard", "#/roadmap", "#/learn", "#/practice", "#/review", "#/save"]) {
       await go(page, h);
@@ -640,6 +653,93 @@ async function testOffline(browser) {
   await ctx.close();
 }
 
+async function testScenarios(browser) {
+  group("scenarios");
+  const { page, ctx, errors } = await freshPage(browser);
+
+  const d = await page.evaluate(async () => {
+    const { SCENARIO_CATEGORIES, SCENARIOS } = await import("/js/data/scenarios.js");
+    const badCat = SCENARIOS.filter((s) => !SCENARIO_CATEGORIES.some((c) => c.id === s.category));
+    const missing = SCENARIOS.filter((s) => !s.goal || !s.turns || !s.turns.length || !s.requiredInfo || !s.requiredInfo.length ||
+      !s.outcomes || !s.outcomes.success || !s.outcomes.partial || !s.outcomes.fail || !s.openingLines || !s.openingLines.length ||
+      !s.speakers || !s.speakers.length);
+    const ids = new Set(SCENARIOS.map((s) => s.id));
+    return { categories: SCENARIO_CATEGORIES.length, total: SCENARIOS.length, uniqueIds: ids.size, badCat: badCat.length, missing: missing.map((s) => s.id) };
+  });
+  check("11 categories", d.categories === 11, String(d.categories));
+  check(`${d.total} scenarios, all with unique ids`, d.uniqueIds === d.total, `${d.uniqueIds}/${d.total}`);
+  check("every scenario has a goal, turns, requiredInfo, speakers, and 3 outcomes", d.badCat === 0 && d.missing.length === 0, d.missing.join(", "));
+
+  // Browsing: category grid -> click into a category -> scenario links appear.
+  await go(page, "#/scenarios");
+  await page.waitForTimeout(300);
+  const categoryCount = await page.$$eval(".grid-auto > div", (els) => els.length);
+  check("category grid shows all 11 categories", categoryCount === 11, String(categoryCount));
+  await page.evaluate(() => document.querySelectorAll(".grid-auto > div")[0].click());
+  await page.waitForTimeout(200);
+  const scenarioLinkCount = await page.$$eval('a[href^="#/scenarios/"]', (els) => els.length);
+  check("clicking a category lists its scenarios", scenarioLinkCount >= 3, String(scenarioLinkCount));
+
+  // Run one full scenario to an outcome. The answer is deliberately rich so
+  // it has a good shot at hitting most scenarios' requiredInfo patterns —
+  // the point here is that the run mechanics complete, not grading accuracy.
+  const RICH_ANSWER = "Quiero un café grande con leche, sin azúcar, pago con tarjeta, gracias, me llamo Ana.";
+  await go(page, "#/scenarios/food_cafe_order");
+  await page.waitForTimeout(500);
+  check("scenario run shows the goal", (await page.evaluate(() => document.body.textContent)).includes("Goal"));
+  for (let i = 0; i < 6; i++) {
+    if (!(await page.$(".chat-input-row input"))) break;
+    await page.fill(".chat-input-row input", RICH_ANSWER);
+    await page.click('.chat-input-row button:has-text("Enviar")');
+    await page.waitForTimeout(650);
+  }
+  await page.waitForTimeout(1200);
+  const reachedOutcome = (await page.evaluate(() => document.body.textContent)).includes("Try another scenario");
+  check("a full scenario run reaches an outcome card", reachedOutcome);
+
+  // Daily Life Simulation: complete the first slot and confirm the day
+  // timeline advances (the embedded scenario hands control back to it).
+  await go(page, "#/daily-life");
+  await page.waitForTimeout(300);
+  await page.evaluate(() => { const b = [...document.querySelectorAll("button")].find((x) => x.textContent.includes("Start your day")); if (b) b.click(); });
+  await page.waitForTimeout(500);
+  for (let i = 0; i < 6; i++) {
+    if (!(await page.$(".chat-input-row input"))) break;
+    await page.fill(".chat-input-row input", RICH_ANSWER);
+    await page.click('.chat-input-row button:has-text("Enviar")');
+    await page.waitForTimeout(650);
+  }
+  await page.waitForTimeout(1800);
+  const advancedTimeline = (await page.evaluate(() => document.body.textContent)).includes("Continue your day");
+  check("completing the first slot returns to the day timeline", advancedTimeline);
+
+  check("no JS errors", errors.length === 0, errors.slice(0, 3).join(" | "));
+  await ctx.close();
+}
+
+async function testAssessment(browser) {
+  group("assessment");
+  const { page, ctx, errors } = await freshPage(browser);
+  const result = await page.evaluate(async () => {
+    const { store } = await import("/js/core/storage.js");
+    const { estimatedLevel } = await import("/js/core/gamification.js");
+    store.state.profile.xp = 0;
+    store.state.progress.canDoCompleted = [];
+    store.state.profile.confirmedLevel = null;
+    Object.keys(store.state.scores).forEach((k) => { store.state.scores[k] = 0; });
+    const baseline = estimatedLevel().code;
+    // Strong skill scores alone (zero XP, zero can-dos) should be able to
+    // move the estimate up — the guarantee that it's not XP/MC-only.
+    Object.keys(store.state.scores).forEach((k) => { store.state.scores[k] = 90; });
+    const withScores = estimatedLevel().code;
+    return { baseline, withScores };
+  });
+  check("baseline (zero XP, zero scores) is Novice Low", result.baseline === "novice-low", result.baseline);
+  check("strong skill scores alone move the estimate up, without XP or can-dos", result.withScores !== "novice-low", result.withScores);
+  check("no JS errors", errors.length === 0, errors.slice(0, 3).join(" | "));
+  await ctx.close();
+}
+
 // ================= runner =================
 const GROUPS = {
   routes: testRoutes,
@@ -650,6 +750,8 @@ const GROUPS = {
   "tap-a-word": testTapWords,
   "error feedback": testCorrections,
   immersion: testImmersion,
+  scenarios: testScenarios,
+  assessment: testAssessment,
   storage: testStorage,
   mobile: testMobile,
   offline: testOffline

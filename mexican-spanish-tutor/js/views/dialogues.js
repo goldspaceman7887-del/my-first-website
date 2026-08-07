@@ -1,7 +1,7 @@
 import { store } from "../core/storage.js";
 import { el, blurActive, toast, xpToast } from "../core/ui.js";
 import { audioEngine } from "../core/audio.js";
-import { tappable, initTapWords } from "../core/tapword.js";
+import { tappable, initTapWords, englishReveal } from "../core/tapword.js";
 import { addXP, updateSkillScore } from "../core/gamification.js";
 import { gradeItem, QUALITY } from "../core/srs.js";
 import { DIALOGUES } from "../data/dialogues.js";
@@ -66,7 +66,7 @@ export function renderDialogueDetail(container, params) {
         el("div", { class: "line-content" }, [
           // Tap any word in a dialogue line for its meaning.
           el("div", { class: "line-es" }, [tappable(l.es)]),
-          el("div", { class: "line-en" }, l.en)
+          englishReveal(l.en, { className: "line-en" })
         ]),
         el("div", { class: "line-controls" }, [el("button", { class: "play-btn", onclick: () => audioEngine.speak(l.es) }, "🔊")])
       ])
