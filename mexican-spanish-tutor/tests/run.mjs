@@ -91,8 +91,9 @@ async function testRoutes(browser) {
   group("routes");
   const { page, ctx, errors } = await freshPage(browser);
   const routes = ["#/dashboard", "#/roadmap", "#/level-test", "#/proficiency", "#/learn", "#/learn/vocab",
-    "#/learn/grammar", "#/learn/dialogues", "#/practice", "#/practice/story",
-    "#/practice/conversation", "#/practice/roleplay", "#/review", "#/review/known", "#/save", "#/achievements", "#/settings"];
+    "#/learn/grammar", "#/learn/dialogues", "#/practice", "#/practice/daily", "#/practice/story",
+    "#/practice/conversation", "#/practice/scenarios", "#/practice/roleplay", "#/practice/listening",
+    "#/practice/weakness", "#/review", "#/review/known", "#/save", "#/achievements", "#/settings"];
   let rendered = 0;
   for (const r of routes) {
     await go(page, r);
@@ -101,6 +102,16 @@ async function testRoutes(browser) {
     else check(`${r} renders`, false, "empty view");
   }
   check(`all ${routes.length} routes render`, rendered === routes.length, `${rendered}/${routes.length}`);
+
+  // The old "#/practice/roleplay" tab id must still land on the Scenarios
+  // tab (now the canonical id) rather than 404ing or falling back silently.
+  await go(page, "#/practice/roleplay");
+  const roleplayAliasOk = await page.evaluate(() => {
+    const active = document.querySelector(".tabs .tab-btn.active");
+    return Boolean(active && active.textContent.includes("Scenarios"));
+  });
+  check('"#/practice/roleplay" alias lands on the Scenarios tab', roleplayAliasOk);
+
   check("no JS errors while navigating", errors.length === 0, errors.slice(0, 3).join(" | "));
   await ctx.close();
 }

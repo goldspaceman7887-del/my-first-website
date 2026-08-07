@@ -80,8 +80,8 @@ export function renderProficiencyReport(container) {
       el("div", { class: "card empty-state", style: "margin-top:1rem" }, [
         el("div", { class: "empty-icon" }, "🧭"),
         el("h3", {}, "No task scenarios completed yet"),
-        el("p", {}, "Complete a few real-life task scenarios in Practice → Roleplay to build your proficiency profile — strongest/weakest functions and readiness for the next level will show up here."),
-        el("a", { class: "btn btn-primary", href: "#/practice/roleplay" }, "🎭 Go to Task Scenarios")
+        el("p", {}, "Complete a few real-life task scenarios in Practice → Scenarios to build your proficiency profile — strongest/weakest functions and readiness for the next level will show up here."),
+        el("a", { class: "btn btn-primary", href: "#/practice/scenarios" }, "🎭 Go to Task Scenarios")
       ])
     );
     return;
@@ -136,7 +136,7 @@ export function renderProficiencyReport(container) {
       el("div", { class: "card", style: "margin-top:1rem" }, [
         el("div", { class: "card-title" }, "🆕 Not tried yet"),
         el("ul", { style: "margin:.3rem 0 0;padding-left:1.2rem" }, notYetTried.map((s) => el("li", {}, `${s.title} (${ACTFL_LEVELS.find((l) => l.code === s.actflTier)?.short})`))),
-        el("a", { class: "btn btn-sm", href: "#/practice/roleplay", style: "margin-top:.5rem" }, "Try one now")
+        el("a", { class: "btn btn-sm", href: "#/practice/scenarios", style: "margin-top:.5rem" }, "Try one now")
       ])
     );
   }

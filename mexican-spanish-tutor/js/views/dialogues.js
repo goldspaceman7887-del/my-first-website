@@ -54,7 +54,7 @@ export function renderDialogueDetail(container, params) {
     el("div", { class: "audio-controls-row" }, [
       el("button", { class: "btn btn-sm", onclick: () => playAll(1) }, "▶️ Play all"),
       el("button", { class: "btn btn-sm", onclick: () => playAll(0.6) }, "🐢 Play all (slow)"),
-      el("a", { class: "btn btn-sm", href: "#/practice/roleplay" }, "🎭 Practice as roleplay")
+      el("a", { class: "btn btn-sm", href: "#/practice/scenarios" }, "🎭 Practice as a scenario")
     ])
   );
 

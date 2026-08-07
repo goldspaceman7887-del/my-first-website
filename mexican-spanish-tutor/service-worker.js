@@ -5,7 +5,7 @@
 //
 // Bump CACHE_NAME on every deploy so returning users get the new build
 // instead of being pinned to a stale cache forever.
-const CACHE_NAME = "mxes-cache-v17";
+const CACHE_NAME = "mxes-cache-v18";
 
 const PRECACHE_URLS = [
   "./",
@@ -52,11 +52,13 @@ const PRECACHE_URLS = [
   "js/views/achievements.js",
   "js/views/conversation.js",
   "js/views/correction.js",
+  "js/views/dailyPractice.js",
   "js/views/dashboard.js",
   "js/views/dialogues.js",
   "js/views/immersion.js",
   "js/views/learn.js",
   "js/views/levelTest.js",
+  "js/views/listeningPractice.js",
   "js/views/practice.js",
   "js/views/proficiencyReport.js",
   "js/views/review.js",
@@ -68,7 +70,8 @@ const PRECACHE_URLS = [
   "js/views/settings.js",
   "js/views/speakingTest.js",
   "js/views/story.js",
-  "js/views/vocabulary.js"
+  "js/views/vocabulary.js",
+  "js/views/weaknessReview.js"
 ];
 
 self.addEventListener("install", (event) => {

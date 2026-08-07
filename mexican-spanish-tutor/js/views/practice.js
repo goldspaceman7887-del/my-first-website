@@ -1,25 +1,42 @@
 // PRACTICE — every speaking/writing mode behind one nav item instead of
-// five. Same views as before, just grouped so the sidebar stays short.
+// several. Same views as before, just grouped so the sidebar stays short.
+//
+// Lands on Daily Practice by default: a condensed "what's due right now"
+// instead of dropping you on whichever mode happened to be first.
 
 import { el } from "../core/ui.js";
+import { renderDailyPractice } from "./dailyPractice.js";
 import { renderScenarios } from "./scenarios.js";
 import { renderConversation } from "./conversation.js";
+import { renderListeningPractice } from "./listeningPractice.js";
 import { renderImmersion } from "./immersion.js";
 import { renderStory } from "./story.js";
 import { renderCorrection } from "./correction.js";
 import { renderSpeakingTest } from "./speakingTest.js";
+import { renderWeaknessReview } from "./weaknessReview.js";
 
 const TABS = [
+  { id: "daily", label: "🎯 Daily Practice", render: renderDailyPractice },
   { id: "conversation", label: "💬 Conversation", render: renderConversation },
-  { id: "roleplay", label: "🎭 Roleplay", render: renderScenarios },
+  { id: "scenarios", label: "🎭 Scenarios", render: renderScenarios },
+  { id: "listening", label: "👂 Listening", render: renderListeningPractice },
   { id: "speaking-test", label: "🎓 Speaking Test", render: renderSpeakingTest },
+  { id: "writing", label: "✍️ Writing", render: renderCorrection },
+  { id: "weakness", label: "📉 Weakness Review", render: renderWeaknessReview },
   { id: "immersion", label: "🌊 Immersion", render: renderImmersion },
-  { id: "story", label: "📖 Stories", render: renderStory },
-  { id: "writing", label: "✍️ Writing", render: renderCorrection }
+  { id: "story", label: "📖 Stories", render: renderStory }
 ];
 
+// "Roleplay" was the old id for what's now "Scenarios" — old links/bookmarks
+// (and dialogues.js's cross-link) still route here.
+const TAB_ALIASES = { roleplay: "scenarios" };
+function resolveTab(id) {
+  return TAB_ALIASES[id] || id;
+}
+
 export function renderPractice(container, params) {
-  let active = TABS.some((t) => t.id === params?.tab) ? params.tab : "conversation";
+  const requested = resolveTab(params?.tab);
+  let active = TABS.some((t) => t.id === requested) ? requested : "daily";
 
   container.appendChild(
     el("div", { class: "page-header" }, [
