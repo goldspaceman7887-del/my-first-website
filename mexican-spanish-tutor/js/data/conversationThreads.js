@@ -13,6 +13,12 @@
 //
 // All Spanish is everyday Mexican Spanish.
 
+// Typing any of these is a "negotiate meaning" signal, not an actual answer
+// to whatever was just asked — Conversation Mode, Immersion Mode, and the
+// task-scenario engine all treat it as "replay the last line, slower, with
+// a translation" rather than a wrong response that consumes a turn.
+export const CONFUSION_TRIGGERS = /(^\?+$|no entiendo|no s[ée] qu[ée] decir|qu[ée] significa|help|english|ingl[ée]s|no comprendo|otra vez|m[áa]s despacio)/i;
+
 export const THREADS = [
   {
     id: "dia", icon: "☀️", label: "Tu día",

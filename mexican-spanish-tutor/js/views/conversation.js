@@ -12,30 +12,24 @@
 import { store, todayISO } from "../core/storage.js";
 import { el, blurActive, toast } from "../core/ui.js";
 import { audioEngine, speechRecognitionSupported, startDictation } from "../core/audio.js";
-import { addXP, registerStudyToday, updateSkillScore, estimatedLevel } from "../core/gamification.js";
-import { levelIndex } from "../data/roadmap.js";
+import { addXP, registerStudyToday, updateSkillScore } from "../core/gamification.js";
 import { correctionBlock } from "../core/feedback.js";
-import { THREADS, REACTIONS, NEUTRAL_REACTIONS, PIVOTS, MEMORY_RULES, CALLBACKS } from "../data/conversationThreads.js";
+import { checkSpanish } from "../data/mistakePatterns.js";
+import { recordPerformance, isRecentlyStruggling } from "../core/adaptive.js";
+import { pick, learnerTier, remember, reaction, detectThread, createProbeSession } from "../core/conversationEngine.js";
+import { THREADS, PIVOTS, CONFUSION_TRIGGERS } from "../data/conversationThreads.js";
 
-function pick(arr) {
-  return arr[Math.floor(Math.random() * arr.length)];
-}
-
-// Novice → 0, Intermediate → 1, Advanced → 2
-function learnerTier() {
-  const idx = levelIndex(estimatedLevel().code);
-  return idx <= 2 ? 0 : idx <= 5 ? 1 : 2;
-}
+const probes = createProbeSession("conversationAsked");
 
 export function renderConversation(container) {
   const canSpeak = speechRecognitionSupported();
 
   // ---------- Conversation state ----------
   let thread = null;          // active THREAD
-  let usedProbes = new Set(); // "threadId:es" already asked
   let turns = 0;
   let sinceCallback = 0;
   let greetedName = false;
+  let lastBotLine = null;
   const memory = {};          // key -> remembered value
   let dictation = null;
 
@@ -149,6 +143,7 @@ export function renderConversation(container) {
   }
 
   function botSay(line) {
+    lastBotLine = line;
     const showEnglishInline = immersionLevel() <= 2;
     const bubble = el("div", { class: "chat-bubble bot" }, [
       el("div", { class: "cb-es es-text" }, line.es),
@@ -166,7 +161,10 @@ export function renderConversation(container) {
     );
     log.appendChild(bubble);
     log.scrollTop = log.scrollHeight;
-    audioEngine.speak(line.es);
+    // On top of the manual "?" escape hatch below, auto-slow the default
+    // pace when the learner's recent turns show they're struggling.
+    if (isRecentlyStruggling()) audioEngine.speakSlow(line.es);
+    else audioEngine.speak(line.es);
   }
 
   function userSay(text) {
@@ -193,110 +191,48 @@ export function renderConversation(container) {
     if (announce) botSay(t.open);
   }
 
-  function remember(text) {
-    MEMORY_RULES.forEach((rule) => {
-      const m = text.match(rule.re);
-      if (m && m[1]) {
-        const v = m[1].trim().replace(/\s+/g, " ");
-        if (v.length >= 2 && v.length <= 28) memory[rule.key] = v;
-      }
-    });
-  }
-
-  // "cansada pero contenta" should get "qué bueno", not "ay, lo siento". In
-  // Spanish the clause after `pero` carries the real point, so when several
-  // sentiments match, the one appearing LAST in the sentence wins.
-  function reaction(text) {
-    let best = null;
-    let bestAt = -1;
-    REACTIONS.forEach((r) => {
-      // Must be the LAST occurrence, not the first: in "bien, cansada pero
-      // contenta" the positive pattern also hits "bien" at index 0, which
-      // would lose to "cansada" and produce a condolence.
-      const re = new RegExp(r.match.source, r.match.flags.includes("g") ? r.match.flags : r.match.flags + "g");
-      let m;
-      let last = -1;
-      while ((m = re.exec(text)) !== null) {
-        last = m.index;
-        if (m.index === re.lastIndex) re.lastIndex++; // guard against zero-length matches
-      }
-      if (last > bestAt) { bestAt = last; best = r; }
-    });
-    return best ? pick(best.lines) : pick(NEUTRAL_REACTIONS);
-  }
-
-  // Switch threads if what they said clearly belongs to another topic — that's
-  // the learner steering the conversation, and following is the natural move.
-  function detectThread(text) {
-    const matches = THREADS.filter((t) => t.match.test(text));
-    if (!matches.length) return null;
-    if (thread && matches.some((m) => m.id === thread.id)) return null; // already here
-    return matches[0];
-  }
-
-  function nextProbe() {
-    if (!thread) return null;
-    const tier = learnerTier();
-    const eligible = thread.probes.filter((p) => p.tier <= tier && !usedProbes.has(`${thread.id}:${p.es}`));
-    if (!eligible.length) return null;
-    // Prefer the hardest question the learner can actually handle.
-    const best = Math.max(...eligible.map((p) => p.tier));
-    const chosen = pick(eligible.filter((p) => p.tier === best));
-    usedProbes.add(`${thread.id}:${chosen.es}`);
-    return chosen;
-  }
-
-  function callback() {
-    const keys = Object.keys(memory).filter((k) => CALLBACKS[k]);
-    if (!keys.length) return null;
-    const k = pick(keys);
-    const tpl = pick(CALLBACKS[k]);
-    return { es: tpl.es.replace("{v}", memory[k]), en: tpl.en.replace("{v}", memory[k]) };
-  }
-
   function respond(text) {
     const react = reaction(text);
+    const tier = learnerTier();
     sinceCallback++;
 
     // Someone who tells you their name expects you to use it.
     if (memory.nombre && !greetedName) {
       greetedName = true;
-      const p = nextProbe() || thread.open;
+      const p = probes.nextProbe(thread, tier) || thread.open;
       return { es: `¡Mucho gusto, ${memory.nombre}! ${p.es}`, en: `Nice to meet you, ${memory.nombre}! ${p.en}` };
     }
 
     // Every few turns, bring back something they told us earlier. This is the
     // single biggest thing that stops it feeling like a questionnaire.
     if (sinceCallback >= 3) {
-      const cb = callback();
+      const cb = probes.callback(memory);
       if (cb) {
         sinceCallback = 0;
         return { es: `${react.es} ${cb.es}`, en: `${react.en} ${cb.en}` };
       }
     }
 
-    const steered = detectThread(text);
+    const steered = detectThread(text, thread);
     if (steered) {
       startThread(steered, false);
-      const p = nextProbe() || steered.open;
+      const p = probes.nextProbe(thread, tier) || steered.open;
       return { es: `${react.es} ${p.es}`, en: `${react.en} ${p.en}` };
     }
 
-    const probe = nextProbe();
+    const probe = probes.nextProbe(thread, tier);
     if (probe) return { es: `${react.es} ${probe.es}`, en: `${react.en} ${probe.en}` };
 
     // Thread exhausted — move somewhere new rather than repeating ourselves.
-    const fresh = THREADS.filter((t) => t.id !== (thread && thread.id) &&
-      t.probes.some((p) => p.tier <= learnerTier() && !usedProbes.has(`${t.id}:${p.es}`)));
+    const fresh = probes.freshThreads(thread && thread.id, tier);
     if (fresh.length) {
       const next = pick(fresh);
       startThread(next, false);
       const pivot = pick(PIVOTS);
-      const p = nextProbe() || next.open;
+      const p = probes.nextProbe(next, tier) || next.open;
       return { es: `${pivot.es} ${p.es}`, en: `${pivot.en} ${p.en}` };
     }
 
-    usedProbes = new Set(); // been all the way around; start over
     return { es: `${react.es} ${thread.open.es}`, en: `${react.en} ${thread.open.en}` };
   }
 
@@ -305,12 +241,37 @@ export function renderConversation(container) {
     const text = input.value.trim();
     if (!text) return;
     userSay(text);
-    remember(text);
-    briefCorrection(text);
     input.value = "";
     blurActive();
     turns++;
+
+    // Stuck: replay the last line slowly with a translation instead of
+    // treating "?" / "no entiendo" as an actual answer — same escape hatch
+    // Immersion Mode already has. The question still stands, so this
+    // doesn't consume a turn.
+    if (CONFUSION_TRIGGERS.test(text)) {
+      recordPerformance("conversation", "struggled", 1);
+      if (lastBotLine) {
+        log.appendChild(
+          el("div", { class: "chat-bubble bot" }, [
+            el("span", { class: "badge badge-gold" }, "Más despacio + traducción"),
+            el("div", { class: "cb-es es-text", style: "margin-top:.3rem" }, lastBotLine.es),
+            el("div", { class: "cb-en" }, lastBotLine.en)
+          ])
+        );
+        log.scrollTop = log.scrollHeight;
+        audioEngine.speakSlow(lastBotLine.es);
+      }
+      return;
+    }
+
+    remember(memory, text);
+    briefCorrection(text);
     updateSkillScore("speaking", 0.5);
+    const hits = checkSpanish(text);
+    const words = text.split(/\s+/).filter(Boolean).length;
+    const density = words ? hits.length / words : 0;
+    recordPerformance("conversation", hits.length === 0 ? "good" : density >= 0.4 ? "struggled" : "neutral", density);
 
     const reply = respond(text);
     setTimeout(() => botSay(reply), 350);

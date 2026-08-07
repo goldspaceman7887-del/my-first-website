@@ -8,6 +8,8 @@ import { store, todayISO } from "../core/storage.js";
 import { audioEngine, speechRecognitionSupported, startDictation, textSimilarity } from "../core/audio.js";
 import { addXP, registerStudyToday, updateSkillScore } from "../core/gamification.js";
 import { correctionBlock } from "../core/feedback.js";
+import { checkSpanish } from "../data/mistakePatterns.js";
+import { recordPerformance, isRecentlyStruggling } from "../core/adaptive.js";
 import { createSession, submitUserTurn, resolveSession, missingRequiredSlots } from "../core/taskEngine.js";
 import { attemptFromSession } from "../core/actflAssess.js";
 import { recordScenarioAttempt } from "../core/actflProfile.js";
@@ -141,9 +143,13 @@ export function renderScenarioPlay(container, scenario, { onExit, onRetry } = {}
     log.appendChild(bubble);
     log.scrollTop = log.scrollHeight;
     // Some turns (mistakes, follow-ups, combo-asks) can be flagged fast:true
-    // — real people don't always slow down for you. speakSlow's manual "?"
-    // escape hatch below is unaffected; this only changes the default pace.
-    audioEngine.speak(line.es, turn.fast ? { rate: 1.2 } : {});
+    // — real people don't always slow down for you, and that unpredictability
+    // is deliberate, so it wins even when the learner's been struggling.
+    // Absent that, auto-slow the default pace on top of the manual "?"
+    // escape hatch below when recent turns show they're struggling.
+    if (turn.fast) audioEngine.speak(line.es, { rate: 1.2 });
+    else if (isRecentlyStruggling()) audioEngine.speakSlow(line.es);
+    else audioEngine.speak(line.es);
   }
 
   function userBubble(text) {
@@ -203,6 +209,7 @@ export function renderScenarioPlay(container, scenario, { onExit, onRetry } = {}
     // asked — same negotiate-meaning pattern as Immersion Mode. The
     // question still stands, so this doesn't consume a turn.
     if (CONFUSION_TRIGGERS.test(text) && lastNpcLine) {
+      recordPerformance("scenario", "struggled", 1);
       log.appendChild(
         el("div", { class: "chat-bubble bot" }, [
           el("span", { class: "badge badge-gold" }, "Más despacio + traducción"),
@@ -217,6 +224,10 @@ export function renderScenarioPlay(container, scenario, { onExit, onRetry } = {}
 
     briefCorrection(text);
     updateSkillScore("speaking", 0.5);
+    const hits = checkSpanish(text);
+    const words = text.split(/\s+/).filter(Boolean).length;
+    const density = words ? hits.length / words : 0;
+    recordPerformance("scenario", hits.length === 0 ? "good" : density >= 0.4 ? "struggled" : "neutral", density);
 
     const slotsBefore = { ...session.slots };
     const turn = submitUserTurn(session, text);
