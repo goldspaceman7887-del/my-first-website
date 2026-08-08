@@ -1,140 +1,78 @@
-// SPEAKING TEST (OPI PRACTICE) — a simulated ACTFL Oral Proficiency
-// Interview you answer OUT LOUD: warm-up, level checks, narration,
-// description, opinion, and an advanced task.
+// SPEAKING TEST (OPI PRACTICE) — Phase 1 of the ACTFL redesign.
 //
-// Speaking is the primary input. The mic streams a live Spanish transcript
-// while you talk and keeps listening through pauses, so you can give full
-// paragraph-length answers. Typing stays available as a fallback for
-// browsers without the Web Speech API (Safari/Firefox) or a denied mic.
+// Rebuilt on the adaptive engine (core/ratingEngine.js + core/taskSelector.js
+// + core/rubricEngine.js, task bank in data/realWorldTasks.js):
+//   - Real-world tasks, not "translate this sentence" — each one is tagged
+//     with the ACTFL function and everyday context it's actually testing.
+//     Intermediate tasks add a natural follow-up question (task.followUp);
+//     Intermediate High+ tasks add an unexpected complication
+//     (task.complication) — both are a required second turn, since
+//     "handle follow-up questions" and "handle unexpected situations" are
+//     abilities, not just prompts to read.
+//   - Adaptive difficulty — the next task is chosen against your current
+//     rating, with periodic ceiling probes (one band up from wherever the
+//     rating currently sits) and recovery probes when a level looks shaky,
+//     instead of a fixed day-of-year script.
+//   - Honest reassessment — a level only moves on a pattern of evidence
+//     (core/ratingEngine.js's hysteresis rules), and it can move down as
+//     well as up. No single answer sets a permanent floor, and nothing here
+//     is reachable by vocabulary recall or multiple choice — every task is
+//     graded on what you actually communicated (core/rubricEngine.js).
 //
-// Scoring is a rule-based heuristic — length, sentence count, past-tense
-// use, connective complexity, and the same mistake detector the Writing
-// Coach uses. It's not a human rater, but it's consistent and explainable.
+// Speaking is still the primary input: the mic streams a live Spanish
+// transcript while you talk, typing stays available as a fallback.
+//
+// This does NOT touch core/assessment.js's older XP+scores composite, which
+// Roadmap/Conversation/Immersion still rely on — updateSkillScore() and the
+// progress.speakingTests log are still written here for backward
+// compatibility with those (levels written there are capped to the older
+// 7-level ladder Roadmap understands; the full 9-level result lives in
+// state.proficiency.speaking).
 
 import { store, todayISO } from "../core/storage.js";
 import { el, toast, blurActive, confettiBurst } from "../core/ui.js";
 import { audioEngine, speechRecognitionSupported, startDictation } from "../core/audio.js";
 import { addXP, registerStudyToday, updateSkillScore } from "../core/gamification.js";
-import { scoreOpenResponse } from "../core/assessment.js";
-import { ACTFL_LEVELS } from "../data/roadmap.js";
+import { scoreRealWorldResponse, DIMENSION_LABELS } from "../core/rubricEngine.js";
+import { getSkillState, displayedLevel, recordTaskOutcome, isStale, stalenessDays } from "../core/ratingEngine.js";
+import { pickNextTask } from "../core/taskSelector.js";
+import { PROFICIENCY_LEVELS, levelAt } from "../data/actflProficiency.js";
 
-// Each stage holds several prompts. Which one you get rotates by the day, so
-// daily practice isn't the same seven questions over and over — and retaking
-// within a day shuffles again.
-const STAGE_BANK = [
-  { key: "warmup", title: "Warm-up", prompts: [
-    { es: "Preséntate: ¿cómo te llamas, de dónde eres y a qué te dedicas?", en: "Introduce yourself: name, where you're from, what you do." },
-    { es: "Cuéntame un poco de ti. ¿Qué te gusta hacer en tu tiempo libre?", en: "Tell me a bit about yourself. What do you like doing in your free time?" },
-    { es: "¿Cómo ha estado tu día hasta ahora?", en: "How has your day been so far?" },
-    { es: "¿Desde cuándo estudias español y por qué empezaste?", en: "How long have you studied Spanish, and why did you start?" },
-    { es: "Descríbete en unas cuantas frases: ¿cómo eres?", en: "Describe yourself in a few sentences — what are you like?" }
-  ] },
-  { key: "levelcheck1", title: "Level check", prompts: [
-    { es: "Cuéntame sobre tu familia: ¿cuántos son y qué hace cada quién?", en: "Tell me about your family: how many, and what each person does." },
-    { es: "¿Con quién vives y cómo es la convivencia?", en: "Who do you live with, and what's it like?" },
-    { es: "Háblame de un amigo cercano. ¿Cómo se conocieron?", en: "Tell me about a close friend. How did you meet?" },
-    { es: "¿Cómo es tu barrio? ¿Te gusta vivir ahí?", en: "What's your neighborhood like? Do you like living there?" },
-    { es: "¿Qué haces normalmente los fines de semana?", en: "What do you usually do on weekends?" }
-  ] },
-  { key: "levelcheck2", title: "Level check", prompts: [
-    { es: "Describe tu rutina de un día típico, de principio a fin.", en: "Describe your typical day, start to finish." },
-    { es: "¿Cómo es un día normal en tu trabajo o escuela?", en: "What's a normal day at work or school like?" },
-    { es: "¿Qué comes normalmente en un día? Cuéntame con detalle.", en: "What do you normally eat in a day? Tell me in detail." },
-    { es: "¿Cómo te transportas y cuánto tiempo te toma?", en: "How do you get around, and how long does it take?" },
-    { es: "¿Qué haces para relajarte después de un día pesado?", en: "What do you do to relax after a hard day?" }
-  ] },
-  { key: "narration", title: "Narration", prompts: [
-    { es: "Cuéntame sobre un viaje o un día memorable. ¿Qué pasó, paso por paso?", en: "Tell me about a memorable trip or day — what happened, step by step?" },
-    { es: "Cuéntame de la última vez que algo no salió como esperabas.", en: "Tell me about the last time something didn't go as expected." },
-    { es: "¿Cuál es el mejor recuerdo de tu infancia? Descríbelo.", en: "What's your best childhood memory? Describe it." },
-    { es: "Cuéntame de una celebración o fiesta a la que fuiste.", en: "Tell me about a celebration or party you went to." },
-    { es: "¿Qué hiciste el fin de semana pasado? Cuéntamelo todo.", en: "What did you do last weekend? Tell me everything." }
-  ] },
-  { key: "description", title: "Description", prompts: [
-    { es: "Describe tu casa, tu barrio o tu ciudad con el mayor detalle posible.", en: "Describe your home, neighborhood, or city in as much detail as you can." },
-    { es: "Describe a una persona importante en tu vida: ¿cómo es física y personalmente?", en: "Describe an important person in your life — how they look and what they're like." },
-    { es: "Describe tu lugar favorito. ¿Por qué te gusta tanto?", en: "Describe your favorite place. Why do you like it so much?" },
-    { es: "Si pudieras diseñar tu casa ideal, ¿cómo sería?", en: "If you could design your ideal home, what would it be like?" },
-    { es: "Describe cómo era tu escuela cuando eras niño.", en: "Describe what your school was like when you were a kid." }
-  ] },
-  { key: "opinion", title: "Opinion", prompts: [
-    { es: "¿Qué opinas de trabajar desde casa comparado con ir a una oficina? Da tus razones.", en: "What do you think about working from home vs. an office? Give your reasons." },
-    { es: "¿Crees que las redes sociales nos acercan o nos alejan? ¿Por qué?", en: "Do social networks bring us closer or push us apart? Why?" },
-    { es: "¿Vale la pena aprender otro idioma hoy en día? Defiende tu postura.", en: "Is learning another language worth it nowadays? Defend your position." },
-    { es: "¿Prefieres vivir en una ciudad grande o en un pueblo? ¿Por qué?", en: "Would you rather live in a big city or a small town? Why?" },
-    { es: "¿Qué opinas de que la gente use el celular durante la comida?", en: "What do you think about people using phones during meals?" }
-  ] },
-  { key: "advanced", title: "Advanced task", prompts: [
-    { es: "Explica las causas y los efectos de un problema social que te importe, y defiende tu punto de vista.", en: "Explain the causes and effects of a social issue you care about, and defend your view." },
-    { es: "Si pudieras cambiar una cosa de tu país, ¿qué cambiarías y qué consecuencias tendría?", en: "If you could change one thing about your country, what and what would follow?" },
-    { es: "¿Cómo crees que será el trabajo dentro de veinte años? Justifica tu respuesta.", en: "How do you think work will look in twenty years? Justify your answer." },
-    { es: "Alguien no está de acuerdo contigo sobre el cambio climático. Convéncelo.", en: "Someone disagrees with you about climate change. Convince them." },
-    { es: "¿Qué responsabilidad tienen las empresas con el medio ambiente? Argumenta.", en: "What responsibility do companies have to the environment? Make your case." }
-  ] }
-];
+const SESSION_LENGTH = 7;
 
-// Emergent follow-ups: the interviewer reacts to what you actually said
-// instead of reading the next line of a script. Only fires when something in
-// the answer is worth pulling on, so the interview stays conversational.
-const FOLLOW_UPS = [
-  { re: /\b(famili|herman|mam|pap|hij|espos|abuel)/i, es: "¿Y cómo es tu relación con ellos?", en: "And what's your relationship with them like?" },
-  { re: /\b(trabaj|oficina|jefe|empresa|chamba)/i, es: "¿Qué es lo que más te gusta y lo que menos te gusta de eso?", en: "What do you like most and least about that?" },
-  { re: /\b(com[ií]|comida|taco|restaurante|cocin)/i, es: "¿Y cómo se prepara? Explícame los pasos.", en: "And how is it made? Walk me through the steps." },
-  { re: /\b(viaj|playa|ciudad|pueblo|oaxaca|m[eé]xico)/i, es: "¿Y qué fue lo que más te sorprendió de ese lugar?", en: "What surprised you most about that place?" },
-  { re: /\b(amig|novi|pareja|gente)/i, es: "Cuéntame más de esa persona. ¿Cómo la conociste?", en: "Tell me more about that person. How did you meet them?" },
-  { re: /\b(estudi|escuela|universidad|clase|prepa)/i, es: "¿Y para qué te ha servido eso hasta ahora?", en: "And how has that been useful to you so far?" },
-  { re: /\b(dif[ií]cil|problema|estres|complicad|mal)/i, es: "¿Y cómo lo resolviste al final?", en: "And how did you resolve it in the end?" },
-  { re: /\b(gust|encant|prefier|amo)/i, es: "¿Por qué? Dame un ejemplo concreto.", en: "Why? Give me a concrete example." },
-  { re: /\b(ayer|pasado|antes|ni[ñn]o|cuando era)/i, es: "¿Y en qué ha cambiado eso hoy en día?", en: "And how has that changed nowadays?" },
-  { re: /\b(futuro|voy a|quiero|planeo|espero)/i, es: "¿Y qué necesitas para lograrlo?", en: "And what do you need to make that happen?" }
-];
+const FUNCTION_TITLES = {
+  describe: "Describe", narrate: "Narrate", compare: "Compare", persuade: "Give an opinion",
+  hypothesize: "Hypothesize", negotiate: "Handle a situation", sequence: "Explain steps", advise: "Advise"
+};
 
-// Every rule that matches is a candidate, and ones already used this session
-// are held back — otherwise a learner who mentions work in each answer gets
-// the identical probe seven times, which kills the conversational illusion.
-const GENERIC_PROBES = [
-  { es: "Interesante. ¿Me puedes dar más detalles?", en: "Interesting. Can you give me more detail?" },
-  { es: "¿Y por qué crees que es así?", en: "And why do you think that is?" },
-  { es: "¿Cómo te hizo sentir eso?", en: "How did that make you feel?" }
-];
+const KIND_BADGE = {
+  adaptive: null, // no special badge — this is the normal case
+  ceiling: "🔼 Level check",
+  recovery: "🎯 Confirming your level"
+};
 
-function pickFollowUp(text, used = new Set()) {
-  const matches = FOLLOW_UPS.filter((f) => f.re.test(text));
-  const pool = matches.length ? matches : GENERIC_PROBES;
-  let choices = pool.filter((f) => !used.has(f.es));
-  if (!choices.length) {
-    // Topical probes exhausted — reach for an unused generic one before
-    // repeating something they've already been asked.
-    choices = GENERIC_PROBES.filter((f) => !used.has(f.es));
-    if (!choices.length) choices = pool;
-  }
-  const pick = choices[Math.floor(Math.random() * choices.length)];
-  return pick ? { es: pick.es, en: pick.en } : null;
-}
-
-// Day-of-year seed so today's interview is stable, tomorrow's is different.
-function todaysStages(offset = 0) {
-  const now = new Date();
-  const day = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 86400000);
-  return STAGE_BANK.map((stage, i) => {
-    const variant = stage.prompts[(day + offset + i) % stage.prompts.length];
-    return { key: stage.key, title: stage.title, es: variant.es, en: variant.en };
-  });
+// The old 7-level Roadmap ladder tops out at Advanced Low (index 6). This
+// system tracks through Advanced High (index 8) internally, but anything
+// written where Roadmap reads it must stay inside the range Roadmap knows
+// about, or `ACTFL_LEVELS.find(...)` over there comes back undefined.
+function legacyCompatibleCode(idx) {
+  return PROFICIENCY_LEVELS[Math.min(idx, 6)].code;
 }
 
 export function renderSpeakingTest(container) {
   const canSpeak = speechRecognitionSupported();
-  let attempt = 0;
-  let STAGES = todaysStages(attempt);
-  let idx = 0;
-  let pendingFollowUp = null;   // emergent probe queued off the last answer
-  const usedProbes = new Set();  // keeps follow-ups from repeating in a session
-  const responses = [];
+  let sessionUsedIds = [];
+  let sessionResults = []; // { task, kind, text, scored, summary }
+  let pendingComplication = null; // { es, en } queued off the main answer — from task.followUp or task.complication
+  let pendingSecondTurnKind = null; // "followUp" | "complication", drives the label shown for it
+  let activePick = null; // { task, kind } for the current turn
+  let draftText = "";
+  const ratingAtStart = getSkillState("speaking").rating;
 
   container.appendChild(
     el("div", { class: "page-header" }, [
       el("h1", {}, "🎓 Speaking Test"),
-      el("p", {}, "A mock ACTFL interview you answer out loud. Tap the mic, speak in Spanish as long as you like, then stop — your words appear as you talk. The questions rotate daily and the interviewer follows up on what you actually say.")
+      el("p", {}, "Real-world tasks, adapted to your level as you go. Tap the mic, speak in Spanish as long as you like, then stop — your words appear as you talk. Some tasks throw in a complication mid-scene, the way a real conversation would.")
     ])
   );
 
@@ -152,26 +90,60 @@ export function renderSpeakingTest(container) {
   const body = el("div", {});
   container.appendChild(body);
 
-  render();
+  renderIntro();
 
-  function render() {
-    if (idx >= STAGES.length && !pendingFollowUp) return renderReport();
-    const stage = pendingFollowUp || STAGES[idx];
-    progressLine.textContent = pendingFollowUp
-      ? `Follow-up · ${stage.title}`
-      : `Question ${idx + 1} of ${STAGES.length} · ${stage.title}`;
+  function renderIntro() {
+    const s = getSkillState("speaking");
+    const lvl = displayedLevel("speaking");
+    const stale = isStale("speaking");
+    const days = stalenessDays("speaking");
     body.innerHTML = "";
+    body.appendChild(
+      el("div", { class: "card" }, [
+        el("div", { class: "flex justify-between items-center" }, [
+          el("div", {}, [
+            el("h3", { class: "card-title" }, "Your speaking level right now"),
+            el("p", { style: "margin:.1rem 0 0" }, [
+              el("strong", {}, lvl.label),
+              stale ? el("span", { class: "text-faint" }, ` — last confirmed ${days} days ago, take a session to refresh it` ) : null
+            ].filter(Boolean))
+          ]),
+          el("span", { class: `badge badge-${lvl.code.startsWith("novice") ? "novice" : lvl.code.startsWith("intermediate") ? "intermediate" : "advanced"}` }, lvl.short)
+        ]),
+        s.atRisk ? el("p", { class: "text-muted", style: "margin-top:.5rem" }, "⚠️ Your last couple of answers at this level were shaky — this session includes a check to confirm where you actually are.") : null,
+        el("p", { class: "text-muted", style: "margin-top:.5rem" }, `${SESSION_LENGTH} real-world tasks, roughly 5-8 minutes. Answer honestly — the point is an accurate read, not a high score.`),
+        el("button", { class: "btn btn-primary btn-lg", style: "margin-top:.5rem", onclick: renderTurn }, "Start the session")
+      ].filter(Boolean))
+    );
+  }
+
+  function renderTurn() {
+    if (sessionResults.length >= SESSION_LENGTH && !pendingComplication) return renderReport();
+
+    if (!activePick && !pendingComplication) {
+      activePick = pickNextTask("speaking", sessionUsedIds, sessionResults.length);
+      if (!activePick) return renderReport();
+      sessionUsedIds.push(activePick.task.id);
+    }
+
+    const task = activePick.task;
+    const prompt = pendingComplication || task;
+    progressLine.textContent = pendingComplication
+      ? `${pendingSecondTurnKind === "followUp" ? "Follow-up" : "Complication"} · ${FUNCTION_TITLES[task.function] || task.function}`
+      : `Task ${sessionResults.length + 1} of ${SESSION_LENGTH} · ${FUNCTION_TITLES[task.function] || task.function}`;
+
+    body.innerHTML = "";
+    const kindBadge = KIND_BADGE[activePick.kind];
 
     const card = el("div", { class: "card" }, [
-      el("span", { class: `badge badge-${pendingFollowUp ? "gold" : "default"}` }, pendingFollowUp ? "Follow-up" : stage.title),
+      kindBadge ? el("span", { class: "badge badge-gold" }, kindBadge) : null,
       el("div", { class: "flex justify-between items-center", style: "gap:.5rem;margin-top:.4rem" }, [
-        el("p", { class: "es-text", style: "font-size:1.15rem;font-weight:700;margin:0" }, stage.es),
-        el("button", { class: "play-btn", title: "Hear the question", onclick: () => audioEngine.speak(stage.es) }, "🔊")
+        el("p", { class: "es-text", style: "font-size:1.15rem;font-weight:700;margin:0" }, prompt.es),
+        el("button", { class: "play-btn", title: "Hear the prompt", onclick: () => audioEngine.speak(prompt.es) }, "🔊")
       ]),
-      el("p", { class: "text-muted", style: "margin:.25rem 0 0" }, stage.en)
-    ]);
+      el("p", { class: "text-muted", style: "margin:.25rem 0 0" }, prompt.en)
+    ].filter(Boolean));
 
-    // --- Live transcript area ---
     const transcript = el("div", {
       class: "es-text",
       style: "min-height:5.5rem;margin-top:.9rem;padding:.75rem .9rem;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);white-space:pre-wrap;line-height:1.55"
@@ -231,13 +203,11 @@ export function renderSpeakingTest(container) {
       micBtn.classList.remove("btn-danger");
     }
 
-    // Editable fallback / correction box, always available.
     const ta = el("textarea", { placeholder: canSpeak ? "…or type / edit your answer here" : "Type your answer in Spanish..." });
     ta.style.marginTop = ".6rem";
     ta.addEventListener("input", () => { finalText = ta.value; });
 
     const submit = el("button", { class: "btn btn-success", onclick: () => {
-      // Whichever has content wins; the textarea takes priority if edited.
       const answer = (ta.value.trim() || finalText || "").trim();
       if (answer.length < 3) {
         toast("Say or type an answer first.", { type: "error" });
@@ -245,26 +215,21 @@ export function renderSpeakingTest(container) {
       }
       if (dictation && listening) dictation.stop();
       blurActive();
-      if (pendingFollowUp) {
-        // Fold the follow-up into the stage it came from — it's the same turn.
-        const parent = responses[responses.length - 1];
-        parent.text += " " + answer;
-        Object.assign(parent, scoreOpenResponse(parent.text));
-        pendingFollowUp = null;
+
+      if (pendingComplication) {
+        finalizeTurn((draftText + " " + answer).trim());
+        draftText = "";
+        pendingComplication = null;
+        pendingSecondTurnKind = null;
+      } else if (task.complication || task.followUp) {
+        draftText = answer;
+        pendingSecondTurnKind = task.complication ? "complication" : "followUp";
+        pendingComplication = task.complication || task.followUp;
+        renderTurn();
       } else {
-        responses.push({ stage: stage.key, text: answer, ...scoreOpenResponse(answer) });
-        idx++;
-        // Only probe when they gave us something to pull on.
-        if (answer.split(/\s+/).length >= 6) {
-          const probe = pickFollowUp(answer, usedProbes);
-          if (probe) {
-            usedProbes.add(probe.es);
-            pendingFollowUp = { key: stage.key, title: stage.title, es: probe.es, en: probe.en };
-          }
-        }
+        finalizeTurn(answer);
       }
-      render();
-    } }, idx === STAGES.length - 1 ? "Finish interview →" : "Submit & continue →");
+    } }, pendingComplication ? "Respond & continue →" : "Submit & continue →");
 
     card.appendChild(transcript);
     card.appendChild(el("div", { class: "btn-row", style: "margin-top:.7rem;align-items:center" }, [micBtn, status]));
@@ -277,88 +242,110 @@ export function renderSpeakingTest(container) {
     body.appendChild(card);
   }
 
+  function finalizeTurn(text) {
+    const task = activePick.task;
+    const kind = activePick.kind;
+    const scored = scoreRealWorldResponse(text, task);
+    const summary = recordTaskOutcome("speaking", task, scored);
+    sessionResults.push({ task, kind, text, scored, summary });
+
+    if (summary.promoted) {
+      confettiBurst();
+      toast(`📈 Leveled up to ${levelAt(summary.displayedLevelIdx).label}!`, { icon: "🎉" });
+    } else if (summary.regressed) {
+      toast(`Level adjusted to ${levelAt(summary.displayedLevelIdx).label} based on your last few answers.`, { icon: "📉" });
+    }
+
+    activePick = null;
+    renderTurn();
+  }
+
   function renderReport() {
     progressLine.textContent = "";
     body.innerHTML = "";
 
-    // Highest stage answered well sets the ceiling, mapped onto the levels.
-    let ceiling = 0;
-    responses.forEach((r, i) => { if (r.score >= 55) ceiling = i; });
-    const level = ACTFL_LEVELS[Math.min(ceiling, ACTFL_LEVELS.length - 1)];
+    const finalState = getSkillState("speaking");
+    const lvl = displayedLevel("speaking");
+    const avgS = sessionResults.reduce((a, r) => a + r.scored.outcomeS, 0) / sessionResults.length;
+    const changedThisSession = sessionResults.some((r) => r.summary.promoted || r.summary.regressed);
 
-    const sorted = [...responses].sort((a, b) => b.score - a.score);
-    const strong = sorted.slice(0, 2);
-    const weak = [...responses].sort((a, b) => a.score - b.score).slice(0, 2);
-    const tips = weak.map((r) => {
-      const s = STAGES.find((x) => x.key === r.stage);
-      if (r.words < 25) return `${s.title}: aim for longer answers — 4–5 connected sentences, not one line.`;
-      if (!r.hasPast) return `${s.title}: work past tenses in — mix preterite (what happened) with imperfect (background).`;
-      if (!r.hasConnector) return `${s.title}: link your ideas with aunque, sin embargo, por un lado… to build real paragraphs.`;
-      if (r.mistakes) return `${s.title}: ${r.mistakes} common mistake pattern(s) detected — run the answer through the Writing tab.`;
-      return `${s.title}: solid — push for more detail and precision next time.`;
-    });
-
-    store.state.profile.selfReportedLevel = level.code;
-    const log = store.state.progress.speakingTests || (store.state.progress.speakingTests = []);
-    log.push({ date: todayISO(), level: level.code, avg: Math.round(responses.reduce((a, r) => a + r.score, 0) / responses.length) });
-    if (log.length > 30) log.shift();
     registerStudyToday();
-    updateSkillScore("speaking", 4);
     addXP(25, "Speaking Test completed");
+    updateSkillScore("speaking", avgS >= 0.6 ? 4 : avgS >= 0.3 ? 1 : -1);
+
+    const log = store.state.progress.speakingTests || (store.state.progress.speakingTests = []);
+    log.push({ date: todayISO(), level: legacyCompatibleCode(finalState.displayedLevelIdx), avg: Math.round(avgS * 100) });
+    if (log.length > 30) log.shift();
+    store.state.profile.selfReportedLevel = legacyCompatibleCode(finalState.displayedLevelIdx);
     store.save();
-    confettiBurst();
+    if (!changedThisSession) confettiBurst();
 
     body.appendChild(
       el("div", { class: "card pop-in", style: "text-align:center" }, [
         el("div", { style: "font-size:2.4rem" }, "🎓"),
-        el("p", { class: "text-muted", style: "margin:.2rem 0 0" }, "Estimated speaking level"),
-        el("h2", { style: "margin:.2rem 0" }, level.label),
-        el("span", { class: `badge badge-${level.code.startsWith("novice") ? "novice" : level.code.startsWith("intermediate") ? "intermediate" : "advanced"}` }, level.short),
-        el("p", { class: "text-muted", style: "margin-top:.6rem" }, level.blurb)
+        el("p", { class: "text-muted", style: "margin:.2rem 0 0" }, "Your speaking level"),
+        el("h2", { style: "margin:.2rem 0" }, lvl.label),
+        el("span", { class: `badge badge-${lvl.code.startsWith("novice") ? "novice" : lvl.code.startsWith("intermediate") ? "intermediate" : "advanced"}` }, lvl.short),
+        el("p", { class: "text-muted", style: "margin-top:.6rem" }, lvl.blurb),
+        el("p", { class: "text-faint", style: "margin-top:.5rem" },
+          `Rating moved ${ratingAtStart} → ${finalState.rating} this session.` + (changedThisSession ? " Your level changed based on the evidence above — see the log below." : " Not enough evidence yet to move your level; keep at it.")
+        )
       ])
     );
+
+    const dimTotals = { textType: 0, function: 0, timeFrame: 0, context: 0, accuracy: 0 };
+    sessionResults.forEach((r) => Object.keys(dimTotals).forEach((d) => { dimTotals[d] += r.scored.dims[d]; }));
+    const dimAverages = Object.entries(dimTotals).map(([k, v]) => [k, v / sessionResults.length]).sort((a, b) => a[1] - b[1]);
+    const weakest = dimAverages[0];
+    const strongest = dimAverages[dimAverages.length - 1];
 
     body.appendChild(
       el("div", { class: "grid grid-2", style: "margin-top:1rem" }, [
         el("div", { class: "card" }, [
           el("div", { class: "card-title" }, "💪 Strongest"),
-          el("ul", { style: "margin:.3rem 0 0;padding-left:1.2rem" }, strong.map((r) =>
-            el("li", {}, `${STAGES.find((s) => s.key === r.stage).title} (${r.score}/100)`)))
+          el("p", { class: "text-muted" }, `${DIMENSION_LABELS[strongest[0]]} (${strongest[1].toFixed(1)}/4)`)
         ]),
         el("div", { class: "card" }, [
           el("div", { class: "card-title" }, "🎯 Weakest"),
-          el("ul", { style: "margin:.3rem 0 0;padding-left:1.2rem" }, weak.map((r) =>
-            el("li", {}, `${STAGES.find((s) => s.key === r.stage).title} (${r.score}/100)`)))
+          el("p", { class: "text-muted" }, `${DIMENSION_LABELS[weakest[0]]} (${weakest[1].toFixed(1)}/4)`)
         ])
       ])
     );
 
-    body.appendChild(
-      el("div", { class: "card", style: "margin-top:1rem" }, [
-        el("div", { class: "card-title" }, "📈 What to work on"),
-        el("ul", { style: "margin:.3rem 0 0;padding-left:1.2rem" }, tips.map((t) => el("li", {}, t)))
-      ])
-    );
-
-    const detail = el("div", { class: "card", style: "margin-top:1rem" }, [el("div", { class: "card-title" }, "Your answers")]);
-    responses.forEach((r) => {
-      const s = STAGES.find((x) => x.key === r.stage);
-      detail.appendChild(
+    const evidenceCard = el("div", { class: "card", style: "margin-top:1rem" }, [el("div", { class: "card-title" }, "📋 This session's tasks")]);
+    sessionResults.forEach((r) => {
+      const changeNote = r.summary.promoted ? " · 📈 leveled up" : r.summary.regressed ? " · 📉 level adjusted" : "";
+      evidenceCard.appendChild(
         el("div", { style: "padding:.55rem 0;border-bottom:1px solid var(--border)" }, [
           el("div", { class: "flex justify-between items-center" }, [
-            el("strong", {}, s.title),
-            el("span", { class: "badge badge-default" }, `${r.score}/100 · ${r.words} words`)
+            el("strong", {}, `${FUNCTION_TITLES[r.task.function] || r.task.function} · ${r.task.context}`),
+            el("span", { class: "badge badge-default" }, `${r.scored.total}/20 · ${r.scored.outcomeS === 1 ? "pass" : r.scored.outcomeS === 0.5 ? "partial" : "needs work"}${changeNote}`)
           ]),
-          el("p", { class: "es-text", style: "margin:.3rem 0 0" }, r.text)
+          el("p", { class: "es-text", style: "margin:.3rem 0 0" }, r.text),
+          el("p", { class: "text-faint", style: "margin:.25rem 0 0;font-size:.85rem" }, r.scored.note)
         ])
       );
     });
-    body.appendChild(detail);
+    body.appendChild(evidenceCard);
+
+    if (finalState.evidenceLog.length) {
+      const historyCard = el("div", { class: "card", style: "margin-top:1rem" }, [el("div", { class: "card-title" }, "📈 Level history")]);
+      finalState.evidenceLog.slice(-10).reverse().forEach((e) => {
+        historyCard.appendChild(
+          el("p", { class: "text-muted", style: "margin:.3rem 0" },
+            `${e.date} — ${e.type === "promotion" ? "Advanced" : "Adjusted down"} from ${levelAt(e.fromLevelIdx).label} to ${levelAt(e.toLevelIdx).label}`)
+        );
+      });
+      body.appendChild(historyCard);
+    }
 
     body.appendChild(
       el("div", { class: "btn-row", style: "margin-top:1rem" }, [
-        el("button", { class: "btn btn-primary", onclick: () => { attempt++; STAGES = todaysStages(attempt); idx = 0; pendingFollowUp = null; usedProbes.clear(); responses.length = 0; render(); } }, "Take it again (new questions)"),
-        el("a", { class: "btn", href: "#/roadmap" }, "Back to roadmap")
+        el("button", { class: "btn btn-primary", onclick: () => {
+          sessionUsedIds = []; sessionResults = []; pendingComplication = null; pendingSecondTurnKind = null; activePick = null; draftText = "";
+          renderTurn();
+        } }, "Take another session"),
+        el("a", { class: "btn", href: "#/practice" }, "Back to practice")
       ])
     );
   }

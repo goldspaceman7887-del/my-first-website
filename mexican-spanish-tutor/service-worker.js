@@ -5,7 +5,7 @@
 //
 // Bump CACHE_NAME on every deploy so returning users get the new build
 // instead of being pinned to a stale cache forever.
-const CACHE_NAME = "mxes-cache-v12";
+const CACHE_NAME = "mxes-cache-v13";
 
 const PRECACHE_URLS = [
   "./",
@@ -28,15 +28,20 @@ const PRECACHE_URLS = [
   "js/core/feedback.js",
   "js/core/hearts.js",
   "js/core/onboarding.js",
+  "js/core/ratingEngine.js",
   "js/core/router.js",
+  "js/core/rubricEngine.js",
   "js/core/srs.js",
   "js/core/storage.js",
   "js/core/tapword.js",
+  "js/core/taskSelector.js",
   "js/core/ui.js",
+  "js/data/actflProficiency.js",
   "js/data/conversationThreads.js",
   "js/data/dialogues.js",
   "js/data/glossary.js",
   "js/data/mistakePatterns.js",
+  "js/data/realWorldTasks.js",
   "js/data/roadmap.js",
   "js/data/scenarios.js",
   "js/data/sentences.js",

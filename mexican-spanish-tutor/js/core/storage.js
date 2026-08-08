@@ -4,6 +4,26 @@
 const STORAGE_KEY = "mx_es_state_v1";
 const SCHEMA_VERSION = 1;
 
+// Fresh per-skill state for core/ratingEngine.js's adaptive proficiency
+// track. Always starts at true Novice Low — never seeded from the older
+// XP/state.scores composite (core/assessment.js), since that's reachable
+// mostly through multiple-choice roadmap quizzes and this track exists so
+// proficiency is earned only through graded real-world task performance.
+function emptyProficiency() {
+  return {
+    rating: 0,
+    displayedLevelIdx: 0,
+    qualifyingCount: 0,
+    lastQualifyingDate: null,
+    boostedRemaining: 0,
+    consecutiveFailsAtLevel: 0,
+    recentOutcomesAtDisplayed: [],
+    atRisk: false,
+    history: [],      // recent { date, taskId, levelIdx, function, context, dims, outcomeS, ratingBefore, ratingAfter }
+    evidenceLog: []   // recent { date, type: "promotion"|"regression", fromLevelIdx, toLevelIdx }
+  };
+}
+
 function defaultState() {
   return {
     version: SCHEMA_VERSION,
@@ -49,6 +69,17 @@ function defaultState() {
     scores: {
       // skill -> 0-100 heuristic score, nudged by every gradeable interaction
       speaking: 0, listening: 0, reading: 0, writing: 0, vocabulary: 0, grammar: 0
+    },
+    // Adaptive, per-skill ACTFL proficiency tracking (core/ratingEngine.js) —
+    // separate from `scores`/`profile.confirmedLevel` above, which the older
+    // composite estimate (core/assessment.js) still uses unchanged. Populated
+    // for "speaking" first (js/views/speakingTest.js); writing/reading/
+    // listening reuse this same shape once their task banks exist.
+    proficiency: {
+      speaking: emptyProficiency(),
+      writing: emptyProficiency(),
+      reading: emptyProficiency(),
+      listening: emptyProficiency()
     },
     progress: {
       lessonsCompleted: [], // daily lesson ids/dates
