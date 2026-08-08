@@ -24,6 +24,18 @@ function emptyProficiency() {
   };
 }
 
+// Fresh state for core/canDoEngine.js's Can-Do validation track — separate
+// from progress.canDoCompleted (the legacy self-check + checkpoint
+// blanket-grant in js/views/roadmap.js, untouched). `statuses` is a
+// canDoId -> {status, confidence, updatedAt} map computed from existing
+// state.proficiency evidence; `evidenceLog` records status transitions.
+function emptyCanDoValidation() {
+  return {
+    statuses: {},
+    evidenceLog: []
+  };
+}
+
 function defaultState() {
   return {
     version: SCHEMA_VERSION,
@@ -81,6 +93,10 @@ function defaultState() {
       reading: emptyProficiency(),
       listening: emptyProficiency()
     },
+    // Per-statement ACTFL Can-Do validation (core/canDoEngine.js) — additive
+    // and separate from progress.canDoCompleted below. See
+    // docs/can-do-validation-framework.md.
+    canDoValidation: emptyCanDoValidation(),
     progress: {
       lessonsCompleted: [], // daily lesson ids/dates
       dialoguesCompleted: [],
