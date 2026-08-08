@@ -42,7 +42,7 @@ const OUTCOME_COPY = {
   failed: { icon: "❌", title: "Hubo un malentendido", desc: "Algo se cruzó y no se corrigió a tiempo — así también pasa en la vida real. Inténtalo otra vez." }
 };
 
-export function renderScenarioPlay(container, scenario, { onExit, onRetry } = {}) {
+export function renderScenarioPlay(container, scenario, { onExit, onRetry, onFinish, openings } = {}) {
   const canSpeak = speechRecognitionSupported();
   const session = createSession(scenario);
   let dictation = null;
@@ -271,6 +271,7 @@ export function renderScenarioPlay(container, scenario, { onExit, onRetry } = {}
 
     const attempt = attemptFromSession(session, todayISO());
     recordScenarioAttempt(attempt);
+    if (typeof onFinish === "function") onFinish(attempt);
     registerStudyToday();
 
     const xp = attempt.outcome === "success" ? Math.round(20 + attempt.overallScore / 4)
@@ -307,7 +308,10 @@ export function renderScenarioPlay(container, scenario, { onExit, onRetry } = {}
 
   // ---------- kick off ----------
   const stopTapWords = initTapWords();
-  const opening = pick(scenario.openings);
+  // Daily Life Mode passes a mood-specific opening pool (moodOpenings.good/
+  // rough) based on how the previous segment went; every other caller omits
+  // it and gets the scenario's normal openings[].
+  const opening = pick(openings || scenario.openings);
   npcBubble({ es: opening.es, en: opening.en });
   updateStatus();
 

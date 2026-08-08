@@ -93,7 +93,7 @@ async function testRoutes(browser) {
   const routes = ["#/dashboard", "#/roadmap", "#/level-test", "#/proficiency", "#/learn", "#/learn/vocab",
     "#/learn/grammar", "#/learn/dialogues", "#/practice", "#/practice/daily", "#/practice/story",
     "#/practice/conversation", "#/practice/scenarios", "#/practice/roleplay", "#/practice/listening",
-    "#/practice/weakness", "#/review", "#/review/known", "#/save", "#/achievements", "#/settings"];
+    "#/practice/weakness", "#/daily-life", "#/review", "#/review/known", "#/save", "#/achievements", "#/settings"];
   let rendered = 0;
   for (const r of routes) {
     await go(page, r);
@@ -867,6 +867,111 @@ async function testScenarios(browser) {
   await ctx.close();
 }
 
+async function testDailyLife(browser) {
+  group("daily-life");
+  const { page, ctx, errors } = await freshPage(browser);
+
+  // ---------- structural integrity (pure, no UI) ----------
+  const structure = await page.evaluate(async () => {
+    const { SEGMENTS, moodFor, summarizeDay } = await import("/js/views/dailyLife.js");
+    const { scenarioById } = await import("/js/data/scenarios.js");
+    const problems = [];
+    SEGMENTS.forEach((seg, i) => {
+      const s = scenarioById(seg.id);
+      if (!s) { problems.push(`${seg.id}: no matching scenario`); return; }
+      if (i > 0) {
+        if (!s.moodOpenings || !s.moodOpenings.good?.length || !s.moodOpenings.rough?.length) {
+          problems.push(`${seg.id}: missing moodOpenings.good/rough`);
+        }
+      }
+    });
+    const mood = { good: moodFor(70), roughHigh: moodFor(69), max: moodFor(100), zero: moodFor(0) };
+    const strong = summarizeDay(
+      Object.fromEntries(SEGMENTS.map((s) => [s.id, 80])),
+      Object.fromEntries(SEGMENTS.map((s) => [s.id, "success"]))
+    );
+    const rough = summarizeDay(
+      Object.fromEntries(SEGMENTS.map((s) => [s.id, 20])),
+      Object.fromEntries(SEGMENTS.map((s) => [s.id, "failed"]))
+    );
+    const partial = summarizeDay(
+      Object.fromEntries(SEGMENTS.slice(0, 5).map((s) => [s.id, 80])),
+      Object.fromEntries(SEGMENTS.slice(0, 5).map((s) => [s.id, "success"]))
+    );
+    return { count: SEGMENTS.length, problems, mood, strong, rough, partial };
+  });
+  check("7 segments defined, chained to real scenarios with moodOpenings", structure.count === 7 && structure.problems.length === 0, structure.problems.join(" | "));
+  check("moodFor() applies the good/rough threshold correctly", structure.mood.good === "good" && structure.mood.roughHigh === "rough" && structure.mood.max === "good" && structure.mood.zero === "rough", JSON.stringify(structure.mood));
+  check("summarizeDay() reads a strong day as strong with the right average", structure.strong.dayOutcome === "strong" && structure.strong.avg === 80 && structure.strong.successes === 7 && structure.strong.skipped.length === 0, JSON.stringify(structure.strong));
+  check("summarizeDay() reads a rough day as rough", structure.rough.dayOutcome === "rough" && structure.rough.successes === 0, JSON.stringify(structure.rough));
+  check("summarizeDay() reads a partially-played day as incomplete", structure.partial.dayOutcome === "incomplete" && structure.partial.skipped.length === 2, JSON.stringify(structure.partial));
+
+  // ---------- UI: start the day, sequential progression ----------
+  await go(page, "#/daily-life");
+  await page.waitForTimeout(300);
+  const badgesBeforeStart = await page.$$eval(".flex.gap-2.flex-wrap .badge", (els) => els.length);
+  check("timeline shows all 7 segments before starting", badgesBeforeStart === 7);
+
+  await page.click('button:has-text("Start the day")');
+  await page.waitForTimeout(400);
+  const firstBubble = await page.$(".chat-bubble.bot");
+  check("first segment (Morning) opens with an NPC line", Boolean(firstBubble));
+
+  // Force-finish the first segment with minimal input (no slots filled) —
+  // this should still resolve (as "incomplete") and hand back a "continue"
+  // button rather than a dead end, exercising the onFinish -> next-segment
+  // wiring without needing a full multi-turn completion.
+  await page.fill(".chat-input-row input", "Hola");
+  await page.click('button:has-text("Enviar")');
+  await page.waitForTimeout(500);
+  await page.click('button:has-text("Terminar ahora")');
+  await page.waitForTimeout(300);
+  const debrief = await page.$(".empty-state");
+  check("segment reaches its own debrief", Boolean(debrief));
+
+  const continueBtn = await page.$('button:has-text("Continue to the next part of your day")') || await page.$('button:has-text("See day summary")');
+  check('a "continue" button appears after the debrief', Boolean(continueBtn));
+  if (continueBtn) {
+    await continueBtn.click();
+    await page.waitForTimeout(400);
+    const secondBubble = await page.$(".chat-bubble.bot");
+    check("advancing lands on the second segment (Commute) with its own NPC line", Boolean(secondBubble));
+    const doneBadge = await page.$(".flex.gap-2.flex-wrap .badge-success");
+    check("first segment's timeline badge now reads done", Boolean(doneBadge));
+  }
+
+  // ---------- drive the whole day to completion, check the summary ----------
+  const before = await page.evaluate(async () => {
+    const { store } = await import("/js/core/storage.js");
+    return (store.state.progress.dailyLifeRuns || []).length;
+  });
+  await go(page, "#/daily-life");
+  await page.waitForTimeout(300);
+  await page.click('button:has-text("Start the day")');
+  await page.waitForTimeout(400);
+  for (let i = 0; i < 7; i++) {
+    await page.fill(".chat-input-row input", "Hola");
+    await page.click('button:has-text("Enviar")');
+    await page.waitForTimeout(500);
+    await page.click('button:has-text("Terminar ahora")');
+    await page.waitForTimeout(300);
+    const next = await page.$('button:has-text("Continue to the next part of your day")');
+    const toSummary = await page.$('button:has-text("See day summary")');
+    if (next) { await next.click(); await page.waitForTimeout(400); }
+    else if (toSummary) { await toSummary.click(); await page.waitForTimeout(400); break; }
+  }
+  const summaryHeading = await page.$eval(".empty-state h3", (e) => e.textContent).catch(() => "");
+  check("all 7 segments played through reach a day summary", summaryHeading.includes("Day complete"), summaryHeading);
+  const after = await page.evaluate(async () => {
+    const { store } = await import("/js/core/storage.js");
+    return (store.state.progress.dailyLifeRuns || []).length;
+  });
+  check("the day's run is recorded in dailyLifeRuns", after === before + 1, `${before} -> ${after}`);
+
+  check("no JS errors", errors.length === 0, errors.slice(0, 3).join(" | "));
+  await ctx.close();
+}
+
 async function testProficiency(browser) {
   group("proficiency");
   const { page, ctx, errors } = await freshPage(browser);
@@ -1108,6 +1213,7 @@ const GROUPS = {
   "error feedback": testCorrections,
   immersion: testImmersion,
   scenarios: testScenarios,
+  "daily-life": testDailyLife,
   proficiency: testProficiency,
   storage: testStorage,
   mobile: testMobile,

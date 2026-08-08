@@ -141,6 +141,14 @@ export function renderDashboard(container) {
   ]);
   container.appendChild(nudge);
 
+  container.appendChild(
+    el("div", { class: "card", style: "margin-top:1rem;border-left:3px solid var(--accent)" }, [
+      el("div", { class: "card-title" }, "🌅 A Day in Mexico"),
+      el("p", { class: "text-muted" }, "Seven real-life tasks chained into one day — a coffee run, the commute, a work meeting, lunch, apartment hunting, a party, and a lost wallet. How each one goes shapes the next."),
+      el("a", { class: "btn btn-sm", style: "margin-top:.4rem", href: "#/daily-life" }, "Start the day →")
+    ])
+  );
+
   if ((store.state.profile.xp || 0) >= 50 && !store.state.profile.lastSavedAt) {
     container.appendChild(
       el("div", { class: "card", style: "margin-top:1rem;border-left:3px solid var(--gold)" }, [

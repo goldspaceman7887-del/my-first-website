@@ -42,6 +42,8 @@ const OTHER_MODES = [
   { id: "story", icon: "📖", label: "Stories" }
 ];
 
+const DAILY_LIFE_LINK = { href: "#/daily-life", icon: "🌅", label: "A Day in Mexico", blurb: "Seven tasks chained into one day — how each goes shapes the next." };
+
 export function renderDailyPractice(container) {
   container.appendChild(
     el("div", { class: "page-header" }, [
@@ -86,6 +88,14 @@ export function renderDailyPractice(container) {
       ])
     );
   }
+
+  grid.appendChild(
+    el("a", { class: "card card-link", href: DAILY_LIFE_LINK.href, style: "border-left:3px solid var(--accent)" }, [
+      el("span", { style: "font-size:1.6rem" }, DAILY_LIFE_LINK.icon),
+      el("h3", { style: "margin:.5rem 0 .2rem" }, DAILY_LIFE_LINK.label),
+      el("p", { class: "text-muted" }, DAILY_LIFE_LINK.blurb)
+    ])
+  );
 
   container.appendChild(el("h3", { style: "margin-top:1.5rem" }, "Or pick a mode"));
   const modeGrid = el("div", { class: "grid grid-auto" });

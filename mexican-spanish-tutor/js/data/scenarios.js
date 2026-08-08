@@ -66,6 +66,13 @@ export const SCENARIOS = [
       { es: "¿Qué se le antoja hoy?", en: "What are you in the mood for today?" },
       { es: "Hola, bienvenido. ¿Qué le sirvo?", en: "Hi, welcome. What can I serve you?" }
     ],
+    // Used only by Daily Life Mode (views/dailyLife.js) as this scenario's
+    // Morning segment — light continuity based on how the previous segment
+    // went, never referenced by the standalone scenario picker.
+    moodOpenings: {
+      good: [{ es: "¡Buenos días! Se ve que va a ser un gran día, ¿qué le preparo?", en: "Good morning! Looks like it's going to be a great day, what can I get you?" }],
+      rough: [{ es: "Buenos días... ¿todo bien? ¿Qué le preparo?", en: "Good morning... everything okay? What can I get you?" }]
+    },
 
     slots: [
       {
@@ -354,6 +361,11 @@ export const SCENARIOS = [
       { es: "¿Le tomo su orden?", en: "May I take your order?" },
       { es: "¿Qué le sirvo hoy?", en: "What can I get you today?" }
     ],
+    // Daily Life Mode's Lunch segment, following Work.
+    moodOpenings: {
+      good: [{ es: "¡Buenas! Se ve que tuvo una mañana productiva. ¿Ya sabe qué va a ordenar?", en: "Hi! Looks like you had a productive morning. Do you know what you'd like to order?" }],
+      rough: [{ es: "Buenas... ¿mañana pesada? A ver si esto lo anima. ¿Ya sabe qué va a ordenar?", en: "Hi... rough morning? Let's see if this cheers you up. Do you know what you'd like to order?" }]
+    },
     slots: [
       {
         id: "dish", label: "dish", labelEs: "platillo", required: true, type: "enum",
@@ -721,6 +733,11 @@ export const SCENARIOS = [
       { es: "¿Le ayudo con su viaje?", en: "Can I help you with your trip?" },
       { es: "¿Qué necesita?", en: "What do you need?" }
     ],
+    // Daily Life Mode's Commute segment, following Morning.
+    moodOpenings: {
+      good: [{ es: "¡Buenas! Con esa energía se nota que le fue bien en el desayuno. ¿A dónde va?", en: "Hey! You look like breakfast went well. Where are you headed?" }],
+      rough: [{ es: "¿Todo bien? Se le ve algo apurado. ¿A dónde va?", en: "Everything okay? You look a bit rushed. Where are you headed?" }]
+    },
     slots: [
       {
         id: "destination", label: "destination station", labelEs: "estación destino", required: true, type: "enum",
@@ -921,6 +938,11 @@ export const SCENARIOS = [
       { es: "¡Hola! No te había visto antes, ¿verdad? Soy Vale.", en: "Hi! I haven't seen you before, right? I'm Vale." },
       { es: "¿Qué onda? ¿De dónde conoces al que organiza la fiesta?", en: "Hey! How do you know the host?" }
     ],
+    // Daily Life Mode's Evening segment, following Afternoon.
+    moodOpenings: {
+      good: [{ es: "¡Hola! Se te ve contento hoy. Soy Vale, ¿cómo te llamas?", en: "Hi! You seem happy today. I'm Vale, what's your name?" }],
+      rough: [{ es: "¡Hola! ¿Cansado? Ven, relájate. Soy Vale, ¿cómo te llamas?", en: "Hi! Tired? Come on, relax. I'm Vale, what's your name?" }]
+    },
     slots: [
       {
         id: "selfName", label: "your name", labelEs: "tu nombre", required: true, type: "free", contextOnly: true,
@@ -1005,6 +1027,11 @@ export const SCENARIOS = [
       { es: "Bienvenido, pase. ¿Qué le gustaría saber del departamento?", en: "Welcome, come in. What would you like to know about the apartment?" },
       { es: "Hola, ¿es su primera vez viendo el lugar?", en: "Hi, is this your first time seeing the place?" }
     ],
+    // Daily Life Mode's Afternoon segment, following Lunch.
+    moodOpenings: {
+      good: [{ es: "Bienvenido, pase. Se le ve de buen humor. ¿Qué le gustaría saber del departamento?", en: "Welcome, come in. You seem to be in a good mood. What would you like to know about the apartment?" }],
+      rough: [{ es: "Bienvenido, pase. ¿Todo bien? A ver, ¿qué le gustaría saber del departamento?", en: "Welcome, come in. Everything okay? So, what would you like to know about the apartment?" }]
+    },
     slots: [
       {
         id: "moveInDate", label: "move-in date", labelEs: "fecha de mudanza", required: true, type: "enum",
@@ -1207,6 +1234,11 @@ export const SCENARIOS = [
       { es: "Buenos días a todos. Empecemos — ¿cómo va tu proyecto?", en: "Good morning everyone. Let's start — how's your project going?" },
       { es: "A ver, cuéntame el avance de tu parte.", en: "So, tell me the progress on your part." }
     ],
+    // Daily Life Mode's Work segment, following Commute.
+    moodOpenings: {
+      good: [{ es: "Buenos días a todos, veo que llegaron bien. Empecemos — ¿cómo va tu proyecto?", en: "Good morning everyone, glad you made it in okay. Let's start — how's your project going?" }],
+      rough: [{ es: "Buenos días... ¿todo bien con el traslado? En fin, empecemos — ¿cómo va tu proyecto?", en: "Good morning... everything okay with the commute? Anyway, let's start — how's your project going?" }]
+    },
     slots: [
       {
         id: "projectStatus", label: "project status", labelEs: "estatus del proyecto", required: true, type: "enum",
@@ -1296,6 +1328,11 @@ export const SCENARIOS = [
       { es: "Buenas, ¿en qué le puedo ayudar?", en: "Good day, how can I help you?" },
       { es: "¿Qué se le ofrece?", en: "What do you need?" }
     ],
+    // Daily Life Mode's Night segment, following Evening — the finale.
+    moodOpenings: {
+      good: [{ es: "Buenas noches, ¿en qué le puedo ayudar? Se ve que la está pasando bien.", en: "Good evening, how can I help you? Looks like you're having a good time." }],
+      rough: [{ es: "Buenas noches, ¿en qué le puedo ayudar? Se le ve preocupado.", en: "Good evening, how can I help you? You seem worried." }]
+    },
     slots: [
       {
         id: "reasonForReport", label: "reason for the report", labelEs: "motivo del reporte", required: true, type: "enum",
