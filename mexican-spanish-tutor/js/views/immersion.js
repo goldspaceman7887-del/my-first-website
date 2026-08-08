@@ -1,26 +1,37 @@
 // IMMERSION MODE — Mexican Spanish only, start to finish.
 //
 // Runs the same shared threaded engine as the conversation partner
-// (core/conversationEngine.js): nine topics of level-tiered follow-ups that
-// dig deeper into whatever you're actually talking about, occasional
-// mishearings/interruptions/clarifying questions so it doesn't feel like a
-// form, and it never repeats a question — not within a session, and not in
-// the next one either, because what it has already asked is remembered
-// between visits (progress.immersionAsked, via the engine's persist:true
-// mode).
+// (core/conversationEngine.js): a wide set of topics with level-tiered
+// follow-ups that dig deeper into whatever you're actually talking about,
+// occasional mishearings/interruptions/clarifying questions so it doesn't
+// feel like a form, and it never repeats a question — not within a session,
+// and not in the next one either, because what it has already asked is
+// remembered between visits (progress.immersionAsked, via the engine's
+// persist:true mode).
 //
 // What makes it Immersion rather than Conversation: no English on screen
 // unless you ask for it, and typing "?" or "no entiendo" replays the last
 // line slowly with a translation before handing the same question back to
 // you.
+//
+// Two things are Immersion-only, layered on top of the shared engine via its
+// additive `adaptive`/`followups` options (Conversation Mode never sets
+// either, so its behavior is untouched):
+//   - Difficulty adapts within a session: a persisted bias (-1..+1),
+//     nudged by how long/clean each reply was, can only ever soften probe
+//     difficulty toward easier material already unlocked by the learner's
+//     real ACTFL level — it never reaches past that ceiling.
+//   - Sentence starters and 🐢 slow-replay / 🎧 shadow-practice buttons give
+//     lighter-weight typing and speaking scaffolding than a blank chat box.
 
 import { store, todayISO } from "../core/storage.js";
 import { el, blurActive, toast } from "../core/ui.js";
 import { audioEngine, speechRecognitionSupported, startDictation } from "../core/audio.js";
 import { addXP, registerStudyToday, updateSkillScore } from "../core/gamification.js";
-import { createEngine } from "../core/conversationEngine.js";
+import { createEngine, learnerTier } from "../core/conversationEngine.js";
 import { THREADS } from "../data/conversationThreads.js";
 import { tappable, initTapWords } from "../core/tapword.js";
+import { hasCorrections } from "../core/feedback.js";
 
 const CONFUSION_TRIGGERS = /(^\?+$|no entiendo|no s[ée] qu[ée] decir|qu[ée] significa|help|english|ingl[ée]s|no comprendo|otra vez|m[áa]s despacio)/i;
 
@@ -31,20 +42,57 @@ const OPENERS = [
   { es: "¡Buenas! Cuéntame algo de ti.", en: "Hey there! Tell me something about yourself." },
   { es: "¡Órale, llegaste! ¿Qué has hecho hoy?", en: "Hey, you made it! What have you been up to today?" },
   { es: "¡Hola otra vez! ¿De qué quieres platicar?", en: "Hi again! What do you want to talk about?" },
-  { es: "¿Qué tal? ¿Todo bien por allá?", en: "How's it going? All good over there?" }
+  { es: "¿Qué tal? ¿Todo bien por allá?", en: "How's it going? All good over there?" },
+  { es: "¡Qué gusto verte! ¿Cómo has estado?", en: "Good to see you! How have you been?" },
+  { es: "¡Ándale, aquí andamos! ¿Qué me cuentas?", en: "There you are! What's new with you?" },
+  { es: "¡Hola! ¿Ya listo/a para platicar tantito?", en: "Hi! Ready to chat for a bit?" }
 ];
+
+// Typed-response scaffolding, tiered like everything else in this engine —
+// tapping one starts the sentence for you instead of staring at a blank box.
+// Kept local to Immersion Mode: Conversation Mode already gives a topic
+// picker as its "getting started" affordance, this is this mode's version.
+const STARTER_PHRASES = {
+  0: ["Pues...", "Sí, porque...", "No, la verdad...", "A mí me gusta..."],
+  1: ["Bueno, la verdad es que...", "Antes sí, pero ahora...", "Casi siempre...", "Depende, porque..."],
+  2: ["Yo creo que...", "Por un lado... pero por otro...", "Lo que pasa es que...", "Si te soy sincero/a,..."]
+};
 
 function pick(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function clamp(v, lo, hi) {
+  return Math.max(lo, Math.min(hi, v));
+}
+
 export function renderImmersion(container) {
   const canSpeak = speechRecognitionSupported();
-  const engine = createEngine({ persist: true });
+  // adaptive: probe difficulty can back off (never exceed) the learner's real
+  // ACTFL-gated ceiling based on how this session is going.
+  // followups: occasional generic "tell me more"-style digs, on top of the
+  // scripted thread probes. Both default off, so Conversation Mode — which
+  // never passes them — is completely unaffected by either.
+  const engine = createEngine({ persist: true, adaptive: true, followups: true });
   const untap = initTapWords();
   let turns = 0;
   let lastBotLine = null;
   let dictation = null;
+  let shadowCtrl = null;
+  // -1 (struggling) .. +1 (doing well), persisted so a session picks up
+  // roughly where the last one left off rather than resetting every visit.
+  let bias = clamp(store.state.progress.immersionSkillBias || 0, -1, 1);
+  engine.setBias(bias);
+  engine.setUnpredictability(clamp(0.15 + (learnerTier() === 2 ? 0.05 : 0), 0.05, 0.3));
 
   container.appendChild(
     el("div", { class: "page-header" }, [
@@ -57,12 +105,15 @@ export function renderImmersion(container) {
   container.appendChild(
     el("p", { class: "text-muted", style: "font-size:.85rem;margin:.2rem 0 .6rem" },
       canSpeak
-        ? "Todo en español. Escribe \"?\" si te pierdes. Toca 🎤 para hablar."
-        : "Todo en español. Escribe \"?\" si te pierdes.")
+        ? "Todo en español. Escribe \"?\" si te pierdes. Toca 🎤 para hablar, 🐢 para oír más despacio, 🎧 para practicar la pronunciación."
+        : "Todo en español. Escribe \"?\" si te pierdes. Toca 🐢 para oír más despacio.")
   );
 
   const log = el("div", { class: "chat-log" });
   container.appendChild(log);
+
+  const startersRow = el("div", { class: "search-row", style: "margin-bottom:.4rem" });
+  container.appendChild(startersRow);
 
   const input = el("input", { type: "text", placeholder: "Responde en español... (o escribe \"?\")" });
   input.style.cssText = "flex:1;padding:.65rem .9rem;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:1.05rem;font-family:var(--font-es);";
@@ -116,23 +167,49 @@ export function renderImmersion(container) {
   // ---------- rendering ----------
   function botSay(line) {
     lastBotLine = line;
+    const shadowBtn = el("button", { class: "btn btn-sm" }, "🎧 Practicar");
+    shadowBtn.addEventListener("click", () => {
+      if (shadowCtrl) { shadowCtrl.cancel(); shadowCtrl = null; shadowBtn.textContent = "🎧 Practicar"; return; }
+      shadowBtn.textContent = "⏹ Practicando…";
+      shadowCtrl = audioEngine.shadow(line.es, {
+        repeats: 3,
+        onDone: () => { shadowCtrl = null; shadowBtn.textContent = "🎧 Practicar"; }
+      });
+    });
     const bubble = el("div", { class: "chat-bubble bot" }, [tappable(line.es, "cb-es")]);
     const hint = el("div", { class: "cb-en hidden" }, line.en);
     bubble.appendChild(hint);
     bubble.appendChild(
-      el("div", { class: "flex", style: "gap:.35rem;margin-top:.3rem" }, [
+      el("div", { class: "flex", style: "gap:.35rem;margin-top:.3rem;flex-wrap:wrap" }, [
         el("button", { class: "btn btn-sm", onclick: () => hint.classList.toggle("hidden") }, "💡 Hint"),
-        el("button", { class: "btn btn-sm", onclick: () => audioEngine.speak(line.es) }, "🔊")
+        el("button", { class: "btn btn-sm", onclick: () => audioEngine.speak(line.es) }, "🔊"),
+        el("button", { class: "btn btn-sm", title: "Escuchar más despacio", onclick: () => audioEngine.speakSlow(line.es) }, "🐢"),
+        shadowBtn
       ])
     );
     log.appendChild(bubble);
     log.scrollTop = log.scrollHeight;
     audioEngine.speak(line.es);
+    renderStarters();
   }
 
   function userSay(text) {
     log.appendChild(el("div", { class: "chat-bubble user" }, [el("div", { class: "cb-es es-text" }, text)]));
     log.scrollTop = log.scrollHeight;
+  }
+
+  // Typing scaffolding: a few tappable sentence starters at the learner's
+  // current tier, refreshed each turn so they don't go stale. Tapping one
+  // fills the box rather than sending — the learner still finishes the
+  // thought themselves.
+  function renderStarters() {
+    startersRow.innerHTML = "";
+    const options = STARTER_PHRASES[learnerTier()] || STARTER_PHRASES[0];
+    shuffle(options).slice(0, 3).forEach((phrase) => {
+      startersRow.appendChild(
+        el("button", { class: "chip-filter", type: "button", onclick: () => { input.value = phrase + " "; input.focus(); } }, phrase)
+      );
+    });
   }
 
   function send() {
@@ -163,6 +240,7 @@ export function renderImmersion(container) {
 
     engine.remember(text);
     updateSkillScore("speaking", 0.5);
+    updateBias(text);
     const reply = engine.respond(text);
     setTimeout(() => botSay(reply), 350);
 
@@ -175,13 +253,37 @@ export function renderImmersion(container) {
     }
   }
 
+  // Nudges difficulty from how this turn actually went: a longer, clean
+  // reply pushes toward harder material; a very short or error-flagged one
+  // eases off. hasCorrections() reuses the existing mistake checker purely as
+  // a silent signal here — nothing is shown on screen, which stays true to
+  // Immersion Mode's "no interruption" design.
+  function updateBias(text) {
+    const words = text.trim().split(/\s+/).filter(Boolean).length;
+    const clean = !hasCorrections(text);
+    let delta = 0;
+    if (words >= 6 && clean) delta = 0.12;
+    else if (words <= 2 || !clean) delta = -0.1;
+    if (!delta) return;
+    bias = clamp(bias + delta, -1, 1);
+    store.state.progress.immersionSkillBias = bias;
+    store.save();
+    engine.setBias(bias);
+    engine.setUnpredictability(clamp(
+      0.15 + (learnerTier() === 2 ? 0.05 : 0) + (bias > 0.5 ? 0.05 : bias < -0.4 ? -0.05 : 0),
+      0.05, 0.3
+    ));
+  }
+
   engine.startThread(pick(THREADS));
   botSay(pick(OPENERS));
 
-  // Leaving the page with the mic live would keep it recording; the tap-word
-  // popover also lives on document.body and must be cleaned up the same way.
+  // Leaving the page with the mic live would keep it recording; an active
+  // shadow loop and the tap-word popover (which lives on document.body) need
+  // the same treatment.
   return () => {
     if (dictation) { dictation.stop(); dictation = null; }
+    if (shadowCtrl) { shadowCtrl.cancel(); shadowCtrl = null; }
     untap();
   };
 }

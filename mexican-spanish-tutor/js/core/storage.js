@@ -71,6 +71,10 @@ function defaultState() {
       // Questions Immersion has already asked, so a new session doesn't open
       // with the same one. Resets automatically once the pool is exhausted.
       immersionAsked: [],
+      // Adaptive difficulty for Immersion Mode only: nudged toward -1 by
+      // short/error-prone turns, toward +1 by longer clean ones, clamped to
+      // [-1, 1]. Immersion-local — never read by the ACTFL estimate.
+      immersionSkillBias: 0,
       scenarioSessions: [], // { date, scenarioId, outcome }
       scenariosCompleted: [], // scenario ids resolved to any outcome
       dailySimSessions: [], // { date, slotsCompleted, outcomes: [] }

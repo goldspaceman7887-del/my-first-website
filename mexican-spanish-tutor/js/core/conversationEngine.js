@@ -18,7 +18,8 @@ import { levelIndex } from "../data/roadmap.js";
 import { estimatedLevel } from "./gamification.js";
 import {
   THREADS, REACTIONS, NEUTRAL_REACTIONS, PIVOTS, MEMORY_RULES, CALLBACKS,
-  MISUNDERSTANDINGS, INTERRUPTIONS, CLARIFICATION_REQUESTS, MULTI_QUESTION_PROBES
+  MISUNDERSTANDINGS, INTERRUPTIONS, CLARIFICATION_REQUESTS, MULTI_QUESTION_PROBES,
+  FOLLOWUPS
 } from "../data/conversationThreads.js";
 
 const UNEXPECTED_BANKS = {
@@ -38,12 +39,21 @@ export function learnerTier() {
   return idx <= 2 ? 0 : idx <= 5 ? 1 : 2;
 }
 
-export function createEngine({ persist = false, unpredictability = 0.15 } = {}) {
+// adaptive/followups default OFF, so a caller that doesn't pass them (every
+// existing Conversation Mode call site) gets byte-identical behavior to
+// before these were added. Immersion Mode opts in explicitly.
+export function createEngine({ persist = false, unpredictability = 0.15, adaptive = false, followups = false } = {}) {
   let thread = null;
   let sessionAsked = new Set(); // used when persist is false
   let sinceCallback = 0;
   let sinceUnexpected = 0;
+  let sinceFollowup = 0;
   let greetedName = false;
+  // Mutable copies so a caller can retune mid-session (Immersion Mode does,
+  // based on how the learner is doing); default behavior for callers that
+  // never touch these is identical to the original fixed values.
+  let unpredictabilityLevel = unpredictability;
+  let tierBias = 0; // -1 (struggling) .. +1 (doing well); only consulted when adaptive is true
   const memory = {};
 
   function askedList() {
@@ -113,10 +123,33 @@ export function createEngine({ persist = false, unpredictability = 0.15 } = {}) 
       if (!anyLeft) { clearAsked(); eligible = t.probes.filter((p) => p.tier <= tier); }
     }
     if (!eligible.length) return null;
-    const best = Math.max(...eligible.map((p) => p.tier));
+    // Default: always reach for the hardest available probe (unchanged from
+    // the original behavior). Adaptive mode softens that only when the
+    // learner has been visibly struggling this session — it never picks
+    // something *harder* than the ceiling already allows, it only ever backs
+    // off toward easier, already-eligible material.
+    const tiersAvail = eligible.map((p) => p.tier);
+    const best = (adaptive && tierBias < -0.4) ? Math.min(...tiersAvail) : Math.max(...tiersAvail);
     const chosen = pick(eligible.filter((p) => p.tier === best));
     markAsked(`${t.id}:${chosen.es}`);
     return chosen;
+  }
+
+  // Generic, topic-agnostic "dig one turn deeper" continuation — used instead
+  // of always jumping straight to the next scripted thread probe, so a
+  // session feels less like a fixed Q&A ladder. Opt-in via `followups` so
+  // Conversation Mode is unaffected.
+  function maybeFollowup() {
+    sinceFollowup++;
+    if (sinceFollowup < 2) return null;
+    if (Math.random() > 0.4) return null;
+    const tier = learnerTier();
+    const eligible = FOLLOWUPS.filter((f) => f.tier <= tier && !isAsked(`followup:${f.es}`));
+    if (!eligible.length) return null;
+    const line = pick(eligible);
+    markAsked(`followup:${line.es}`);
+    sinceFollowup = 0;
+    return line;
   }
 
   function callback() {
@@ -141,7 +174,7 @@ export function createEngine({ persist = false, unpredictability = 0.15 } = {}) 
   function maybeUnexpected() {
     sinceUnexpected++;
     if (sinceUnexpected < 3) return null;
-    if (Math.random() > unpredictability) return null;
+    if (Math.random() > unpredictabilityLevel) return null;
     const kinds = Object.keys(UNEXPECTED_BANKS);
     const kind = pick(kinds);
     const bank = UNEXPECTED_BANKS[kind] || [];
@@ -185,6 +218,13 @@ export function createEngine({ persist = false, unpredictability = 0.15 } = {}) 
       return { es: `${react.es} ${p.es}`, en: `${react.en} ${p.en}` };
     }
 
+    // Only when the learner didn't just steer to a new topic — following
+    // their lead always wins over a generic follow-up.
+    if (followups) {
+      const fu = maybeFollowup();
+      if (fu) return { es: `${react.es} ${fu.es}`, en: `${react.en} ${fu.en}` };
+    }
+
     const probe = nextProbe();
     if (probe) return { es: `${react.es} ${probe.es}`, en: `${react.en} ${probe.en}` };
 
@@ -208,5 +248,11 @@ export function createEngine({ persist = false, unpredictability = 0.15 } = {}) 
     return { es: `${react.es} ${thread.open.es}`, en: `${react.en} ${thread.open.en}` };
   }
 
-  return { startThread, getThread, remember, respond };
+  // Both are no-ops for callers that never invoke them (e.g. Conversation
+  // Mode), so leaving them unset preserves the original fixed-parameter
+  // behavior exactly.
+  function setBias(v) { tierBias = v; }
+  function setUnpredictability(v) { unpredictabilityLevel = v; }
+
+  return { startThread, getThread, remember, respond, setBias, setUnpredictability };
 }
