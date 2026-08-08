@@ -1227,7 +1227,15 @@ export function renderRoadmap(container) {
     return wrap;
   }
 
-  render();
+  // Onboarding finishes by deep-linking here (#/roadmap?start=first) instead
+  // of dropping a new user on an empty path view. The router strips
+  // everything after "?" before matching, so this reads straight off the
+  // hash rather than through registerRoute's params.
+  const startFirstUnit = new URLSearchParams(window.location.hash.split("?")[1] || "").get("start") === "first";
+  const firstIncomplete = startFirstUnit ? ROADMAP_UNITS.find((u) => !isCompleted(u.id)) : null;
+  if (firstIncomplete) openLesson(firstIncomplete);
+  else render();
+
   // The gloss popup is appended to document.body, so it must be removed when
   // you navigate away from the roadmap.
   return teardownTapWords;

@@ -63,8 +63,8 @@ async function freshPage(browser, { mobile = false } = {}) {
   page.on("console", (m) => { if (m.type() === "error" && !m.text().includes("favicon")) errors.push(m.text()); });
   await page.goto(`${BASE}/index.html`, { waitUntil: "networkidle" });
   await page.waitForTimeout(300);
-  // Click past onboarding
-  for (let i = 0; i < 4; i++) {
+  // Click past onboarding (7 steps)
+  for (let i = 0; i < 7; i++) {
     const btn = await page.$(".onboarding-nav .btn-primary");
     if (btn) { await btn.click(); await page.waitForTimeout(120); }
   }
@@ -574,7 +574,7 @@ async function testImmersion(browser) {
     const pg = await c.newPage();
     await pg.goto(`${BASE}/index.html`, { waitUntil: "networkidle" });
     await pg.waitForTimeout(250);
-    for (let k = 0; k < 4; k++) { const b = await pg.$(".onboarding-nav .btn-primary"); if (b) { await b.click(); await pg.waitForTimeout(110); } }
+    for (let k = 0; k < 7; k++) { const b = await pg.$(".onboarding-nav .btn-primary"); if (b) { await b.click(); await pg.waitForTimeout(110); } }
     await pg.evaluate(async () => { const { audioEngine } = await import("/js/core/audio.js"); audioEngine.speak = () => {}; });
     await pg.evaluate(() => { window.location.hash = "#/practice/immersion"; });
     await pg.waitForTimeout(500);
@@ -1151,6 +1151,97 @@ async function testStorage(browser) {
   await ctx.close();
 }
 
+async function testOnboarding(browser) {
+  group("onboarding");
+  const errors = [];
+
+  async function freshContext() {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const page = await ctx.newPage();
+    page.on("pageerror", (e) => errors.push(e.message));
+    page.on("console", (m) => { if (m.type() === "error" && !m.text().includes("favicon")) errors.push(m.text()); });
+    return { ctx, page };
+  }
+
+  async function clickThroughOnboarding(page, steps = 7) {
+    for (let i = 0; i < steps; i++) {
+      const btn = await page.$(".onboarding-nav .btn-primary");
+      if (btn) { await btn.click(); await page.waitForTimeout(120); }
+    }
+  }
+
+  // ---------- step count ----------
+  let { ctx, page } = await freshContext();
+  await page.goto(`${BASE}/index.html`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(300);
+  const dotCount = await page.$$eval(".onboarding-progress .onboarding-dot", (els) => els.length);
+  check("onboarding runs 7 steps", dotCount === 7, String(dotCount));
+  for (let i = 0; i < 6; i++) { const b = await page.$(".onboarding-nav .btn-primary"); if (b) { await b.click(); await page.waitForTimeout(120); } }
+  const lastLabel = await page.$eval(".onboarding-nav .btn-primary", (e) => e.textContent).catch(() => "");
+  check('the final step\'s primary button says "Start learning"', lastLabel.includes("Start learning"), lastLabel);
+  await ctx.close();
+
+  // ---------- level-test escape link ----------
+  ({ ctx, page } = await freshContext());
+  await page.goto(`${BASE}/index.html`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(300);
+  const escapeLink = await page.$(".onboarding-body a, .onboarding-card a");
+  check("the placement step offers a Level Test escape link", Boolean(escapeLink));
+  if (escapeLink) {
+    await escapeLink.click();
+    await page.waitForTimeout(400);
+    const onLevelTest = await page.evaluate(() => window.location.hash.startsWith("#/level-test"));
+    check("clicking it navigates straight to the real Level Test", onLevelTest, await page.evaluate(() => window.location.hash));
+    const seenAfterEscape = await page.evaluate(async () => { const { store } = await import("/js/core/storage.js"); return store.state.settings.onboardingSeen; });
+    check("the escape link still marks onboarding as seen", seenAfterEscape === true);
+  }
+  await ctx.close();
+
+  // ---------- immersionLevel=4, but only for a brand-new user ----------
+  ({ ctx, page } = await freshContext());
+  await page.goto(`${BASE}/index.html`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(300);
+  await clickThroughOnboarding(page);
+  await page.waitForTimeout(400);
+  const newUserImmersion = await page.evaluate(async () => { const { store } = await import("/js/core/storage.js"); return store.state.settings.immersionLevel; });
+  check("a brand-new user gets immersionLevel 4 (Spanish-only) after onboarding", newUserImmersion === 4, String(newUserImmersion));
+  await ctx.close();
+
+  // A returning user (onboardingSeen already true, saved before this feature
+  // existed) must never see the overlay and must keep their own setting —
+  // maybeShowOnboarding()'s early return is the only thing standing between
+  // this and silently overwriting someone's saved preference.
+  ({ ctx, page } = await freshContext());
+  await page.addInitScript(() => {
+    localStorage.setItem("mx_es_state_v1", JSON.stringify({
+      version: 1,
+      settings: { onboardingSeen: true, immersionLevel: 2 },
+      profile: {}, srs: {}, scores: {}, progress: {}
+    }));
+  });
+  await page.goto(`${BASE}/index.html`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(400);
+  const overlayShown = await page.$(".onboarding-overlay");
+  check("an existing user (onboardingSeen already true) never sees the overlay", !overlayShown);
+  const preservedImmersion = await page.evaluate(async () => { const { store } = await import("/js/core/storage.js"); return store.state.settings.immersionLevel; });
+  check("an existing user's saved immersionLevel is left untouched", preservedImmersion === 2, String(preservedImmersion));
+  await ctx.close();
+
+  // ---------- #/roadmap?start=first deep link ----------
+  ({ ctx, page } = await freshContext());
+  await page.goto(`${BASE}/index.html`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(300);
+  await clickThroughOnboarding(page);
+  await page.waitForTimeout(500);
+  const landedHash = await page.evaluate(() => window.location.hash);
+  check("finishing onboarding deep-links into the roadmap", landedHash.startsWith("#/roadmap"), landedHash);
+  const headings = await page.$$eval("h3", (els) => els.map((e) => e.textContent));
+  check("...and opens the first unit's lesson, not the empty path view", headings.some((t) => t.includes("Learn these sentences")), headings.join(" | "));
+  await ctx.close();
+
+  check("no JS errors across onboarding flows", errors.length === 0, errors.slice(0, 3).join(" | "));
+}
+
 async function testMobile(browser) {
   group("mobile");
   for (const [label, viewport] of [["iPhone SE 375", { width: 375, height: 667 }], ["phone 390", { width: 390, height: 844 }], ["tiny 320", { width: 320, height: 568 }]]) {
@@ -1158,7 +1249,7 @@ async function testMobile(browser) {
     const page = await ctx.newPage();
     await page.goto(`${BASE}/index.html`, { waitUntil: "networkidle" });
     await page.waitForTimeout(250);
-    for (let i = 0; i < 4; i++) { const x = await page.$(".onboarding-nav .btn-primary"); if (x) { await x.click(); await page.waitForTimeout(110); } }
+    for (let i = 0; i < 7; i++) { const x = await page.$(".onboarding-nav .btn-primary"); if (x) { await x.click(); await page.waitForTimeout(110); } }
     let overflow = 0;
     for (const h of ["#/dashboard", "#/roadmap", "#/learn", "#/practice", "#/practice/roleplay", "#/review", "#/save"]) {
       await go(page, h);
@@ -1216,6 +1307,7 @@ const GROUPS = {
   "daily-life": testDailyLife,
   proficiency: testProficiency,
   storage: testStorage,
+  onboarding: testOnboarding,
   mobile: testMobile,
   offline: testOffline
 };
