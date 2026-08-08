@@ -140,15 +140,16 @@ export const CAN_DO_VALIDATION_SPECS = [
   // ================= INTERMEDIATE LOW =================
   spec("intermediate-low", 0, {
     components: [{ id: "sustain-exchange", function: "negotiate", requiresConversationTurn: true }],
-    taskCoverage: ["sp-il-03"]
+    taskCoverage: [],
+    notes: "GAP (as of the requiresConversationTurn enforcement fix). sp-il-03 was the only task this could draw evidence from, but it has neither `followUp` nor `complication` — it only instructs the learner, in its own prompt text, to embed a follow-up in one response. Phase 1 can't verify that from a single free-text submission (needs raw text — see docs §9.3), so once requiresConversationTurn started requiring one of those two fields, this correctly dropped to not-started rather than keep crediting an unverifiable single-turn response."
   }),
   spec("intermediate-low", 1, {
     components: [{
       id: "ask-follow-up", function: "negotiate", requiresConversationTurn: true,
       marker: /\?|¿/
     }],
-    taskCoverage: ["sp-il-03"],
-    notes: "Thin coverage — only one existing task explicitly instructs the learner to produce their own follow-up question. Phase 1 can only credit this via the function/context signal, not by confirming a question was actually asked (needs raw text — see docs §9.3)."
+    taskCoverage: [],
+    notes: "GAP for the same reason as intermediate-low__0 — sp-il-03 lacks a followUp/complication field, so it no longer counts as verified multi-turn evidence. This statement specifically needs Phase 2's raw-text capture (to confirm the learner's own text contains a question) more than any other, since ACTFL 'ask follow-up questions' is about content, not just task structure."
   }),
   spec("intermediate-low", 2, {
     components: [{ id: "personal-experience", function: "narrate", requiresConversationTurn: true }],
@@ -173,7 +174,8 @@ export const CAN_DO_VALIDATION_SPECS = [
   // ================= INTERMEDIATE HIGH =================
   spec("intermediate-high", 0, {
     components: [{ id: "narrate-time-frames", function: "narrate", mode: "presentational", requiresConversationTurn: true }],
-    taskCoverage: ["sp-ih-01"]
+    taskCoverage: ["sp-ih-01"],
+    notes: "UNREACHABLE (found by the reachability script after the requiresConversationTurn enforcement fix). sp-ih-01 (complication, travel) is the only in-level task; its would-be ceiling-probe partner, sp-al-01 (advanced-low, narrate, family), has no followUp/complication field, so it no longer counts either — leaving only 1 distinct context against this tier's minContexts=2. Same class of issue as advanced-low__0/1 and intermediate-mid__0/2 (see review): needs either a second narrate+complication task authored, or minContexts lowered for this component."
   }),
   spec("intermediate-high", 1, {
     components: [{ id: "handle-unexpected", function: "negotiate", requiresConversationTurn: true }],

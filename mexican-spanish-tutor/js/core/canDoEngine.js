@@ -14,6 +14,7 @@
 import { store, todayISO, daysBetween } from "./storage.js";
 import { getSkillState } from "./ratingEngine.js";
 import { CAN_DO_VALIDATION_SPECS } from "../data/canDoValidation.js";
+import { tasksForSkill } from "../data/realWorldTasks.js";
 
 const MAX_EVIDENCE_LOG = 40;
 const AT_RISK_STREAK = 2; // consecutive outcomeS=0 attempts at-level before flagging at-risk
@@ -23,10 +24,20 @@ function hasZeroDim(dims) {
   return Object.values(dims).some((v) => v === 0);
 }
 
+// Lazily built, cached per skill — data/realWorldTasks.js is a static array,
+// so this only ever runs once per skill per page load.
+const taskLookupCache = new Map();
+function taskLookup(skill) {
+  if (!taskLookupCache.has(skill)) {
+    taskLookupCache.set(skill, new Map(tasksForSkill(skill).map((t) => [t.id, t])));
+  }
+  return taskLookupCache.get(skill);
+}
+
 // Entries at levelIdx+1 (a ceiling probe one band up) count as evidence too —
 // succeeding above the statement's own level is stronger, not weaker,
 // evidence for it. Mirrors core/ratingEngine.js's ceiling-probe treatment.
-function matchesComponent(entry, comp, statementLevelIdx) {
+function matchesComponent(entry, comp, statementLevelIdx, tasks) {
   if (comp.function !== "any" && entry.function !== comp.function) return false;
   if (entry.levelIdx !== statementLevelIdx && entry.levelIdx !== statementLevelIdx + 1) return false;
   // Without this, two statements that share a function+level (e.g. "Handle
@@ -35,6 +46,18 @@ function matchesComponent(entry, comp, statementLevelIdx) {
   // other with zero direct evidence, the exact failure mode this system
   // exists to fix. null means the statement is deliberately generic.
   if (comp.contexts && !comp.contexts.includes(entry.context)) return false;
+  // Phase 1 can't inspect the learner's raw response text (see docs §9.3),
+  // so it can't confirm a follow-up/complication turn was actually handled
+  // well — but it CAN confirm the task itself carried a second turn at all,
+  // via data/realWorldTasks.js's `followUp`/`complication` fields, which is
+  // the only signal available without that raw text. A component marked
+  // requiresConversationTurn therefore only accepts evidence from a task
+  // that has one of those fields; a single-turn task with a matching
+  // function/level/context no longer silently counts.
+  if (comp.requiresConversationTurn) {
+    const task = tasks.get(entry.taskId);
+    if (!task || !(task.followUp || task.complication)) return false;
+  }
   if (comp.extraCheck && !comp.extraCheck(entry)) return false;
   return true;
 }
@@ -47,9 +70,9 @@ function withinWindow(dateISO, windowDays) {
  * Evaluate one component against a skill's history. Pure function — no
  * store writes.
  */
-function evaluateComponent(comp, statementLevelIdx, history, windowDays) {
+function evaluateComponent(comp, statementLevelIdx, history, windowDays, tasks) {
   const inWindow = history.filter((e) => withinWindow(e.date, windowDays));
-  const matches = inWindow.filter((e) => matchesComponent(e, comp, statementLevelIdx));
+  const matches = inWindow.filter((e) => matchesComponent(e, comp, statementLevelIdx, tasks));
   const qualifying = matches.filter((e) => e.outcomeS >= 0.5 && !hasZeroDim(e.dims));
   const distinctContexts = new Set(qualifying.map((e) => e.context)).size;
   const met = qualifying.length >= comp.minQualifying && distinctContexts >= comp.minContexts;
@@ -119,9 +142,10 @@ function statusFor(componentResults, staleDays) {
 export function evaluateCanDo(spec) {
   const skillState = getSkillState(spec.skill);
   const history = (skillState && skillState.history) || [];
+  const tasks = taskLookup(spec.skill);
 
   const componentResults = spec.components.map((comp) =>
-    evaluateComponent(comp, spec.levelIdx, history, spec.requiredEvidence.windowDays)
+    evaluateComponent(comp, spec.levelIdx, history, spec.requiredEvidence.windowDays, tasks)
   );
 
   const { status, stale } = statusFor(componentResults, spec.requiredEvidence.staleDays);
