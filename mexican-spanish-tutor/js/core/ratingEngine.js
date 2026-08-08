@@ -10,11 +10,20 @@
 // core/roadmap.js, conversation.js, and immersion.js still rely on — this is
 // a separate, additive proficiency track living in state.proficiency.
 //
+// Deliberately NOT seeded from that older composite, even though most
+// learners already have one: XP and state.scores are both reachable mostly
+// through multiple-choice roadmap quizzes, and this track exists precisely
+// so proficiency is never inherited from vocabulary recall or MC grinding.
+// Every skill starts at true Novice Low and climbs only on graded real-world
+// task performance (core/rubricEngine.js) — slower for an already-fluent
+// existing user, but the only way this number stays honest.
+//
 // Design doc reference: sections 2.1, 6, 7.
 
 import { store, todayISO, daysBetween } from "./storage.js";
 import { PROFICIENCY_LEVELS, bandIndexForRating, levelAt, bandCenter } from "../data/actflProficiency.js";
-import { estimatedLevel } from "./gamification.js";
+
+const TOP_LEVEL_IDX = PROFICIENCY_LEVELS.length - 1;
 
 const REGRESSION_STREAK = 3;      // consecutive fails at the displayed level before demotion
 const AT_RISK_WINDOW = 5;         // how many recent same-level outcomes we watch
@@ -30,29 +39,8 @@ function hasZeroDim(dims) {
   return Object.values(dims).some((v) => v === 0);
 }
 
-// Existing users already have a (rougher) legacy estimate from the old
-// XP/scores composite in core/assessment.js. Reusing it once as a starting
-// point avoids forcing everyone back to Novice Low on day one, without
-// modifying assessment.js/gamification.js at all — read-only reuse. Level
-// codes are shared between the old 7-level ladder and this 9-level one, so
-// this is a direct lookup, not a conversion.
-function seedIfNeeded(s) {
-  if (s.seeded) return;
-  s.seeded = true;
-  try {
-    const legacy = estimatedLevel();
-    const idx = PROFICIENCY_LEVELS.findIndex((l) => l.code === legacy.code);
-    if (idx > 0) {
-      s.displayedLevelIdx = idx;
-      s.rating = bandCenter(idx);
-    }
-  } catch (e) { /* legacy estimate unavailable — keep the honest Novice Low default */ }
-}
-
 export function getSkillState(skill) {
-  const s = store.state.proficiency[skill];
-  seedIfNeeded(s);
-  return s;
+  return store.state.proficiency[skill];
 }
 
 export function displayedLevel(skill) {
@@ -132,7 +120,11 @@ export function recordTaskOutcome(skill, task, scored) {
 
   // --- Promotion: never more than one displayed level per task, and only
   // once the last 15 tasks show sustained, varied, spread-out evidence in
-  // the candidate band PLUS a ceiling probe one band above that. ---
+  // the candidate band PLUS a ceiling probe one band above that — except at
+  // the top of the ladder (Advanced High), where there IS no band above to
+  // probe, so the sustained-evidence criteria alone have to be enough. Without
+  // this exception nobody could ever reach the top level, no matter how good
+  // they are: the ceiling-probe band (candidate+1) would never exist.
   if (!regressed) {
     const ratingBand = bandIndexForRating(s.rating);
     const candidate = Math.min(ratingBand, s.displayedLevelIdx + 1);
@@ -141,7 +133,7 @@ export function recordTaskOutcome(skill, task, scored) {
       const inBand = recent.filter((e) => e.levelIdx === candidate && e.outcomeS >= 0.5 && !hasZeroDim(e.dims));
       const distinctFunctions = new Set(inBand.map((e) => e.function)).size;
       const distinctContexts = new Set(inBand.map((e) => e.context)).size;
-      const ceilingProbeCleared = recent.some((e) => e.levelIdx === candidate + 1 && e.outcomeS >= 0.5);
+      const ceilingProbeCleared = candidate >= TOP_LEVEL_IDX || recent.some((e) => e.levelIdx === candidate + 1 && e.outcomeS >= 0.5);
 
       if (inBand.length >= PROMOTION_MIN_EVIDENCE
         && distinctFunctions >= PROMOTION_MIN_FUNCTIONS

@@ -5,8 +5,10 @@ const STORAGE_KEY = "mx_es_state_v1";
 const SCHEMA_VERSION = 1;
 
 // Fresh per-skill state for core/ratingEngine.js's adaptive proficiency
-// track. `seeded` guards the one-time read of the legacy composite estimate
-// so a new skill state doesn't start every user flat at Novice Low.
+// track. Always starts at true Novice Low — never seeded from the older
+// XP/state.scores composite (core/assessment.js), since that's reachable
+// mostly through multiple-choice roadmap quizzes and this track exists so
+// proficiency is earned only through graded real-world task performance.
 function emptyProficiency() {
   return {
     rating: 0,
@@ -17,7 +19,6 @@ function emptyProficiency() {
     consecutiveFailsAtLevel: 0,
     recentOutcomesAtDisplayed: [],
     atRisk: false,
-    seeded: false,
     history: [],      // recent { date, taskId, levelIdx, function, context, dims, outcomeS, ratingBefore, ratingAfter }
     evidenceLog: []   // recent { date, type: "promotion"|"regression", fromLevelIdx, toLevelIdx }
   };

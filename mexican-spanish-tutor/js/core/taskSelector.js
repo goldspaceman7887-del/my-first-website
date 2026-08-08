@@ -4,13 +4,17 @@
 //   - "recovery": same level as currently displayed, not harder — given
 //     once a skill is flagged at-risk, before a losing streak can trigger
 //     the regression rule.
-//   - "ceiling": one band above the displayed level, injected periodically
-//     to check whether the current level is actually a ceiling.
+//   - "ceiling": one band above wherever the rating currently suggests the
+//     learner sits, injected periodically to check whether that's actually
+//     a ceiling. Targeting the *rating's* band (not the displayed level) is
+//     what lets it line up with ratingEngine's promotion rule, which looks
+//     one band past the promotion candidate — see the note there.
 //   - "adaptive": nearest-difficulty task to the current rating, preferring
 //     a function/context different from the last couple of tasks so
 //     evidence naturally spans what the promotion rule requires.
 
 import { getSkillState, needsRecoveryProbe } from "./ratingEngine.js";
+import { bandIndexForRating } from "../data/actflProficiency.js";
 import { tasksForSkill } from "../data/realWorldTasks.js";
 
 function pickFrom(pool) {
@@ -36,9 +40,10 @@ export function pickNextTask(skill, sessionUsedIds = [], sessionCount = 0) {
     if (atLevel.length) return { task: pickFrom(atLevel), kind: "recovery" };
   }
 
-  const wantsCeiling = sessionCount > 0 && sessionCount % 4 === 3 && s.displayedLevelIdx < 8;
+  const ratingBand = bandIndexForRating(s.rating);
+  const wantsCeiling = sessionCount > 0 && sessionCount % 4 === 3 && ratingBand < 8;
   if (wantsCeiling) {
-    const above = pool.filter((t) => t.levelIdx === s.displayedLevelIdx + 1);
+    const above = pool.filter((t) => t.levelIdx === ratingBand + 1);
     if (above.length) return { task: pickFrom(above), kind: "ceiling" };
   }
 

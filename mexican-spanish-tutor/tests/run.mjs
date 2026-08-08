@@ -759,7 +759,7 @@ const GROUPS = {
 
 const only = process.argv[2];
 const server = await startServer();
-const browser = await chromium.launch();
+const browser = await chromium.launch(process.env.CI_LOCAL_CHROMIUM ? { executablePath: process.env.CI_LOCAL_CHROMIUM } : {});
 const started = Date.now();
 
 try {

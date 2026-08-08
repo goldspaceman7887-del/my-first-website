@@ -11,6 +11,17 @@
 // (function/mode/context/difficulty/keywords) is deliberately skill-generic
 // so those can reuse core/ratingEngine.js and core/rubricEngine.js unchanged.
 //
+// Two optional second-turn fields, matching required abilities at their
+// level rather than being decoration:
+//   - `followUp` (Intermediate Low/Mid): a natural clarifying question, the
+//     way a real conversation partner asks one — tests "handle follow-up
+//     questions," an Intermediate-level ability, not just Advanced.
+//   - `complication` (Intermediate High+): an unexpected turn or pushback
+//     mid-task — tests "handle unexpected situations," which only becomes a
+//     required ability at Intermediate High and above.
+// js/views/speakingTest.js treats both the same way in the flow (ask, wait
+// for a second response, score the combined turn); only the content differs.
+//
 // Band centers (see data/actflProficiency.js): NL 133, NM 400, NH 667,
 // IL 933, IM 1200, IH 1467, AL 1733, AM 2000, AH 2267.
 
@@ -60,10 +71,12 @@ export const SPEAKING_TASKS = [
   // ================= INTERMEDIATE LOW (3) =================
   { id: "sp-il-01", skill: "speaking", levelIdx: 3, function: "narrate", mode: "presentational", context: "travel", difficulty: 900,
     es: "Cuéntame de la última vez que fuiste a un lugar nuevo. ¿Qué pasó?", en: "Tell me about the last time you went somewhere new. What happened?",
-    keywords: ["fui", "llegué", "vi", "me gustó", "después"] },
+    keywords: ["fui", "llegué", "vi", "me gustó", "después"],
+    followUp: { es: "¿Y con quién fuiste?", en: "And who did you go with?" } },
   { id: "sp-il-02", skill: "speaking", levelIdx: 3, function: "describe", mode: "interpersonal", context: "family", difficulty: 950,
     es: "Describe a un amigo cercano: cómo es y cómo se conocieron.", en: "Describe a close friend: what they're like, and how you met.",
-    keywords: ["es", "conocimos", "en", "amigo", "amiga", "simpático", "divertido"] },
+    keywords: ["es", "conocimos", "en", "amigo", "amiga", "simpático", "divertido"],
+    followUp: { es: "¿Y qué es lo que más admiras de él o ella?", en: "And what do you admire most about them?" } },
   { id: "sp-il-03", skill: "speaking", levelIdx: 3, function: "negotiate", mode: "interpersonal", context: "transit", difficulty: 1000,
     es: "Estás perdido/a. Pídele indicaciones a un desconocido para llegar al centro, y hazle una pregunta de seguimiento sobre lo que te diga.", en: "You're lost. Ask a stranger for directions downtown, and ask a follow-up question about what they tell you.",
     keywords: ["disculpe", "cómo llego", "centro", "y luego", "está lejos"] },
@@ -74,13 +87,15 @@ export const SPEAKING_TASKS = [
   // ================= INTERMEDIATE MID (4) =================
   { id: "sp-im-01", skill: "speaking", levelIdx: 4, function: "narrate", mode: "presentational", context: "health", difficulty: 1170,
     es: "Cuéntale a un farmacéutico qué te ha pasado: desde cuándo te sientes mal y qué síntomas tienes.", en: "Tell a pharmacist what's been going on: how long you've felt unwell, and your symptoms.",
-    keywords: ["desde", "me duele", "me siento", "ayer", "empezó"] },
+    keywords: ["desde", "me duele", "me siento", "ayer", "empezó"],
+    followUp: { es: "¿Ya tomaste algo para eso?", en: "Have you already taken anything for it?" } },
   { id: "sp-im-02", skill: "speaking", levelIdx: 4, function: "negotiate", mode: "interpersonal", context: "shopping", difficulty: 1230,
     es: "Compraste algo que no te queda bien. Explica el problema en la tienda y pide un cambio o devolución.", en: "You bought something that doesn't fit. Explain the problem at the store and ask for an exchange or refund.",
     keywords: ["no me queda", "quisiera", "cambiar", "devolver", "el recibo"] },
   { id: "sp-im-03", skill: "speaking", levelIdx: 4, function: "describe", mode: "presentational", context: "work", difficulty: 1190,
     es: "Describe tu trabajo o tus estudios con detalle: qué haces día a día.", en: "Describe your job or studies in detail: what you do day to day.",
-    keywords: ["trabajo", "estudio", "todos los días", "mis tareas", "responsable de"] },
+    keywords: ["trabajo", "estudio", "todos los días", "mis tareas", "responsable de"],
+    followUp: { es: "¿Y qué es lo que más te gusta de eso?", en: "And what do you like most about it?" } },
   { id: "sp-im-04", skill: "speaking", levelIdx: 4, function: "advise", mode: "interpersonal", context: "travel", difficulty: 1210,
     es: "Un amigo va a Oaxaca por primera vez. Recomiéndale qué comer y qué visitar, y explica por qué.", en: "A friend is going to Oaxaca for the first time. Recommend what to eat and see, and explain why.",
     keywords: ["te recomiendo", "porque", "no te pierdas", "vale la pena"] },

@@ -4,12 +4,20 @@
 // + core/rubricEngine.js, task bank in data/realWorldTasks.js):
 //   - Real-world tasks, not "translate this sentence" — each one is tagged
 //     with the ACTFL function and everyday context it's actually testing.
+//     Intermediate tasks add a natural follow-up question (task.followUp);
+//     Intermediate High+ tasks add an unexpected complication
+//     (task.complication) — both are a required second turn, since
+//     "handle follow-up questions" and "handle unexpected situations" are
+//     abilities, not just prompts to read.
 //   - Adaptive difficulty — the next task is chosen against your current
-//     rating, with periodic ceiling probes (one band up) and recovery
-//     probes when a level looks shaky, instead of a fixed day-of-year script.
+//     rating, with periodic ceiling probes (one band up from wherever the
+//     rating currently sits) and recovery probes when a level looks shaky,
+//     instead of a fixed day-of-year script.
 //   - Honest reassessment — a level only moves on a pattern of evidence
 //     (core/ratingEngine.js's hysteresis rules), and it can move down as
-//     well as up. No single answer sets a permanent floor.
+//     well as up. No single answer sets a permanent floor, and nothing here
+//     is reachable by vocabulary recall or multiple choice — every task is
+//     graded on what you actually communicated (core/rubricEngine.js).
 //
 // Speaking is still the primary input: the mic streams a live Spanish
 // transcript while you talk, typing stays available as a fallback.
@@ -55,7 +63,8 @@ export function renderSpeakingTest(container) {
   const canSpeak = speechRecognitionSupported();
   let sessionUsedIds = [];
   let sessionResults = []; // { task, kind, text, scored, summary }
-  let pendingComplication = null; // { es, en } queued off the main answer
+  let pendingComplication = null; // { es, en } queued off the main answer — from task.followUp or task.complication
+  let pendingSecondTurnKind = null; // "followUp" | "complication", drives the label shown for it
   let activePick = null; // { task, kind } for the current turn
   let draftText = "";
   const ratingAtStart = getSkillState("speaking").rating;
@@ -120,7 +129,7 @@ export function renderSpeakingTest(container) {
     const task = activePick.task;
     const prompt = pendingComplication || task;
     progressLine.textContent = pendingComplication
-      ? `Complication · ${FUNCTION_TITLES[task.function] || task.function}`
+      ? `${pendingSecondTurnKind === "followUp" ? "Follow-up" : "Complication"} · ${FUNCTION_TITLES[task.function] || task.function}`
       : `Task ${sessionResults.length + 1} of ${SESSION_LENGTH} · ${FUNCTION_TITLES[task.function] || task.function}`;
 
     body.innerHTML = "";
@@ -211,9 +220,11 @@ export function renderSpeakingTest(container) {
         finalizeTurn((draftText + " " + answer).trim());
         draftText = "";
         pendingComplication = null;
-      } else if (task.complication) {
+        pendingSecondTurnKind = null;
+      } else if (task.complication || task.followUp) {
         draftText = answer;
-        pendingComplication = task.complication;
+        pendingSecondTurnKind = task.complication ? "complication" : "followUp";
+        pendingComplication = task.complication || task.followUp;
         renderTurn();
       } else {
         finalizeTurn(answer);
@@ -331,7 +342,7 @@ export function renderSpeakingTest(container) {
     body.appendChild(
       el("div", { class: "btn-row", style: "margin-top:1rem" }, [
         el("button", { class: "btn btn-primary", onclick: () => {
-          sessionUsedIds = []; sessionResults = []; pendingComplication = null; activePick = null; draftText = "";
+          sessionUsedIds = []; sessionResults = []; pendingComplication = null; pendingSecondTurnKind = null; activePick = null; draftText = "";
           renderTurn();
         } }, "Take another session"),
         el("a", { class: "btn", href: "#/practice" }, "Back to practice")
