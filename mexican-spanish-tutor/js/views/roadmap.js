@@ -221,7 +221,8 @@ function unitQuestions(unit, count) {
       ? {
           kind: "mc", role: "grammar", prompt: unit.drill.question,
           sub: `Grammar: ${unit.grammar.title}`, correct: unit.drill.answer,
-          options: shuffle(unit.drill.options), spanishOptions: true
+          options: shuffle(unit.drill.options), spanishOptions: true,
+          pattern: unit.grammar.pattern, why: unit.grammar.explain, commonMistake: unit.grammar.commonMistake
         }
       : esEn(at(4)),
     {
@@ -276,7 +277,8 @@ function reviewQuestions(unit, n) {
       return {
         kind: "mc", role: "review-grammar", prompt: src.drill.question,
         sub: `Grammar: ${src.grammar.title}`, correct: src.drill.answer,
-        options: shuffle(src.drill.options), spanishOptions: true, ...tag
+        options: shuffle(src.drill.options), spanishOptions: true,
+        pattern: src.grammar.pattern, why: src.grammar.explain, commonMistake: src.grammar.commonMistake, ...tag
       };
     }
     if (i === 1) {
@@ -352,6 +354,18 @@ export function buildCheckpoint(levelCode) {
   return shuffle(picked).slice(0, CHECKPOINT_QUESTIONS);
 }
 
+// Same "why" shape as the mistake-correction blocks elsewhere in the app
+// (fragment/rule/explanation), but for a missed grammar-drill question
+// instead of a typed sentence: the rule, the plain-English explanation, and
+// the specific mistake this pattern usually trips people up on.
+function grammarWhyNode(q) {
+  return el("div", { class: "correction-block compact", style: "margin-top:.6rem" }, [
+    q.pattern ? el("p", { class: "co-rule" }, q.pattern) : null,
+    q.why ? el("p", { class: "co-explain" }, q.why) : null,
+    q.commonMistake ? el("p", { class: "co-explain" }, [el("strong", {}, "Common mistake: "), q.commonMistake]) : null
+  ].filter(Boolean));
+}
+
 // Renders one question card and reports the outcome. Shared by the per-unit
 // test and the section checkpoint so both behave identically.
 function renderQuestionInto(qWrap, q, afterAnswer) {
@@ -386,7 +400,12 @@ function renderQuestionInto(qWrap, q, afterAnswer) {
           if (!ok) {
             [...list.children].find((b) => b.textContent === q.correct)?.classList.add("correct");
           }
-          afterAnswer(ok, ok ? "" : `The answer is “${q.correct}”.`);
+          // Grammar-drill questions (this unit's own drill, or a review pulled
+          // from an earlier one) carry the same title/pattern/explanation the
+          // "How it works" screen showed — a wrong answer here should teach
+          // the rule again, not just point at the right option.
+          const why = !ok && q.why ? grammarWhyNode(q) : null;
+          afterAnswer(ok, ok ? "" : `The answer is “${q.correct}”.`, why);
         });
         list.appendChild(btn);
       });
