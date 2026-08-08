@@ -1,4 +1,4 @@
-# MIGRATION_PLAN.md
+# ARCHITECTURE_PLAN.md
 
 ## Scope
 
