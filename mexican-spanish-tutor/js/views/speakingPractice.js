@@ -1,7 +1,7 @@
 // SPEAKING PRACTICE — Conversation, Roleplay, and the Speaking Test under
 // one tab instead of three. Same three existing views, just regrouped.
 
-import { el } from "../core/ui.js";
+import { el, clickableDiv } from "../core/ui.js";
 import { renderConversation } from "./conversation.js";
 import { renderRoleplay } from "./roleplay.js";
 import { renderSpeakingTest } from "./speakingTest.js";
@@ -50,7 +50,7 @@ export function renderSpeakingPractice(container) {
 
   MODES.forEach((mode) => {
     picker.appendChild(
-      el("div", { class: "card card-link", style: "cursor:pointer", onclick: () => open(mode) }, [
+      clickableDiv({ class: "card card-link", style: "cursor:pointer", onclick: () => open(mode) }, [
         el("h3", { style: "margin:0 0 .3rem" }, mode.label),
         el("p", { class: "text-muted" }, mode.blurb)
       ])

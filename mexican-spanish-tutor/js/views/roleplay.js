@@ -5,7 +5,7 @@
 
 import { store, todayISO } from "../core/storage.js";
 import { correctionBlock } from "../core/feedback.js";
-import { el, blurActive, toast } from "../core/ui.js";
+import { el, blurActive, toast, clickableDiv } from "../core/ui.js";
 import { audioEngine, textSimilarity, pronunciationTip, speechRecognitionSupported, listenOnce } from "../core/audio.js";
 import { addXP, registerStudyToday, updateSkillScore } from "../core/gamification.js";
 import { DIALOGUES } from "../data/dialogues.js";
@@ -35,7 +35,7 @@ export function renderRoleplay(container) {
     const grid = el("div", { class: "grid grid-auto" });
     DIALOGUES.forEach((d) => {
       grid.appendChild(
-        el("div", { class: "card", style: "cursor:pointer", onclick: () => startRolePlay(d) }, [
+        clickableDiv({ class: "card", style: "cursor:pointer", onclick: () => startRolePlay(d) }, [
           el("span", { class: "badge badge-default" }, SCENARIO_LABELS[d.scenario] || d.scenario),
           el("h3", { style: "margin:.5rem 0 .2rem" }, d.title),
           el("p", { class: "text-muted" }, d.titleEs)

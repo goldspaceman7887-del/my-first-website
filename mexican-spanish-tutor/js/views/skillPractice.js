@@ -6,7 +6,7 @@
 // just XP.
 
 import { store } from "../core/storage.js";
-import { el } from "../core/ui.js";
+import { el, clickableDiv } from "../core/ui.js";
 import { renderSpeakingTest } from "./speakingTest.js";
 import { renderCorrection } from "./correction.js";
 import { renderReview } from "./review.js";
@@ -56,7 +56,7 @@ export function renderSkillPractice(container) {
     MODALITIES.forEach((m) => {
       const isWeakest = m.id === weakestId;
       grid.appendChild(
-        el("div", { class: "card card-link", style: "cursor:pointer", onclick: () => open(m) }, [
+        clickableDiv({ class: "card card-link", style: "cursor:pointer", onclick: () => open(m) }, [
           el("div", { class: "flex justify-between items-center", style: "gap:.4rem" }, [
             el("h3", { style: "margin:0" }, m.label),
             isWeakest ? el("span", { class: "badge badge-danger" }, "Weakest for you") : null

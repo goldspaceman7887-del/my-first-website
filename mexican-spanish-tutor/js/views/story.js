@@ -11,7 +11,7 @@
 
 import { store } from "../core/storage.js";
 import { correctionBlock } from "../core/feedback.js";
-import { el, toast } from "../core/ui.js";
+import { el, toast, clickableDiv } from "../core/ui.js";
 import { audioEngine } from "../core/audio.js";
 import { addXP, registerStudyToday, updateSkillScore } from "../core/gamification.js";
 import { gradeItem, QUALITY } from "../core/srs.js";
@@ -71,7 +71,7 @@ export function renderStory(container) {
       }
       const done = store.state.progress.storiesCompleted.includes(s.id);
       body.appendChild(
-        el("div", { class: "card card-link", style: "cursor:pointer", onclick: () => showStory(s) }, [
+        clickableDiv({ class: "card card-link", style: "cursor:pointer", onclick: () => showStory(s) }, [
           el("div", { class: "flex justify-between items-center", style: "gap:.5rem" }, [
             el("div", {}, [
               el("h3", { style: "margin:0 0 .15rem" }, s.title),

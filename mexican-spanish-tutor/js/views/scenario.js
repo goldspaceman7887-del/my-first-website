@@ -8,7 +8,7 @@
 // the wrong order, the missed detail, the confused clerk.
 
 import { store, todayISO } from "../core/storage.js";
-import { el, blurActive, toast, confettiBurst } from "../core/ui.js";
+import { el, blurActive, toast, confettiBurst, clickableDiv } from "../core/ui.js";
 import { audioEngine, speechRecognitionSupported, startDictation } from "../core/audio.js";
 import { addXP, registerStudyToday, updateSkillScore } from "../core/gamification.js";
 import { correctionBlock } from "../core/feedback.js";
@@ -50,7 +50,7 @@ export function renderScenarioList(container) {
         const scenarios = scenariosByCategory(cat.id);
         const done = scenarios.filter((s) => (store.state.progress.scenariosCompleted || []).includes(s.id)).length;
         grid.appendChild(
-          el("div", { class: "card card-link", style: "cursor:pointer", onclick: () => { activeCategory = cat.id; render(); } }, [
+          clickableDiv({ class: "card card-link", style: "cursor:pointer", onclick: () => { activeCategory = cat.id; render(); } }, [
             el("div", { style: "font-size:2rem" }, cat.icon),
             el("h3", { style: "margin:.4rem 0 .2rem" }, cat.label),
             el("p", { class: "text-muted" }, `${done}/${scenarios.length} completed`)

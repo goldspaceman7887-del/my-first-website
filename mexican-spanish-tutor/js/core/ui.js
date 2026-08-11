@@ -15,6 +15,30 @@ export function el(tag, attrs = {}, children = []) {
   return node;
 }
 
+// A <div onclick> "card" isn't natively focusable or announced as
+// interactive — keyboard and screen-reader users can't reach it. This gives
+// it a button role, tab order, and Enter/Space activation, same as a real
+// <button> would have for free.
+export function clickableDiv(attrs, children = []) {
+  const { onclick, ...rest } = attrs;
+  return el(
+    "div",
+    {
+      ...rest,
+      role: "button",
+      tabindex: "0",
+      onclick,
+      onkeydown: (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onclick(e);
+        }
+      }
+    },
+    children
+  );
+}
+
 // Blurs the current focus target (e.g. after grading an answer). Prevents
 // mobile browsers from "helpfully" re-scrolling to keep a now-disabled or
 // about-to-move input/button in view, which reads as a random page jump.

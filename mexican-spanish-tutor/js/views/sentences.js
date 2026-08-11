@@ -1,5 +1,5 @@
 import { store } from "../core/storage.js";
-import { el, blurActive, toast } from "../core/ui.js";
+import { el, blurActive, toast, clickableDiv } from "../core/ui.js";
 import { audioEngine } from "../core/audio.js";
 import { gradeItem, masteryLevel, QUALITY } from "../core/srs.js";
 import { addXP, updateSkillScore } from "../core/gamification.js";
@@ -135,7 +135,7 @@ export function renderSentences(container) {
   SENTENCES.forEach((s) => {
     const mastery = masteryLevel(srsId(s));
     list.appendChild(
-      el("div", { class: "card", style: "padding:.9rem;cursor:pointer", onclick: () => showDetail(s) }, [
+      clickableDiv({ class: "card", style: "padding:.9rem;cursor:pointer", onclick: () => showDetail(s) }, [
         el("div", { class: "es-text", style: "font-weight:700" }, s.es),
         el("div", { class: "text-muted", style: "font-size:.85rem" }, s.en),
         el("div", { class: "badge badge-default", style: "margin-top:.4rem" }, s.pattern),
