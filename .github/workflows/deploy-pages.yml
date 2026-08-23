@@ -18,82 +18,16 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Gate the deploy on the Spanish tutor's regression suite. A broken build
-  # reaching Pages is worse than a slightly slower deploy — the app is shared
-  # with real learners and stores their progress locally.
-  test-spanish:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    defaults:
-      run:
-        working-directory: mexican-spanish-tutor
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - run: npm install --no-audit --no-fund
-      - run: npx playwright install --with-deps chromium
-      - run: npm test
-
   build:
-    needs: test-spanish
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: seed-english-tokyo/web/package-lock.json
-
-      # The Next.js app is the only one needing a build. It must never be able
-      # to take the whole site down with it: if install or build fails, we warn
-      # and ship every other app rather than failing the deploy.
-      - name: Install Seed English Tokyo dependencies
-        id: seed_install
-        continue-on-error: true
-        working-directory: seed-english-tokyo/web
-        run: npm ci
-
-      - name: Build Seed English Tokyo (static export)
-        id: seed_build
-        continue-on-error: true
-        working-directory: seed-english-tokyo/web
-        env:
-          GH_PAGES_BASE_PATH: /my-first-website/seed-english-tokyo
-        run: npm run build
-
-      - name: Assemble combined Pages site
+      - name: Assemble Pages site
         run: |
           set -e
           mkdir -p _site
-
-          # Vamos (existing site) at the root: /my-first-website/
-          cp -r index.html css js _site/
-
-          # Static apps: no build step, so these always ship.
-          for app in mandarin-tutor mexican-spanish-tutor japanese-speaking; do
-            if [ -d "$app" ]; then
-              mkdir -p "_site/$app"
-              cp -r "$app/." "_site/$app/"
-              echo "packaged $app"
-            else
-              echo "::warning::$app directory missing; skipping."
-            fi
-          done
-
-          # Seed English Tokyo only if its build actually produced output.
-          if [ -d seed-english-tokyo/web/out ]; then
-            mkdir -p _site/seed-english-tokyo
-            cp -r seed-english-tokyo/web/out/. _site/seed-english-tokyo/
-            echo "packaged seed-english-tokyo"
-          else
-            echo "::warning::Seed English Tokyo produced no build output (install=${{ steps.seed_install.outcome }}, build=${{ steps.seed_build.outcome }}). Deploying the rest of the site without it."
-          fi
-
-          # A deploy with no landing page is worse than no deploy at all.
+          cp -r mandarin-tutor/. _site/
           test -f _site/index.html
 
       - uses: actions/upload-pages-artifact@v3
